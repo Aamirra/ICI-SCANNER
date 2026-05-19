@@ -31,7 +31,6 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 .m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:#fff; }
 #chartOverlay { position:fixed; inset:0; background:#000; z-index:4000; display:none; flex-direction:column; }
 .nav-btn { background:rgba(255,255,255,0.1); color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
-.limit-bar { position:fixed; bottom:0; left:0; right:0; background:#0d1828; padding:8px; text-align:center; font-size:10px; border-top:1px solid #333; }
 </style>
 </head>
 <body>
@@ -45,7 +44,6 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
   </div>
   <div class="tw"><table><thead><tr><th style="text-align:left;padding-left:12px">Pair</th><th>1H</th><th>4H</th><th>1D</th><th>1W</th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
-<div class="limit-bar" id="limitBar">● LIMIT: -- / 12800</div>
 <div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
   <div style="padding:10px 15px; background:#0d1828; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333">
@@ -76,13 +74,6 @@ db.ref('marketData').on('value', (snap) => {
 db.ref('pb_state').on('value', (snap) => {
   PB_STATE = snap.val() || {};
   updateBadge();
-});
-
-db.ref('api_status').on('value', (snap) => {
-  const data = snap.val();
-  if (data) {
-    document.getElementById('limitBar').textContent = `● LIMIT: ${data.remaining} / ${data.total}`;
-  }
 });
 
 function render() {
@@ -136,11 +127,10 @@ function openM() {
 
 function openChartFromModal(pairName) {
   document.getElementById('mo').classList.remove('open');
-  const idx = PAIRS.findIndex(p => p.n === pairName);
-  if (idx !== -1) {
-    fPairs = PAIRS;
-    openC(idx);
-  }
+  const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
+  fPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+  const pbIdx = fPairs.findIndex(p => p.n === pairName);
+  openC(pbIdx !== -1 ? pbIdx : 0);
 }
 
 function openC(i) {
