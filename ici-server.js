@@ -1,5 +1,7 @@
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 const pullbackEngine = require('./pullback_engine');
@@ -157,7 +159,18 @@ function sendReport() {
 }
 
 const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => { res.writeHead(200); res.end('LIVE'); }).listen(PORT, () => {
+http.createServer((req, res) => {
+    if (req.url === '/' || req.url.startsWith('/?')) {
+        const filePath = path.join(__dirname, 'index.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) { res.writeHead(404); res.end('Not Found'); return; }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+    } else {
+        res.writeHead(200); res.end('LIVE');
+    }
+}).listen(PORT, () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
     updateApiStatus();
     masterScan();
