@@ -160,4 +160,5 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => { res.writeHead(200); res.end('LIVE'); }).listen(PORT, () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
     updateApiStatus();
-    master
+    masterScan();
+});
