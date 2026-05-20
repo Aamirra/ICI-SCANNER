@@ -14,6 +14,8 @@ body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',mono
 .wrap { max-width:480px; margin:0 auto; padding:12px; }
 .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:linear-gradient(135deg,#0d1f42,#071228); border-radius:16px; margin-bottom:12px; border:1px solid rgba(0,170,255,0.2); }
 .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
+.scan-btn { background:rgba(0,170,255,0.15); color:var(--acc); border:1px solid var(--acc); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; }
+.scan-btn:active { background:rgba(0,170,255,0.35); }
 .sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; }
 .sum { display:flex; gap:8px; margin-bottom:12px; }
 .sc { flex:1; padding:12px; border-radius:14px; border:1px solid #333; text-align:center; cursor:pointer; }
@@ -35,7 +37,13 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><div class="brand">ICI <span>SCREENER</span></div><div style="font-size:10px; color:#00ff88">CLOUD ACTIVE</div></div>
+  <div class="topbar">
+    <div class="brand">ICI <span>SCREENER</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+      <div style="font-size:10px; color:#00ff88">CLOUD ACTIVE</div>
+    </div>
+  </div>
   <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
   <div class="sum">
     <div class="sc" style="color:#00ff88" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
@@ -62,6 +70,27 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
+function manualScan() {
+    const btn = document.querySelector('.scan-btn');
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+    fetch('/scan')
+        .then(() => {
+            btn.textContent = '✅ Started!';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        })
+        .catch(() => {
+            btn.textContent = '❌ Error';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        });
+}
+
 window.addEventListener('load', function() {
     setTimeout(function() {
         if (document.getElementById('st').textContent === 'Connecting...') {
