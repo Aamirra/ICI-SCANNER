@@ -89,8 +89,6 @@ async function masterScan() {
         lastReportTime = now;
     }
 
-    await checkBroadcasts();
-
     for (const p of config.PAIRS) {
         for (const tf of ['1h', '4h', '1day', '1week']) {
             await new Promise(res => setTimeout(res, 1800));
@@ -158,6 +156,9 @@ function sendReport() {
     sendTG(`📊 *ICI SCANNER — 4H REPORT*\n━━━━━━━━━━━━━━━━━━━━\n` + (bulls.length ? `🟢 *BULLISH (1W+1D+4H)*\n${bulls.join(', ')}\n\n` : '') + (bears.length ? `🔴 *BEARISH (1W+1D+4H)*\n${bears.join(', ')}\n\n` : ''));
 }
 
+// Broadcast har 2 minute mein check hoga — scan se alag
+setInterval(checkBroadcasts, 2 * 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     if (req.url === '/' || req.url.startsWith('/?')) {
@@ -173,5 +174,6 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
     updateApiStatus();
+    checkBroadcasts();
     masterScan();
 });
