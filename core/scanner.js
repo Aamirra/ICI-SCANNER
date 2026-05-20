@@ -7,7 +7,7 @@ const firebasePut = require('../services/database');
 const sendTG = require('../services/telegram');
 const sendReport = require('../services/report');
 const updateApiStatus = require('../services/apiTracker');
-const checkReminders = require('../services/broadcast');
+const checkReminders = require('../pullback/checkReminders');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
 
