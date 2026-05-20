@@ -20,12 +20,14 @@ let MARKET_DATA = {}, PB_STATE = {};
 
 db.ref('marketData').on('value', (snap) => {
     MARKET_DATA = snap.val() || {};
-    render();
-    updateCounts();
+    if (typeof render === 'function') {
+        render();
+        updateCounts();
+    }
     document.getElementById('st').textContent = "✅ Cloud Synced";
 });
 
 db.ref('pb_state').on('value', (snap) => {
     PB_STATE = snap.val() || {};
-    updateBadge();
+    if (typeof updateBadge === 'function') updateBadge();
 });
