@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ICI Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+<style>
+:root { --bg:#020812; --sf:#080f1e; --sf2:#0d1828; --brd:rgba(255,255,255,0.08); --acc:#00aaff; --gold:#ffcc00; --txt:#dce8f5; --bull:#00cc66; --bear:#cc3344; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; }
+.wrap { max-width:480px; margin:0 auto; padding:12px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:linear-gradient(135deg,#0d1f42,#071228); border-radius:16px; margin-bottom:12px; border:1px solid rgba(0,170,255,0.2); }
+.brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
+.sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; }
+.sum { display:flex; gap:8px; margin-bottom:12px; }
+.sc { flex:1; padding:12px; border-radius:14px; border:1px solid #333; text-align:center; cursor:pointer; }
+.sn { font-size:20px; display:block; font-weight:bold; }
+.tw { background:var(--sf); border-radius:16px; border:1px solid var(--brd); overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--brd); }
+td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
+.pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color: var(--acc); cursor: pointer; }
+.sig { display:inline-block; width:34px; height:20px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); }
+.sig.bull { background:#006633; border-color:#00ff88; }
+.sig.bear { background:#801a26; border-color:#ff4466; }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal.open { display:flex; }
+.m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:#fff; }
+#chartOverlay { position:fixed; inset:0; background:#000; z-index:4000; display:none; flex-direction:column; }
+.nav-btn { background:rgba(255,255,255,0.1); color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><div class="brand">ICI <span>SCREENER</span></div><div style="font-size:10px; color:#00ff88">CLOUD ACTIVE</div></div>
+  <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
+  <div class="sum">
+    <div class="sc" style="color:#00ff88" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
+    <div class="sc" style="color:#ff4466" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
+    <div class="sc" style="color:#fff" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
+  </div>
+  <div class="tw"><table><thead><tr><th style="text-align:left;padding-left:12px">Pair</th><th>1H</th><th>4H</th><th>1D</th><th>1W</th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+<div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
+<div id="chartOverlay">
+  <div style="padding:10px 15px; background:#0d1828; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333">
+    <div style="display:flex; gap:12px; align-items:center">
+      <button class="nav-btn" onclick="movePair(-1)">❮</button>
+      <span id="cp" style="color:#fff; font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
+      <button class="nav-btn" onclick="movePair(1)">❯</button>
+    </div>
+    <span onclick="closeC()" style="color:#ff4466; font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
+  </div>
+  <div id="tv_chart_container" style="flex:1"></div>
+</div>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/render.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/modal.js"></script>
+</body>
+</html>
