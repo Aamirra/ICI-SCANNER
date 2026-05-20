@@ -15,7 +15,7 @@ admin.initializeApp({
 
 let DATA_STORE = {}, RAW_1H = {}, keyUsage = {}, currentKeyIdx = 0, lastReportTime = Date.now();
 let lastBroadcastTimestamp = 0;
-config.KEYS.forEach(k => keyUsage[k] = 800);
+config.KEYS.forEach(k => keyUsage[k] = 0);
 
 function calcEMA(closes, period) {
     if (closes.length < period) return null;
@@ -156,7 +156,7 @@ function sendReport() {
     sendTG(`📊 *ICI SCANNER — 4H REPORT*\n━━━━━━━━━━━━━━━━━━━━\n` + (bulls.length ? `🟢 *BULLISH (1W+1D+4H)*\n${bulls.join(', ')}\n\n` : '') + (bears.length ? `🔴 *BEARISH (1W+1D+4H)*\n${bears.join(', ')}\n\n` : ''));
 }
 
-// Broadcast har 2 minute mein check hoga — scan se alag
+// Broadcast har 2 minute mein check hoga
 setInterval(checkBroadcasts, 2 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
