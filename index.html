@@ -62,7 +62,7 @@ const firebaseConfig = { databaseURL: "https://fatima-16b38-default-rtdb.firebas
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const PAIRS = [{n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},{n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},{n:'EURJPY'},{n:'GBPJPY'},{n:'AUDJPY'},{n:'NZDJPY'},{n:'CADJPY'},{n:'CHFJPY'},{n:'EURGBP'},{n:'EURAUD'},{n:'EURCAD'},{n:'EURCHF'},{n:'GBPAUD'},{n:'GBPCAD'},{n:'GBPCHF'},{n:'AUDCAD'},{n:'AUDCHF'},{n:'AUDNZD'},{n:'NZDCAD'},{n:'NZDCHF'},{n:'CADCHF'},{n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}];
-let MARKET_DATA = {}, PB_STATE = {}, curF = 'all', fPairs = [], cIdx = 0;
+let MARKET_DATA = {}, PB_STATE = {}, curF = 'all', fPairs = [], chartPairs = [], cIdx = 0;
 
 db.ref('marketData').on('value', (snap) => {
   MARKET_DATA = snap.val() || {};
@@ -84,7 +84,7 @@ function render() {
   });
   tbody.innerHTML = fPairs.map((p, idx) =>
     `<tr>
-      <td class="pn" onclick="openC(${idx})">${p.n}</td>
+      <td class="pn" onclick="openCFromTable(${idx})">${p.n}</td>
       ${['1h','4h','1day','1week'].map(tf =>
         `<td><div class="sig ${(MARKET_DATA[p.n]||{})[tf] || ''}"></div></td>`
       ).join('')}
@@ -128,14 +128,19 @@ function openM() {
 function openChartFromModal(pairName) {
   document.getElementById('mo').classList.remove('open');
   const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
-  fPairs = PAIRS.filter(p => pbPairs.includes(p.n));
-  const pbIdx = fPairs.findIndex(p => p.n === pairName);
+  chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+  const pbIdx = chartPairs.findIndex(p => p.n === pairName);
   openC(pbIdx !== -1 ? pbIdx : 0);
+}
+
+function openCFromTable(i) {
+  chartPairs = [...fPairs];
+  openC(i);
 }
 
 function openC(i) {
   cIdx = i;
-  const p = fPairs[i];
+  const p = chartPairs[cIdx];
   if (!p) return;
   document.getElementById('cp').textContent = p.n;
   document.getElementById('chartOverlay').style.display = 'flex';
@@ -157,7 +162,7 @@ function openC(i) {
 
 function movePair(step) {
   const newIdx = cIdx + step;
-  if (newIdx >= 0 && newIdx < fPairs.length) openC(newIdx);
+  if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
 }
 
 function closeC() {
