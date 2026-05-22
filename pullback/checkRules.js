@@ -5,7 +5,9 @@ const saveTargetList = require('./targetList');
 let PB_STATE = {};
 let LAST_ALERT_TIME = {};
 
-function checkRules(p, r, raw, sendTG, firebasePut) {
+const EXTRA_TF_PAIRS = ['BTCUSD', 'ETHUSD'];
+
+function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
     if (!raw?.closes || raw.closes.length < 50) return;
 
     const d1 = r['1day'], w1 = r['1week'];
@@ -18,7 +20,8 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     if (!ema20 || !sma50) return;
 
     const tvLink = `https://www.tradingview.com/chart/?symbol=${p.n}`;
-    let s = PB_STATE[p.n] || { dir: null, phase: null, firedAt: 0, reminded: false };
+    const stateKey = `${p.n}_${tf}`;
+    let s = PB_STATE[stateKey] || { dir: null, phase: null, firedAt: 0, reminded: false };
 
     // ── BULL LOGIC ──
     if (w1 === 'bull' && d1 === 'bull' && ema20 > sma50) {
@@ -28,29 +31,26 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     }
 
     if (s.dir === 'bull') {
-        // Cancel: EMA cross ya 1W/1D bear
         if (w1 !== 'bull' || d1 !== 'bull' || ema20 < sma50) {
             s = { dir: null, phase: null, firedAt: 0, reminded: false };
-            PB_STATE[p.n] = s;
+            PB_STATE[stateKey] = s;
             saveTargetList(PB_STATE, firebasePut);
             return;
         }
 
-        // Price EMA20 ke neeche close → pullback
         if ((s.phase === null || s.phase === 'fired') && lastClose < ema20) {
             s.phase = 'pullback';
             saveTargetList(PB_STATE, firebasePut);
         }
 
-        // Price EMA20 ke upar close → BUY ALERT
         if (s.phase === 'pullback' && lastClose > ema20) {
-            const key = `${p.n}_bull_${raw.time}`;
-            if (LAST_ALERT_TIME[p.n] !== key) {
-                LAST_ALERT_TIME[p.n] = key;
+            const key = `${stateKey}_bull_${raw.time}`;
+            if (LAST_ALERT_TIME[stateKey] !== key) {
+                LAST_ALERT_TIME[stateKey] = key;
                 sendTG(
 `🎯 *ICI ALERT*
 
-*${p.n}* — 🟢 *BUY SETUP*
+*${p.n}*${tf === '4h' ? ' *(4H)*' : ''} — 🟢 *BUY SETUP*
 
 📌 *ENTRY PLAN:*
 ⏳ Wait for a bullish fractal to form
@@ -76,29 +76,26 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     }
 
     if (s.dir === 'bear') {
-        // Cancel: EMA cross ya 1W/1D bull
         if (w1 !== 'bear' || d1 !== 'bear' || ema20 > sma50) {
             s = { dir: null, phase: null, firedAt: 0, reminded: false };
-            PB_STATE[p.n] = s;
+            PB_STATE[stateKey] = s;
             saveTargetList(PB_STATE, firebasePut);
             return;
         }
 
-        // Price EMA20 ke upar close → pullback
         if ((s.phase === null || s.phase === 'fired') && lastClose > ema20) {
             s.phase = 'pullback';
             saveTargetList(PB_STATE, firebasePut);
         }
 
-        // Price EMA20 ke neeche close → SELL ALERT
         if (s.phase === 'pullback' && lastClose < ema20) {
-            const key = `${p.n}_bear_${raw.time}`;
-            if (LAST_ALERT_TIME[p.n] !== key) {
-                LAST_ALERT_TIME[p.n] = key;
+            const key = `${stateKey}_bear_${raw.time}`;
+            if (LAST_ALERT_TIME[stateKey] !== key) {
+                LAST_ALERT_TIME[stateKey] = key;
                 sendTG(
 `🎯 *ICI ALERT*
 
-*${p.n}* — 🔴 *SELL SETUP*
+*${p.n}*${tf === '4h' ? ' *(4H)*' : ''} — 🔴 *SELL SETUP*
 
 📌 *ENTRY PLAN:*
 ⏳ Wait for a bearish fractal to form
@@ -116,7 +113,17 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
         }
     }
 
-    PB_STATE[p.n] = s;
+    PB_STATE[stateKey] = s;
+}
+
+function checkRules(p, r, raw, sendTG, firebasePut) {
+    // Sab pairs ke liye 1H check
+    checkSetup(p, r, raw, sendTG, firebasePut, '1h');
+
+    // BTC aur ETH ke liye 4H bhi check
+    if (EXTRA_TF_PAIRS.includes(p.n)) {
+        checkSetup(p, r, raw, sendTG, firebasePut, '4h');
+    }
 }
 
 module.exports = { checkRules, getPBState: () => PB_STATE };
