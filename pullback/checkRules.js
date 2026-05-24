@@ -6,8 +6,17 @@ let PB_STATE = {};
 let LAST_ALERT_TIME = {};
 
 const EXTRA_TF_PAIRS = ['BTCUSD', 'ETHUSD'];
+const CRYPTO_PAIRS = ['BTCUSD', 'ETHUSD'];
+
+function isWeekend() {
+    const day = new Date().getUTCDay();
+    return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
 
 function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
+    // Weekend mein sirf crypto ke alerts
+    if (isWeekend() && !CRYPTO_PAIRS.includes(p.n)) return;
+
     if (!raw?.closes || raw.closes.length < 50) return;
 
     const d1 = r['1day'], w1 = r['1week'];
@@ -117,10 +126,8 @@ function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
 }
 
 function checkRules(p, r, raw, sendTG, firebasePut) {
-    // Sab pairs ke liye 1H check
     checkSetup(p, r, raw, sendTG, firebasePut, '1h');
 
-    // BTC aur ETH ke liye 4H bhi check
     if (EXTRA_TF_PAIRS.includes(p.n)) {
         checkSetup(p, r, raw, sendTG, firebasePut, '4h');
     }
