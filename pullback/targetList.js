@@ -3,7 +3,8 @@ function saveTargetList(PB_STATE, firebasePut) {
     for (const pName in PB_STATE) {
         const s = PB_STATE[pName];
         if (s.phase === 'pullback' || s.phase === 'fired') {
-            targets[pName] = {
+            const cleanName = pName.replace('_1h', '').replace('_4h', '');
+            targets[cleanName] = {
                 dir: s.dir,
                 phase: s.phase,
                 timestamp: s.firedAt || Date.now()
