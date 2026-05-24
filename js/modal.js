@@ -27,3 +27,11 @@ function openChartFromModal(pairName) {
     const pbIdx = chartPairs.findIndex(p => p.n === pairName);
     openC(pbIdx !== -1 ? pbIdx : 0);
 }
+
+function closeModalAndNav(step) {
+    document.getElementById('mo').classList.remove('open');
+    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
+    chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+    const newIdx = cIdx + step;
+    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
+}
