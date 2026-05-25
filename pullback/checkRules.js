@@ -29,6 +29,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
     const d1 = r['1day'];
     const cls = raw.closes;
     const lastClose = cls[cls.length - 1];
+    const prevHigh = cls[cls.length - 2]; // pichli candle ka high (closes use kar rahe hain approximation ke liye)
     const ema20 = calcEMA(cls, 20);
     const sma50 = calcSMA(cls, 50);
 
@@ -55,26 +56,40 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
     const inPullback = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
         s.phase = 'pullback';
+        s.prevHigh = null; // reset
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // Fire alert
-    const shouldFire = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
+    // EMA ke upar/neeche wapas aaya — "fractal_wait" phase
+    const crossedEMA = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
+    if (s.phase === 'pullback' && crossedEMA) {
+        s.phase = 'fractal_wait';
+        s.fractalRef = lastClose; // yeh candle reference hai
+        PB_STATE[stateKey] = s;
+        await saveTargetList(PB_STATE, firebasePut);
+    }
 
-    if (s.phase === 'pullback' && shouldFire) {
-        const candleTime = raw.time || Date.now();
-        const key = `${stateKey}_${dir}_${candleTime}`;
+    // Fractal wait — koi candle jo pichli ka high (bull) / low (bear) break na kare
+    if (s.phase === 'fractal_wait') {
+        const isBull = dir === 'bull';
+        const fractalFound = isBull
+            ? lastClose <= s.fractalRef   // high break nahi kiya
+            : lastClose >= s.fractalRef;  // low break nahi kiya
 
-        if (LAST_ALERT_TIME[stateKey] !== key) {
-            LAST_ALERT_TIME[stateKey] = key;
-            trimAlertCache();
+        if (fractalFound) {
+            // Alert bhejo
+            const candleTime = raw.time || Date.now();
+            const key = `${stateKey}_${dir}_${candleTime}`;
 
-            const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(p.n)}`;
-            const tfLabel = tf === '4h' ? ' *(4H)*' : '';
-            const isBull = dir === 'bull';
+            if (LAST_ALERT_TIME[stateKey] !== key) {
+                LAST_ALERT_TIME[stateKey] = key;
+                trimAlertCache();
 
-            const msg =
+                const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(p.n)}`;
+                const tfLabel = tf === '4h' ? ' *(4H)*' : '';
+
+                const msg =
 `🎯 *ICI ALERT*
 
 *${p.n}*${tfLabel} — ${isBull ? '🟢 *BUY SETUP*' : '🔴 *SELL SETUP*'}
@@ -87,11 +102,26 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
 
 🔗 ${tvLink}`;
 
-            sendTG(msg);
+                sendTG(msg);
 
-            s.phase = 'fired';
-            s.firedAt = Date.now();
-            s.reminded = false;
+                s.phase = 'fired';
+                s.firedAt = Date.now();
+                s.reminded = false;
+                s.fractalRef = null;
+                PB_STATE[stateKey] = s;
+                await saveTargetList(PB_STATE, firebasePut);
+            }
+        } else {
+            // High break ho gaya — reference update karo
+            s.fractalRef = lastClose;
+            PB_STATE[stateKey] = s;
+        }
+
+        // Agar wapas EMA ke neeche chali gayi — pullback reset
+        const wentBack = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
+        if (wentBack) {
+            s.phase = 'pullback';
+            s.fractalRef = null;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
         }
@@ -143,7 +173,8 @@ async function restoreState(firebaseGet) {
                     dir: entry.dir || null,
                     phase: entry.phase || null,
                     firedAt: entry.timestamp || 0,
-                    reminded: false
+                    reminded: false,
+                    fractalRef: entry.fractalRef || null
                 };
             }
             console.log(`[restoreState] ${Object.keys(PB_STATE).length} states restore ho gaye.`);
