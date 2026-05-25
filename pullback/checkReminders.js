@@ -4,7 +4,6 @@ const saveTargetList = require('./targetList');
 const REMINDER_MS = 60 * 60 * 1000; // 1 hour
 
 async function checkReminders(sendTG, firebasePut) {
-    // FIX: sendTG validate karo
     if (typeof sendTG !== 'function') {
         console.warn('[checkReminders] sendTG function nahi hai — skip.');
         return;
@@ -19,12 +18,10 @@ async function checkReminders(sendTG, firebasePut) {
         if (!s || s.phase !== 'fired' || s.reminded) continue;
         if ((now - s.firedAt) < REMINDER_MS) continue;
 
-        // FIX: stateKey se symbol aur timeframe alag karo
         const is4h = stateKey.endsWith('_4h');
         const symbol = stateKey.replace('_1h', '').replace('_4h', '');
         const tfLabel = is4h ? ' *(4H)*' : '';
 
-        // FIX: symbol encode karo, timeframe nahi
         const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
 
         const isBull = s.dir === 'bull';
@@ -42,7 +39,6 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
 
 🔗 ${tvLink}`;
 
-        // FIX: har sendTG alag try/catch mein — ek fail ho toh baaki chalen
         try {
             sendTG(msg);
             s.reminded = true;
@@ -52,7 +48,6 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
         }
     }
 
-    // FIX: state change hoi toh Firebase mein save karo
     if (stateChanged && typeof firebasePut === 'function') {
         await saveTargetList(PB_STATE, firebasePut);
     }
