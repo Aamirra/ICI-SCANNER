@@ -5,28 +5,22 @@ const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 
-// Services
 const sendTG = require('./services/telegram');
-const { updateApiStatus } = require('./services/apiTracker'); // Destructured
+const { updateApiStatus } = require('./services/apiTracker');
 const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
-
-// Firebase state restore import
 const { restoreState } = require('./pullback/checkRules');
 
-// Firebase init
 const serviceAccountPath = process.env.SERVICE_ACCOUNT_PATH || '/etc/secrets/serviceAccount.json';
 admin.initializeApp({
     credential: admin.credential.cert(require(serviceAccountPath)),
     databaseURL: config.FIREBASE_URL
 });
 
-// Firebase helpers
 const db = admin.database();
 const firebasePut = (key, data) => db.ref(key).set(data);
 const firebaseGet = (key) => db.ref(key).once('value').then(snap => snap.val());
 
-// Scan lock to prevent concurrency
 let scanRunning = false;
 async function safeMasterScan() {
     if (scanRunning) {
@@ -47,15 +41,12 @@ function getDefaultApiStatus() {
     return Object.fromEntries(config.KEYS.map(k => [k, 800]));
 }
 
-// Broadcast check
 setInterval(checkBroadcasts, 2 * 60 * 1000);
 
-// HTTP Server
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // Manual scan
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'Scan started!' }));
@@ -63,11 +54,12 @@ http.createServer((req, res) => {
         return;
     }
 
-    // Path Traversal Security Fix
-    const requestedFile = safePath === '/' ? 'index.html' : safePath;
-    const filePath = path.resolve(__dirname, requestedFile);
+    // Leading slash hata do aur __dirname se join karo
+    const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
+    const filePath = path.join(__dirname, relativePath);
 
-    if (!filePath.startsWith(__dirname)) {
+    // Security: sirf __dirname ke andar files serve karo
+    if (!filePath.startsWith(__dirname + path.sep) && filePath !== __dirname) {
         res.writeHead(403);
         res.end('Forbidden');
         return;
@@ -96,7 +88,6 @@ http.createServer((req, res) => {
     console.log(`[Server] Port ${PORT} pe chal raha hai.`);
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 
-    // API Status Firebase load
     try {
         const url = `${config.FIREBASE_URL}/api_status.json`;
         https.get(url, (res) => {
@@ -122,9 +113,7 @@ http.createServer((req, res) => {
         updateApiStatus(getDefaultApiStatus());
     }
 
-    // Restore state from Firebase
     await restoreState(firebaseGet);
-
     checkBroadcasts();
     safeMasterScan();
 });
