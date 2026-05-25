@@ -1,47 +1,60 @@
 const { getPBState } = require('./checkRules');
+const saveTargetList = require('./targetList');
 
-const REMINDER_MS = 60 * 60 * 1000;
+const REMINDER_MS = 60 * 60 * 1000; // 1 hour
 
-function checkReminders(sendTG) {
+async function checkReminders(sendTG, firebasePut) {
+    // FIX: sendTG validate karo
+    if (typeof sendTG !== 'function') {
+        console.warn('[checkReminders] sendTG function nahi hai — skip.');
+        return;
+    }
+
     const now = Date.now();
     const PB_STATE = getPBState();
+    let stateChanged = false;
 
-    for (const pName in PB_STATE) {
-        const s = PB_STATE[pName];
-        if (s.phase === 'fired' && !s.reminded && (now - s.firedAt) >= REMINDER_MS) {
-            const tvLink = `https://www.tradingview.com/chart/?symbol=${pName}`;
+    for (const stateKey in PB_STATE) {
+        const s = PB_STATE[stateKey];
+        if (!s || s.phase !== 'fired' || s.reminded) continue;
+        if ((now - s.firedAt) < REMINDER_MS) continue;
 
-            if (s.dir === 'bull') {
-                sendTG(
+        // FIX: stateKey se symbol aur timeframe alag karo
+        const is4h = stateKey.endsWith('_4h');
+        const symbol = stateKey.replace('_1h', '').replace('_4h', '');
+        const tfLabel = is4h ? ' *(4H)*' : '';
+
+        // FIX: symbol encode karo, timeframe nahi
+        const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
+
+        const isBull = s.dir === 'bull';
+
+        const msg =
 `🔔 *ICI REMINDER*
 
-*${pName}* — 🟢 *BULL SETUP STILL ACTIVE*
+*${symbol}*${tfLabel} — ${isBull ? '🟢 *BULL SETUP STILL ACTIVE*' : '🔴 *BEAR SETUP STILL ACTIVE*'}
 
 📌 *ENTRY PLAN:*
-⏳ Wait for a bullish fractal to form
-📈 Place *Buy Stop* above the fractal high
-🛑 Stop Loss below the fractal low
+⏳ Wait for a ${isBull ? 'bullish' : 'bearish'} fractal to form
+${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell Stop* below the fractal low'}
+🛑 Stop Loss ${isBull ? 'below the fractal low' : 'above the fractal high'}
 ⚖️ After 1:1 RR move Stop Loss to Breakeven
 
-🔗 ${tvLink}`
-                );
-            } else {
-                sendTG(
-`🔔 *ICI REMINDER*
+🔗 ${tvLink}`;
 
-*${pName}* — 🔴 *BEAR SETUP STILL ACTIVE*
-
-📌 *ENTRY PLAN:*
-⏳ Wait for a bearish fractal to form
-📉 Place *Sell Stop* below the fractal low
-🛑 Stop Loss above the fractal high
-⚖️ After 1:1 RR move Stop Loss to Breakeven
-
-🔗 ${tvLink}`
-                );
-            }
+        // FIX: har sendTG alag try/catch mein — ek fail ho toh baaki chalen
+        try {
+            sendTG(msg);
             s.reminded = true;
+            stateChanged = true;
+        } catch (err) {
+            console.error(`[checkReminders] sendTG fail for ${stateKey}:`, err?.message || err);
         }
+    }
+
+    // FIX: state change hoi toh Firebase mein save karo
+    if (stateChanged && typeof firebasePut === 'function') {
+        await saveTargetList(PB_STATE, firebasePut);
     }
 }
 
