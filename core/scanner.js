@@ -6,7 +6,7 @@ const msUntilNextHourClose = require('../utils/timer');
 const firebasePut = require('../services/database');
 const sendTG = require('../services/telegram');
 const sendReport = require('../services/report');
-const updateApiStatus = require('../services/apiTracker');
+const { updateApiStatus } = require('../services/apiTracker'); // Destructured
 const checkReminders = require('../pullback/checkReminders');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
@@ -98,7 +98,7 @@ async function masterScan() {
         }
     }
 
-    // Jab tak sab fill na ho jaye retry karta rahe
+    // Retries logic
     let attempt = 1;
     while (failed.length > 0) {
         console.log(`=== Retry attempt ${attempt} — ${failed.length} remaining ===`);
@@ -119,12 +119,12 @@ async function masterScan() {
         failed = stillFailed;
         attempt++;
         if (failed.length > 0) {
-            // Thoda wait karo dobara try se pehle
             await new Promise(res => setTimeout(res, 5000));
         }
     }
 
-    pullbackEngine.checkReminders(sendTG);
+    // Pass firebasePut so reminders state gets saved
+    pullbackEngine.checkReminders(sendTG, firebasePut); 
     console.log(`=== Scan fully complete: ${new Date().toLocaleTimeString()} ===`);
 
     setTimeout(masterScan, msUntilNextHourClose());
