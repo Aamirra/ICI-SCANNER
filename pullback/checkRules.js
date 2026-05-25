@@ -2,7 +2,6 @@ const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
-// FIX: CRYPTO_PAIRS config se import — hardcoded nahi
 const { CRYPTO_PAIRS } = require('../config');
 const EXTRA_TF_PAIRS = CRYPTO_PAIRS;
 
@@ -35,7 +34,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
 
     const trendOk = dir === 'bull' ? ema20 > sma50 : ema20 < sma50;
 
-    // Direction set karo
+    // Direction set
     if (w1 === dir && d1 === dir && trendOk) {
         if (s.dir !== dir) {
             s = { dir, phase: null, firedAt: 0, reminded: false };
@@ -44,7 +43,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
 
     if (s.dir !== dir) return s;
 
-    // Conditions invalid — reset
+    // Invalid conditions reset
     if (w1 !== dir || d1 !== dir || !trendOk) {
         s = { dir: null, phase: null, firedAt: 0, reminded: false };
         PB_STATE[stateKey] = s;
@@ -52,7 +51,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         return s;
     }
 
-    // Pullback detect
+    // Pullback
     const inPullback = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
         s.phase = 'pullback';
@@ -60,7 +59,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // Alert fire
+    // Fire alert
     const shouldFire = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
 
     if (s.phase === 'pullback' && shouldFire) {
@@ -102,7 +101,6 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
 }
 
 async function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
-    // Validate
     if (!p || !p.n) {
         console.warn('[checkSetup] p ya p.n invalid — skip.');
         return;
@@ -135,7 +133,6 @@ async function checkRules(p, r, raw, sendTG, firebasePut) {
     }
 }
 
-// Server restart ke baad Firebase se state restore
 async function restoreState(firebaseGet) {
     try {
         const saved = await firebaseGet('pb_state');
