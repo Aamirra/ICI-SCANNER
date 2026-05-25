@@ -7,15 +7,14 @@ const config = require('./config');
 
 // Services
 const sendTG = require('./services/telegram');
-const updateApiStatus = require('./services/apiTracker');
+const { updateApiStatus } = require('./services/apiTracker'); // Destructured
 const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
-// FIX: restoreState import karo
+// Firebase state restore import
 const { restoreState } = require('./pullback/checkRules');
 
 // Firebase init
-// FIX: serviceAccount path env variable se lo — hardcoded nahi
 const serviceAccountPath = process.env.SERVICE_ACCOUNT_PATH || '/etc/secrets/serviceAccount.json';
 admin.initializeApp({
     credential: admin.credential.cert(require(serviceAccountPath)),
@@ -27,7 +26,7 @@ const db = admin.database();
 const firebasePut = (key, data) => db.ref(key).set(data);
 const firebaseGet = (key) => db.ref(key).once('value').then(snap => snap.val());
 
-// FIX: scan lock — concurrent scans rokne ke liye
+// Scan lock to prevent concurrency
 let scanRunning = false;
 async function safeMasterScan() {
     if (scanRunning) {
@@ -44,12 +43,11 @@ async function safeMasterScan() {
     }
 }
 
-// FIX: default API status ek jagah define karo — DRY
 function getDefaultApiStatus() {
     return Object.fromEntries(config.KEYS.map(k => [k, 800]));
 }
 
-// Broadcast check — every 2 minutes
+// Broadcast check
 setInterval(checkBroadcasts, 2 * 60 * 1000);
 
 // HTTP Server
@@ -57,7 +55,7 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // FIX: scan route — basic protection
+    // Manual scan
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'Scan started!' }));
@@ -65,11 +63,10 @@ http.createServer((req, res) => {
         return;
     }
 
-    // FIX: Path Traversal Attack rokne ke liye
+    // Path Traversal Security Fix
     const requestedFile = safePath === '/' ? 'index.html' : safePath;
     const filePath = path.resolve(__dirname, requestedFile);
 
-    // ❌ Agar filePath __dirname se bahar nikle — 403 do
     if (!filePath.startsWith(__dirname)) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -99,7 +96,7 @@ http.createServer((req, res) => {
     console.log(`[Server] Port ${PORT} pe chal raha hai.`);
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 
-    // FIX: API status Firebase se load karo
+    // API Status Firebase load
     try {
         const url = `${config.FIREBASE_URL}/api_status.json`;
         https.get(url, (res) => {
@@ -111,26 +108,25 @@ http.createServer((req, res) => {
                     if (data?.remaining !== undefined) {
                         console.log(`API Status loaded: ${data.remaining}/${data.total}`);
                     } else {
-                        updateApiStatus(getDefaultApiStatus()); // FIX: ek jagah se
+                        updateApiStatus(getDefaultApiStatus());
                     }
                 } catch {
                     updateApiStatus(getDefaultApiStatus());
                 }
             });
         }).on('error', () => {
-            updateApiStatus(getDefaultApiStatus()); // FIX: ek jagah se
+            updateApiStatus(getDefaultApiStatus());
         });
     } catch (err) {
         console.error('[Server] API status load fail:', err?.message);
         updateApiStatus(getDefaultApiStatus());
     }
 
-    // FIX: restoreState — Firebase se purani state wapas lo
+    // Restore state from Firebase
     await restoreState(firebaseGet);
 
     checkBroadcasts();
     safeMasterScan();
 });
 
-// Firebase helpers export — doosri files use kar sakti hain
 module.exports = { firebasePut, firebaseGet };
