@@ -65,11 +65,40 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
   <div id="tv_chart_container" style="flex:1"></div>
 </div>
 <script src="https://s3.tradingview.com/tv.js"></script>
-<script src="js/firebase.js"></script>
 <script src="js/render.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
+const PAIRS = [
+    {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
+    {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
+    {n:'EURJPY'},{n:'GBPJPY'},{n:'AUDJPY'},{n:'NZDJPY'},{n:'CADJPY'},{n:'CHFJPY'},
+    {n:'EURGBP'},{n:'EURAUD'},{n:'EURCAD'},{n:'EURCHF'},
+    {n:'GBPAUD'},{n:'GBPCAD'},{n:'GBPCHF'},
+    {n:'AUDCAD'},{n:'AUDCHF'},{n:'AUDNZD'},
+    {n:'NZDCAD'},{n:'NZDCHF'},{n:'CADCHF'},
+    {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
+];
+
+let MARKET_DATA = {}, PB_STATE = {};
+
+firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
+const db = firebase.database();
+
+db.ref('.info/connected').on('value', (snap) => {
+    document.getElementById('st').textContent = snap.val() ? "✅ Cloud Synced" : "🔄 Connecting...";
+});
+
+db.ref('marketData').on('value', (snap) => {
+    MARKET_DATA = snap.val() || {};
+    if (typeof render === 'function') { render(); updateCounts(); }
+});
+
+db.ref('pb_state').on('value', (snap) => {
+    PB_STATE = snap.val() || {};
+    if (typeof updateBadge === 'function') updateBadge();
+});
+
 function manualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...';
@@ -77,27 +106,13 @@ function manualScan() {
     fetch('/scan')
         .then(() => {
             btn.textContent = '✅ Started!';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
+            setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
         })
         .catch(() => {
             btn.textContent = '❌ Error';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
+            setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
         });
 }
-
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        if (document.getElementById('st').textContent === 'Connecting...') {
-            location.reload();
-        }
-    }, 5000);
-});
 </script>
 </body>
 </html>
