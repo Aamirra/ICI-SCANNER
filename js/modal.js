@@ -1,4 +1,3 @@
-}
 function updateBadge() {
     const count = Object.values(PB_STATE).filter(s => s && (s.phase === 'pullback' || s.phase === 'fractal_wait')).length;
     document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
@@ -25,15 +24,6 @@ function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
     const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
     chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
-    cIdx = chartPairs.findIndex(p => p.n === pairName);
-    if (cIdx === -1) cIdx = 0;
-    openC(cIdx);
-}
-
-function movePairInModal(step) {
-    const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) {
-        cIdx = newIdx;
-        openC(cIdx);
-    }
+    const idx = chartPairs.findIndex(p => p.n === pairName);
+    openC(idx !== -1 ? idx : 0);
 }
