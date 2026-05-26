@@ -2,7 +2,8 @@ let chartPairs = [], cIdx = 0;
 
 function openCFromTable(i) {
     chartPairs = [...fPairs];
-    openC(i);
+    cIdx = i;
+    openC(cIdx);
 }
 
 function openC(i) {
