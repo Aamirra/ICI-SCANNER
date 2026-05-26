@@ -22,7 +22,8 @@ function openM() {
 
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
-    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
+    const pbPairs = Object.keys(PB_STATE)
+        .filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
     chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
     const idx = chartPairs.findIndex(p => p.n === pairName);
     cIdx = idx !== -1 ? idx : 0;
