@@ -11,7 +11,7 @@ function openM() {
         (w.length
             ? w.map(([n, s]) =>
                 `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
-                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span>
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n.replace(/_1h$/, '').replace(/_4h$/, '')}')">${n.replace(/_1h$/, '').replace(/_4h$/, '')}</span>
                     <span style="color:${s.dir === 'bull' ? '#00ff88' : '#ff4466'}">${s.dir.toUpperCase()}</span>
                 </div>`
               ).join('')
@@ -23,7 +23,8 @@ function openM() {
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
     const pbPairs = Object.keys(PB_STATE)
-        .filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
+        .filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'))
+        .map(n => n.replace(/_1h$/, '').replace(/_4h$/, ''));
     chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
     const idx = chartPairs.findIndex(p => p.n === pairName);
     cIdx = idx !== -1 ? idx : 0;
