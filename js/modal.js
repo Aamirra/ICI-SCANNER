@@ -25,5 +25,6 @@ function openChartFromModal(pairName) {
     const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
     chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
     const idx = chartPairs.findIndex(p => p.n === pairName);
-    openC(idx !== -1 ? idx : 0);
+    cIdx = idx !== -1 ? idx : 0;
+    openC(cIdx);
 }
