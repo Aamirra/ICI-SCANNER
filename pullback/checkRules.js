@@ -3,7 +3,6 @@ const calcSMA = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
 const { CRYPTO_PAIRS } = require('../config');
-const EXTRA_TF_PAIRS = CRYPTO_PAIRS;
 
 let PB_STATE = {};
 let LAST_ALERT_TIME = {};
@@ -33,8 +32,6 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
     const lastClose = cls[cls.length - 1];
     const lastHigh = highs[highs.length - 1];
     const lastLow = lows[lows.length - 1];
-    const prevHigh = highs[highs.length - 2];
-    const prevLow = lows[lows.length - 2];
     const ema20 = calcEMA(cls, 20);
     const sma50 = calcSMA(cls, 50);
 
@@ -57,7 +54,7 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         return s;
     }
 
-    // Pullback
+    // Pullback — price EMA ke neeche/upar
     const inPullback = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
         s.phase = 'pullback';
@@ -66,21 +63,22 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // EMA cross — fractal_wait phase
+    // EMA cross — fractal_wait phase shuru
+    // Is candle ka HIGH khud fractalRef ban jata hai
     const crossedEMA = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
     if (s.phase === 'pullback' && crossedEMA) {
         s.phase = 'fractal_wait';
-        // Reference: pichli candle ka high (bull) ya low (bear)
-        s.fractalRef = dir === 'bull' ? prevHigh : prevLow;
+        s.fractalRef = dir === 'bull' ? lastHigh : lastLow;
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
+        return s; // Is candle ko skip karo — agli candle se check shuru
     }
 
-    // Fractal wait
+    // Fractal wait — har candle close pe check
     if (s.phase === 'fractal_wait') {
         const isBull = dir === 'bull';
 
-        // Wapas EMA ke neeche/upar gaya — reset
+        // Wapas EMA ke neeche/upar gaya — pullback reset
         const wentBack = isBull ? lastClose < ema20 : lastClose > ema20;
         if (wentBack) {
             s.phase = 'pullback';
@@ -90,10 +88,10 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
             return s;
         }
 
-        // Candle ne pichli ka high/low break nahi kiya → ALERT!
+        // Inside bar check — candle ka HIGH <= fractalRef (bull)
         const fractalFound = isBull
-            ? lastHigh <= s.fractalRef   // high break nahi kiya
-            : lastLow >= s.fractalRef;   // low break nahi kiya
+            ? lastHigh <= s.fractalRef
+            : lastLow >= s.fractalRef;
 
         if (fractalFound) {
             const candleTime = raw.time || Date.now();
@@ -104,12 +102,11 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
                 trimAlertCache();
 
                 const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(p.n)}`;
-                const tfLabel = tf === '4h' ? ' *(4H)*' : '';
 
                 const msg =
 `🎯 *ICI ALERT*
 
-*${p.n}*${tfLabel} — ${isBull ? '🟢 *BUY SETUP*' : '🔴 *SELL SETUP*'}
+*${p.n}* — ${isBull ? '🟢 *BUY SETUP*' : '🔴 *SELL SETUP*'}
 
 📌 *ENTRY PLAN:*
 ⏳ Wait for a ${isBull ? 'bullish' : 'bearish'} fractal to form
@@ -129,7 +126,7 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
                 await saveTargetList(PB_STATE, firebasePut);
             }
         } else {
-            // High/Low break ho gaya — reference update karo
+            // High break ho gaya — is candle ka high naya reference
             s.fractalRef = isBull ? lastHigh : lastLow;
             PB_STATE[stateKey] = s;
         }
@@ -165,10 +162,6 @@ async function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
 
 async function checkRules(p, r, raw, sendTG, firebasePut) {
     await checkSetup(p, r, raw, sendTG, firebasePut, '1h');
-
-    if (EXTRA_TF_PAIRS.includes(p.n)) {
-        await checkSetup(p, r, raw, sendTG, firebasePut, '4h');
-    }
 }
 
 async function restoreState(firebaseGet) {
