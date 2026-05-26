@@ -29,7 +29,10 @@ function openC(i) {
 
 function movePair(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
+    if (newIdx >= 0 && newIdx < chartPairs.length) {
+        cIdx = newIdx;
+        openC(cIdx);
+    }
 }
 
 function closeC() {
