@@ -16,8 +16,9 @@ async function saveTargetList(PB_STATE, firebasePut) {
 
         if (!s || !s.phase || !s.dir) continue;
 
-        if (s.phase === 'pullback' || s.phase === 'fired') {
-            targets[pName] = {
+        if (s.phase === 'pullback' || s.phase === 'fired' || s.phase === 'fractal_wait') {
+            const cleanName = pName.replace(/_1h$/, '').replace(/_4h$/, '');
+            targets[cleanName] = {
                 dir: s.dir,
                 phase: s.phase,
                 timestamp: s.firedAt || Date.now()
