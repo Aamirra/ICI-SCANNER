@@ -1,11 +1,12 @@
+}
 function updateBadge() {
-    const count = Object.values(PB_STATE).filter(s => s && s.phase === 'pullback').length;
+    const count = Object.values(PB_STATE).filter(s => s && (s.phase === 'pullback' || s.phase === 'fractal_wait')).length;
     document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
 }
 
 function openM() {
     const l = document.getElementById('ml');
-    const w = Object.entries(PB_STATE).filter(([_, s]) => s && s.phase === 'pullback');
+    const w = Object.entries(PB_STATE).filter(([_, s]) => s && (s.phase === 'pullback' || s.phase === 'fractal_wait'));
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Pullback Setup</h3>` +
         (w.length
@@ -22,16 +23,17 @@ function openM() {
 
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
-    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
+    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && (PB_STATE[n].phase === 'pullback' || PB_STATE[n].phase === 'fractal_wait'));
     chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
-    const pbIdx = chartPairs.findIndex(p => p.n === pairName);
-    openC(pbIdx !== -1 ? pbIdx : 0);
+    cIdx = chartPairs.findIndex(p => p.n === pairName);
+    if (cIdx === -1) cIdx = 0;
+    openC(cIdx);
 }
 
-function closeModalAndNav(step) {
-    document.getElementById('mo').classList.remove('open');
-    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
-    chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+function movePairInModal(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
+    if (newIdx >= 0 && newIdx < chartPairs.length) {
+        cIdx = newIdx;
+        openC(cIdx);
+    }
 }
