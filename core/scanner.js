@@ -6,7 +6,7 @@ const msUntilNextHourClose = require('../utils/timer');
 const firebasePut = require('../services/database');
 const sendTG = require('../services/telegram');
 const sendReport = require('../services/report');
-const { updateApiStatus } = require('../services/apiTracker'); // Destructured
+const { updateApiStatus } = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
@@ -51,11 +51,20 @@ async function fetchTF(p, tf) {
                     if (j.values && j.values.length > 1) {
                         if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
                         const cls = j.values.slice(1).map(v => parseFloat(v.close)).reverse();
+                        const highs = j.values.slice(1).map(v => parseFloat(v.high)).reverse();
+                        const lows = j.values.slice(1).map(v => parseFloat(v.low)).reverse();
                         const ema20 = calcEMA(cls, 20);
                         if (ema20) {
                             DATA_STORE[p.n][tf] = cls[cls.length - 1] > ema20 ? 'bull' : 'bear';
                         }
-                        if (tf === '1h') RAW_1H[p.n] = { closes: cls, time: j.values[1].datetime };
+                        if (tf === '1h') {
+                            RAW_1H[p.n] = {
+                                closes: cls,
+                                highs: highs,
+                                lows: lows,
+                                time: j.values[1].datetime
+                            };
+                        }
                         resolve(true);
                     } else {
                         resolve(false);
@@ -81,7 +90,6 @@ async function masterScan() {
         lastReportTime = now;
     }
 
-    // Pehla scan
     let failed = [];
     for (const p of config.PAIRS) {
         for (const tf of ['1h', '4h', '1day', '1week']) {
@@ -98,12 +106,12 @@ async function masterScan() {
         }
     }
 
-    // Retries logic
     let attempt = 1;
     while (failed.length > 0) {
         console.log(`=== Retry attempt ${attempt} — ${failed.length} remaining ===`);
         const stillFailed = [];
         for (const { p, tf } of failed) {
+            if (!p || !p.n) continue;
             await new Promise(res => setTimeout(res, 2000));
             const success = await fetchTF(p, tf);
             if (success) {
@@ -123,8 +131,7 @@ async function masterScan() {
         }
     }
 
-    // Pass firebasePut so reminders state gets saved
-    pullbackEngine.checkReminders(sendTG, firebasePut); 
+    pullbackEngine.checkReminders(sendTG, firebasePut);
     console.log(`=== Scan fully complete: ${new Date().toLocaleTimeString()} ===`);
 
     setTimeout(masterScan, msUntilNextHourClose());
