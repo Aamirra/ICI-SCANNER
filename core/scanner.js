@@ -90,6 +90,7 @@ async function masterScan() {
         lastReportTime = now;
     }
 
+    // Pehla scan
     let failed = [];
     for (const p of config.PAIRS) {
         for (const tf of ['1h', '4h', '1day', '1week']) {
@@ -102,10 +103,11 @@ async function masterScan() {
         }
         if (DATA_STORE[p.n]) {
             await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-            pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
+            await pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
         }
     }
 
+    // Retry
     let attempt = 1;
     while (failed.length > 0) {
         console.log(`=== Retry attempt ${attempt} — ${failed.length} remaining ===`);
@@ -118,6 +120,8 @@ async function masterScan() {
                 console.log(`RETRY OK: ${p.n} ${tf}`);
                 if (DATA_STORE[p.n]) {
                     await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
+                    // Retry ke baad bhi checkRules call karo
+                    await pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
                 }
             } else {
                 console.log(`RETRY FAIL: ${p.n} ${tf}`);
