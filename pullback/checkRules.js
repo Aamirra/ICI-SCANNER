@@ -28,8 +28,13 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
     const w1 = r['1week'];
     const d1 = r['1day'];
     const cls = raw.closes;
+    const highs = raw.highs || cls;
+    const lows = raw.lows || cls;
     const lastClose = cls[cls.length - 1];
-    const prevHigh = cls[cls.length - 2]; // pichli candle ka high (closes use kar rahe hain approximation ke liye)
+    const lastHigh = highs[highs.length - 1];
+    const lastLow = lows[lows.length - 1];
+    const prevHigh = highs[highs.length - 2];
+    const prevLow = lows[lows.length - 2];
     const ema20 = calcEMA(cls, 20);
     const sma50 = calcSMA(cls, 50);
 
@@ -56,29 +61,41 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
     const inPullback = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
         s.phase = 'pullback';
-        s.prevHigh = null; // reset
+        s.fractalRef = null;
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // EMA ke upar/neeche wapas aaya — "fractal_wait" phase
+    // EMA cross — fractal_wait phase
     const crossedEMA = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
     if (s.phase === 'pullback' && crossedEMA) {
         s.phase = 'fractal_wait';
-        s.fractalRef = lastClose; // yeh candle reference hai
+        // Reference: pichli candle ka high (bull) ya low (bear)
+        s.fractalRef = dir === 'bull' ? prevHigh : prevLow;
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // Fractal wait — koi candle jo pichli ka high (bull) / low (bear) break na kare
+    // Fractal wait
     if (s.phase === 'fractal_wait') {
         const isBull = dir === 'bull';
+
+        // Wapas EMA ke neeche/upar gaya — reset
+        const wentBack = isBull ? lastClose < ema20 : lastClose > ema20;
+        if (wentBack) {
+            s.phase = 'pullback';
+            s.fractalRef = null;
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            return s;
+        }
+
+        // Candle ne pichli ka high/low break nahi kiya → ALERT!
         const fractalFound = isBull
-            ? lastClose <= s.fractalRef   // high break nahi kiya
-            : lastClose >= s.fractalRef;  // low break nahi kiya
+            ? lastHigh <= s.fractalRef   // high break nahi kiya
+            : lastLow >= s.fractalRef;   // low break nahi kiya
 
         if (fractalFound) {
-            // Alert bhejo
             const candleTime = raw.time || Date.now();
             const key = `${stateKey}_${dir}_${candleTime}`;
 
@@ -112,18 +129,9 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
                 await saveTargetList(PB_STATE, firebasePut);
             }
         } else {
-            // High break ho gaya — reference update karo
-            s.fractalRef = lastClose;
+            // High/Low break ho gaya — reference update karo
+            s.fractalRef = isBull ? lastHigh : lastLow;
             PB_STATE[stateKey] = s;
-        }
-
-        // Agar wapas EMA ke neeche chali gayi — pullback reset
-        const wentBack = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
-        if (wentBack) {
-            s.phase = 'pullback';
-            s.fractalRef = null;
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
         }
     }
 
