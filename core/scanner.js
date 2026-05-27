@@ -50,13 +50,11 @@ async function fetchTF(p, tf) {
                     const j = JSON.parse(d);
                     if (j.values && j.values.length > 1) {
                         if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
-                        // reverse() nahi — oldest → newest order
-                        const cls = j.values.slice(1).map(v => parseFloat(v.close));
-                        const highs = j.values.slice(1).map(v => parseFloat(v.high));
-                        const lows = j.values.slice(1).map(v => parseFloat(v.low));
+                        const cls = j.values.slice(1).map(v => parseFloat(v.close)).reverse();
+                        const highs = j.values.slice(1).map(v => parseFloat(v.high)).reverse();
+                        const lows = j.values.slice(1).map(v => parseFloat(v.low)).reverse();
                         const ema20 = calcEMA(cls, 20);
                         if (ema20) {
-                            // cls[cls.length-1] = latest closed candle ✅
                             DATA_STORE[p.n][tf] = cls[cls.length - 1] > ema20 ? 'bull' : 'bear';
                         }
                         if (tf === '1h') {
@@ -92,6 +90,7 @@ async function masterScan() {
         lastReportTime = now;
     }
 
+    // Pehla scan
     let failed = [];
     for (const p of config.PAIRS) {
         for (const tf of ['1h', '4h', '1day', '1week']) {
@@ -108,6 +107,7 @@ async function masterScan() {
         }
     }
 
+    // Retry
     let attempt = 1;
     while (failed.length > 0) {
         console.log(`=== Retry attempt ${attempt} — ${failed.length} remaining ===`);
@@ -120,6 +120,7 @@ async function masterScan() {
                 console.log(`RETRY OK: ${p.n} ${tf}`);
                 if (DATA_STORE[p.n]) {
                     await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
+                    // Retry ke baad bhi checkRules call karo
                     await pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
                 }
             } else {
