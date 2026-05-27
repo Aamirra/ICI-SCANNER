@@ -9,15 +9,25 @@ function openM() {
     const l = document.getElementById('ml');
     const w = Object.entries(PB_STATE).filter(([_, s]) => s && (s.phase === 'pullback' || s.phase === 'fractal_wait'));
 
-    const pbPairs = [...new Set(
-        w.map(([n]) => n.replace(/_1h$/, '').replace(/_4h$/, ''))
-    )];
-    targetModalPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+    // Duplicates remove — har pair sirf ek baar
+    const seen = new Set();
+    const uniqueW = w.filter(([n]) => {
+        const clean = n.replace(/_1h$/, '').replace(/_4h$/, '');
+        if (seen.has(clean)) return false;
+        seen.add(clean);
+        return true;
+    });
+
+    // Target list same order mein
+    targetModalPairs = uniqueW
+        .map(([n]) => n.replace(/_1h$/, '').replace(/_4h$/, ''))
+        .map(name => PAIRS.find(p => p.n === name))
+        .filter(Boolean);
 
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Pullback Setup</h3>` +
-        (w.length
-            ? w.map(([n, s]) => {
+        (uniqueW.length
+            ? uniqueW.map(([n, s]) => {
                 const cleanName = n.replace(/_1h$/, '').replace(/_4h$/, '');
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
                     <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${cleanName}')">${cleanName}</span>
