@@ -8,6 +8,7 @@ const sendTG = require('../services/telegram');
 const sendReport = require('../services/report');
 const { updateApiStatus } = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
+const { fetchStooqData, STOOQ_PAIRS } = require('../services/stooqFetch');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
 
@@ -93,6 +94,23 @@ async function masterScan() {
     // Pehla scan
     let failed = [];
     for (const p of config.PAIRS) {
+
+        // === Stooq pairs ===
+        if (STOOQ_PAIRS[p.n]) {
+            console.log(`Stooq fetch: ${p.n}`);
+            const ok = await fetchStooqData(p.n, DATA_STORE, RAW_1H);
+            if (ok && DATA_STORE[p.n]) {
+                await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
+                await pullbackEngine.checkRules(
+                    p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut
+                );
+            } else {
+                console.log(`MISSED (Stooq): ${p.n}`);
+            }
+            continue;
+        }
+
+        // === TwelveData pairs ===
         for (const tf of ['1h', '4h', '1day', '1week']) {
             await new Promise(res => setTimeout(res, 1800));
             const success = await fetchTF(p, tf);
@@ -120,7 +138,6 @@ async function masterScan() {
                 console.log(`RETRY OK: ${p.n} ${tf}`);
                 if (DATA_STORE[p.n]) {
                     await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                    // Retry ke baad bhi checkRules call karo
                     await pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
                 }
             } else {
