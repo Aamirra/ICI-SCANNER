@@ -6,6 +6,12 @@ function openCFromTable(i) {
     openC(cIdx);
 }
 
+function openCFromTarget(i, targetListPairs) {
+    chartPairs = [...targetListPairs];
+    cIdx = i;
+    openC(cIdx);
+}
+
 function openC(i) {
     cIdx = i;
     const p = chartPairs[cIdx];
