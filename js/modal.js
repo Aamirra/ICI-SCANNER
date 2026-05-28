@@ -1,39 +1,20 @@
-let targetModalPairs = [];
-
 function updateBadge() {
-    const count = Object.values(PB_STATE).filter(s => s && (s.phase === 'pullback' || s.phase === 'fractal_wait')).length;
+    const count = Object.values(PB_STATE).filter(s => s && s.phase === 'pullback').length;
     document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
 }
 
 function openM() {
     const l = document.getElementById('ml');
-    const w = Object.entries(PB_STATE).filter(([_, s]) => s && (s.phase === 'pullback' || s.phase === 'fractal_wait'));
-
-    // Duplicates remove — har pair sirf ek baar
-    const seen = new Set();
-    const uniqueW = w.filter(([n]) => {
-        const clean = n.replace(/_1h$/, '').replace(/_4h$/, '');
-        if (seen.has(clean)) return false;
-        seen.add(clean);
-        return true;
-    });
-
-    // Target list same order mein
-    targetModalPairs = uniqueW
-        .map(([n]) => n.replace(/_1h$/, '').replace(/_4h$/, ''))
-        .map(name => PAIRS.find(p => p.n === name))
-        .filter(Boolean);
-
+    const w = Object.entries(PB_STATE).filter(([_, s]) => s && s.phase === 'pullback');
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Pullback Setup</h3>` +
-        (uniqueW.length
-            ? uniqueW.map(([n, s]) => {
-                const cleanName = n.replace(/_1h$/, '').replace(/_4h$/, '');
-                return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
-                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${cleanName}')">${cleanName}</span>
+        (w.length
+            ? w.map(([n, s]) =>
+                `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span>
                     <span style="color:${s.dir === 'bull' ? '#00ff88' : '#ff4466'}">${s.dir.toUpperCase()}</span>
-                </div>`;
-              }).join('')
+                </div>`
+              ).join('')
             : `<div style="color:#888;text-align:center;padding:20px">Koi pullback setup nahi mila</div>`
         );
     document.getElementById('mo').classList.add('open');
@@ -41,8 +22,8 @@ function openM() {
 
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
-    chartPairs = [...targetModalPairs];
-    const idx = chartPairs.findIndex(p => p.n === pairName);
-    cIdx = idx !== -1 ? idx : 0;
-    openC(cIdx);
+    const pbPairs = Object.keys(PB_STATE).filter(n => PB_STATE[n] && PB_STATE[n].phase === 'pullback');
+    chartPairs = PAIRS.filter(p => pbPairs.includes(p.n));
+    const pbIdx = chartPairs.findIndex(p => p.n === pairName);
+    openC(pbIdx !== -1 ? pbIdx : 0);
 }
