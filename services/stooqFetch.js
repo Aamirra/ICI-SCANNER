@@ -155,8 +155,9 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
 
             if (ema1H) {
                 DATA_STORE[pairName]['1h'] = getBullBear(last1H, ema1H);
-                DATA_STORE[pairName]['1h_price'] = last1H.toFixed(2);
-                DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(2);
+                // 🟢 DATABASE COMPATIBILITY: .toFixed(4) lagaya hai taake safe insertion ho
+                DATA_STORE[pairName]['1h_price'] = last1H.toFixed(4);
+                DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(4);
             }
 
             RAW_1H[pairName] = {
@@ -174,8 +175,8 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
                 const last4H = closes4H[closes4H.length - 1];
                 if (ema4H) {
                     DATA_STORE[pairName]['4h'] = getBullBear(last4H, ema4H);
-                    DATA_STORE[pairName]['4h_price'] = last4H.toFixed(2);
-                    DATA_STORE[pairName]['4h_ema']   = ema4H.toFixed(2);
+                    DATA_STORE[pairName]['4h_price'] = last4H.toFixed(4);
+                    DATA_STORE[pairName]['4h_ema']   = ema4H.toFixed(4);
                 }
             }
         } else {
@@ -194,8 +195,8 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const lastD = closesD[closesD.length - 1];
             if (emaD) {
                 DATA_STORE[pairName]['1day'] = getBullBear(lastD, emaD);
-                DATA_STORE[pairName]['1day_price'] = lastD.toFixed(2);
-                DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(2);
+                DATA_STORE[pairName]['1day_price'] = lastD.toFixed(4);
+                DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(4);
             }
         }
 
@@ -210,8 +211,8 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const lastW = closesW[closesW.length - 1];
             if (emaW) {
                 DATA_STORE[pairName]['1week'] = getBullBear(lastW, emaW);
-                DATA_STORE[pairName]['1week_price'] = lastW.toFixed(2);
-                DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(2);
+                DATA_STORE[pairName]['1week_price'] = lastW.toFixed(4);
+                DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(4);
             }
         }
 
