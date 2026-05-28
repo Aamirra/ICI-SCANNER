@@ -2,13 +2,6 @@ let curF = 'all', fPairs = [];
 
 function render() {
     const tbody = document.getElementById('tb');
-
-    // Data abhi tak nahi aaya
-    if (Object.keys(MARKET_DATA).length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#888;padding:30px">⏳ Loading...</td></tr>`;
-        return;
-    }
-
     fPairs = PAIRS.filter(p => {
         if (curF === 'all') return true;
         return ['4h','1day','1week'].every(tf => (MARKET_DATA[p.n]||{})[tf] === curF);
