@@ -1,7 +1,6 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// Stooq symbols mapping
 const STOOQ_PAIRS = {
     'US500':  '^spx',
     'US100':  '^ndq',
@@ -12,9 +11,21 @@ const STOOQ_PAIRS = {
     'XAGUSD': 'xagusd'
 };
 
-// CSV fetch karo Stooq se
 function fetchCSV(symbol, interval) {
-    const url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}`;
+    const today = new Date();
+    const from = new Date();
+
+    // Interval ke hisaab se date range
+    if (interval === 'h') from.setDate(today.getDate() - 30);      // 1H — 30 din
+    else if (interval === 'd') from.setDate(today.getDate() - 120); // 1D — 120 din
+    else if (interval === 'w') from.setDate(today.getDate() - 365); // 1W — 1 saal
+
+    const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const d1 = fmt(from);
+    const d2 = fmt(today);
+
+    const url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${d1}&d2=${d2}`;
+
     return new Promise((resolve) => {
         https.get(url, (res) => {
             let data = '';
@@ -36,7 +47,6 @@ function fetchCSV(symbol, interval) {
                         })
                         .filter(r => !isNaN(r.close));
 
-                    // Oldest → newest order (EMA ke liye zaroori)
                     rows.sort((a, b) => new Date(a.date) - new Date(b.date));
                     resolve(rows);
                 } catch(e) {
@@ -47,7 +57,6 @@ function fetchCSV(symbol, interval) {
     });
 }
 
-// 1H candles se 4H candles banao
 function build4H(hourlyRows) {
     const candles = [];
     for (let i = 0; i + 3 < hourlyRows.length; i += 4) {
@@ -61,7 +70,6 @@ function build4H(hourlyRows) {
     return candles;
 }
 
-// Main function — ek pair ka sara data fetch karo
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
     const symbol = STOOQ_PAIRS[pairName];
     if (!symbol) return false;
@@ -72,18 +80,17 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
         // === 1H Data ===
         const hourly = await fetchCSV(symbol, 'h');
         if (!hourly || hourly.length < 25) {
-            console.log(`Stooq 1H failed: ${pairName}`);
+            console.log(`Stooq 1H failed: ${pairName} — rows: ${hourly?.length}`);
             return false;
         }
 
         const closes1H = hourly.map(r => r.close);
         const ema1H = calcEMA(closes1H, 20);
         if (ema1H) {
-            DATA_STORE[pairName]['1h'] = 
+            DATA_STORE[pairName]['1h'] =
                 closes1H[closes1H.length - 1] > ema1H ? 'bull' : 'bear';
         }
 
-        // RAW_1H — pullback engine ke liye
         RAW_1H[pairName] = {
             closes: closes1H,
             highs:  hourly.map(r => r.high),
@@ -91,13 +98,13 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             time:   hourly[hourly.length - 1].date
         };
 
-        // === 4H Data — 1H se calculate ===
+        // === 4H Data ===
         const candles4H = build4H(hourly);
         if (candles4H.length >= 20) {
             const closes4H = candles4H.map(c => c.close);
             const ema4H = calcEMA(closes4H, 20);
             if (ema4H) {
-                DATA_STORE[pairName]['4h'] = 
+                DATA_STORE[pairName]['4h'] =
                     closes4H[closes4H.length - 1] > ema4H ? 'bull' : 'bear';
             }
         }
@@ -109,7 +116,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const closesD = daily.map(r => r.close);
             const emaD = calcEMA(closesD, 20);
             if (emaD) {
-                DATA_STORE[pairName]['1day'] = 
+                DATA_STORE[pairName]['1day'] =
                     closesD[closesD.length - 1] > emaD ? 'bull' : 'bear';
             }
         }
@@ -121,7 +128,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const closesW = weekly.map(r => r.close);
             const emaW = calcEMA(closesW, 20);
             if (emaW) {
-                DATA_STORE[pairName]['1week'] = 
+                DATA_STORE[pairName]['1week'] =
                     closesW[closesW.length - 1] > emaW ? 'bull' : 'bear';
             }
         }
