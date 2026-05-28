@@ -18,27 +18,14 @@ const db = firebase.database();
 
 let MARKET_DATA = {}, PB_STATE = {};
 
-const connRef = db.ref('.info/connected');
-connRef.on('value', (snap) => {
-    document.getElementById('st').textContent =
-        snap.val() === true ? "✅ Cloud Synced" : "🔄 Connecting...";
-});
-
 db.ref('marketData').on('value', (snap) => {
     MARKET_DATA = snap.val() || {};
-    if (typeof render === 'function') {
-        render();
-        updateCounts();
-    }
+    render();
+    updateCounts();
+    document.getElementById('st').textContent = "✅ Cloud Synced";
 });
 
 db.ref('pb_state').on('value', (snap) => {
     PB_STATE = snap.val() || {};
-    if (typeof updateBadge === 'function') updateBadge();
-
-    // Modal khula ho toh auto refresh
-    const modal = document.getElementById('mo');
-    if (modal && modal.classList.contains('open')) {
-        if (typeof openM === 'function') openM();
-    }
+    updateBadge();
 });
