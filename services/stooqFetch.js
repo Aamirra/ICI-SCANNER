@@ -1,15 +1,15 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ Sahi Yahoo Finance Tickers jo indices ke liye 100% accurate hain
+// ✅ Yahoo Tickers mapped dynamically to match your original layout exactly!
 const PAIRS = {
-    'US500':  { yahoo: '^GSPC',   type: 'INDEX' },  // S&P 500
-    'US100':  { yahoo: '^NDX',    type: 'INDEX' },  // NASDAQ 100
-    'US30':   { yahoo: '^DJI',    type: 'INDEX' },  // Dow Jones
-    'GER40':  { yahoo: '^GDAXI',  type: 'INDEX' },  // Germany DAX
-    'UK100':  { yahoo: '^FTSE',   type: 'INDEX' },  // UK FTSE 100
-    'JPN225': { yahoo: '^N225',   type: 'INDEX' },  // Nikkei 225
-    'XAGUSD': { yahoo: 'XAGUSD=X', type: 'CURRENCY' } // Silver (Forex/Commodity rate)
+    'US500':  { yahoo: '^GSPC',   av: 'SPY',  type: 'ETF' },   // S&P 500
+    'US100':  { yahoo: '^NDX',    av: 'QQQ',  type: 'ETF' },   // NASDAQ 100
+    'US30':   { yahoo: '^DJI',    av: 'DIA',  type: 'ETF' },   // Dow Jones
+    'GER40':  { yahoo: '^GDAXI',  av: 'EWG',  type: 'ETF' },   // Germany
+    'UK100':  { yahoo: '^FTSE',   av: 'EWU',  type: 'ETF' },   // UK FTSE
+    'JPN225': { yahoo: '^N225',   av: 'EWJ',  type: 'ETF' },   // Japan Nikkei
+    'XAGUSD': { yahoo: 'XAGUSD=X', av: 'SLV',  type: 'ETF' },   // Silver
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -19,17 +19,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ════════════════════════════════════════
 function fetchYahooData(symbol, timeframe) {
     let interval = '1d';
-    let range = '3mo'; // Daily/Weekly ke liye 3 mahine ka data kafi hai
+    let range = '3mo'; 
 
     if (timeframe === '1h') {
         interval = '1h';
-        range = '730d'; // Yahoo maximum 730 din ka hourly data deta hai
+        range = '730d'; 
     } else if (timeframe === '1w') {
         interval = '1wk';
         range = '1y';
     }
 
-    // Yahoo Finance API v7 Chart Endpoint (Jo production level par use hota hai)
     const path = `/v7/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&indicators=quote&includeTimestamps=true`;
 
     return new Promise((resolve) => {
@@ -37,7 +36,6 @@ function fetchYahooData(symbol, timeframe) {
             hostname: 'query1.finance.yahoo.com',
             path: path,
             headers: {
-                // 🟢 Masking request to look like a real browser to bypass Render IP block
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
@@ -61,7 +59,6 @@ function fetchYahooData(symbol, timeframe) {
                     const rows = [];
 
                     for (let i = 0; i < timestamps.length; i++) {
-                        // Agar kisi candle ka close missing ho to skip karein
                         if (quotes.close[i] === null || isNaN(quotes.close[i])) continue;
 
                         rows.push({
@@ -72,7 +69,6 @@ function fetchYahooData(symbol, timeframe) {
                             close: parseFloat(quotes.close[i]),
                         });
                     }
-
                     resolve(rows);
                 } catch (e) {
                     resolve(null);
@@ -131,7 +127,7 @@ function getBullBear(lastClose, ema, marginPct = 0.0005) {
 }
 
 // ════════════════════════════════════════
-// MAIN FUNCTION (Yahoo Dynamic Bypassed Version)
+// MAIN FUNCTION (Yahoo Data -> Original Mapping)
 // ════════════════════════════════════════
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
     const pair = PAIRS[pairName];
@@ -155,7 +151,6 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
 
             if (ema1H) {
                 DATA_STORE[pairName]['1h'] = getBullBear(last1H, ema1H);
-                // 🟢 DATABASE COMPATIBILITY: .toFixed(4) lagaya hai taake safe insertion ho
                 DATA_STORE[pairName]['1h_price'] = last1H.toFixed(4);
                 DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(4);
             }
@@ -183,7 +178,6 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             console.log(`⚠️ Yahoo 1H failed or empty for ${pairName}`);
         }
 
-        // Anti-spam delay for Yahoo
         await sleep(2000);
 
         // 3. Fetch Daily Data
