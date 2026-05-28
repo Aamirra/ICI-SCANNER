@@ -15,19 +15,15 @@ function fetchCSV(symbol, interval) {
     const today = new Date();
     const from = new Date();
 
-    // Interval ke hisaab se date range
-    if (interval === 'h') from.setDate(today.getDate() - 30);      // 1H — 30 din
-    else if (interval === 'd') from.setDate(today.getDate() - 120); // 1D — 120 din
-    else if (interval === 'w') from.setDate(today.getDate() - 365); // 1W — 1 saal
+    if (interval === 'h') from.setDate(today.getDate() - 30);
+    else if (interval === 'd') from.setDate(today.getDate() - 120);
+    else if (interval === 'w') from.setDate(today.getDate() - 365);
 
     const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
-    const d1 = fmt(from);
-    const d2 = fmt(today);
-
-    const url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${d1}&d2=${d2}`;
+    const url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${fmt(from)}&d2=${fmt(today)}`;
 
     return new Promise((resolve) => {
-        https.get(url, (res) => {
+        const req = https.get(url, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
@@ -48,12 +44,18 @@ function fetchCSV(symbol, interval) {
                         .filter(r => !isNaN(r.close));
 
                     rows.sort((a, b) => new Date(a.date) - new Date(b.date));
-                    resolve(rows);
+                    resolve(rows.length > 0 ? rows : null);
                 } catch(e) {
                     resolve(null);
                 }
             });
         }).on('error', () => resolve(null));
+
+        // 10 second timeout
+        req.setTimeout(10000, () => {
+            req.destroy();
+            resolve(null);
+        });
     });
 }
 
