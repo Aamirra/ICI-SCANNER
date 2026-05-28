@@ -12,24 +12,16 @@ const STOOQ_PAIRS = {
 };
 
 function fetchCSV(symbol, interval) {
-    let url;
-
-    // Hourly mein date range nahi — Stooq block karta hai
-    if (interval === 'h') {
-        url = `https://stooq.com/q/d/l/?s=${symbol}&i=h`;
-    } else {
-        const today = new Date();
-        const from = new Date();
-
-        if (interval === 'd') from.setDate(today.getDate() - 120);
-        else if (interval === 'w') from.setDate(today.getDate() - 365);
-
-        const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
-        url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${fmt(from)}&d2=${fmt(today)}`;
-    }
-
     return new Promise((resolve) => {
-        const req = https.get(url, (res) => {
+        const req = https.get({
+            hostname: 'stooq.com',
+            path: `/q/d/l/?s=${symbol}&i=${interval}`,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5'
+            }
+        }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
