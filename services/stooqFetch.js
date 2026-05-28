@@ -2,46 +2,49 @@ const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
 const STOOQ_PAIRS = {
-    'US500':  '^spx',
-    'US100':  '^ndq',
-    'US30':   '^dji',
-    'GER40':  '^dax',
-    'UK100':  '^ukx',
-    'JPN225': '^nkx',
-    'XAGUSD': 'xagusd'
+    'US500':  '^GSPC',
+    'US100':  '^NDX',
+    'US30':   '^DJI',
+    'GER40':  '^GDAXI',
+    'UK100':  '^FTSE',
+    'JPN225': '^N225',
+    'XAGUSD': 'SI=F'
 };
 
-function fetchCSV(symbol, interval) {
+function fetchYahoo(symbol, interval, range) {
+    const encoded = encodeURIComponent(symbol);
+    const path = `/v8/finance/chart/${encoded}?interval=${interval}&range=${range}`;
+
     return new Promise((resolve) => {
         const req = https.get({
-            hostname: 'stooq.com',
-            path: `/q/d/l/?s=${symbol}&i=${interval}`,
+            hostname: 'query1.finance.yahoo.com',
+            path: path,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5'
+                'Accept': 'application/json'
             }
         }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
-                    const lines = data.trim().split('\n');
-                    if (lines.length < 3) { resolve(null); return; }
+                    const j = JSON.parse(data);
+                    const result = j?.chart?.result?.[0];
+                    if (!result) { resolve(null); return; }
 
-                    const rows = lines.slice(1)
-                        .map(line => {
-                            const cols = line.split(',');
-                            return {
-                                date:  cols[0],
-                                high:  parseFloat(cols[2]),
-                                low:   parseFloat(cols[3]),
-                                close: parseFloat(cols[4])
-                            };
-                        })
-                        .filter(r => !isNaN(r.close));
+                    const timestamps = result.timestamp || [];
+                    const quotes = result.indicators?.quote?.[0] || {};
+                    const closes = quotes.close || [];
+                    const highs = quotes.high || [];
+                    const lows = quotes.low || [];
 
-                    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const rows = timestamps.map((t, i) => ({
+                        date:  new Date(t * 1000).toISOString(),
+                        close: closes[i],
+                        high:  highs[i],
+                        low:   lows[i]
+                    })).filter(r => r.close != null && !isNaN(r.close));
+
                     resolve(rows.length > 0 ? rows : null);
                 } catch(e) {
                     resolve(null);
@@ -77,9 +80,9 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
 
     try {
         // === 1H Data ===
-        const hourly = await fetchCSV(symbol, 'h');
+        const hourly = await fetchYahoo(symbol, '1h', '30d');
         if (!hourly || hourly.length < 25) {
-            console.log(`Stooq 1H failed: ${pairName} — rows: ${hourly?.length}`);
+            console.log(`Yahoo 1H failed: ${pairName} — rows: ${hourly?.length}`);
             return false;
         }
 
@@ -110,7 +113,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
 
         // === Daily Data ===
         await new Promise(r => setTimeout(r, 500));
-        const daily = await fetchCSV(symbol, 'd');
+        const daily = await fetchYahoo(symbol, '1d', '6mo');
         if (daily && daily.length >= 20) {
             const closesD = daily.map(r => r.close);
             const emaD = calcEMA(closesD, 20);
@@ -122,7 +125,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
 
         // === Weekly Data ===
         await new Promise(r => setTimeout(r, 500));
-        const weekly = await fetchCSV(symbol, 'w');
+        const weekly = await fetchYahoo(symbol, '1wk', '2y');
         if (weekly && weekly.length >= 20) {
             const closesW = weekly.map(r => r.close);
             const emaW = calcEMA(closesW, 20);
@@ -132,11 +135,11 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             }
         }
 
-        console.log(`Stooq OK: ${pairName} — ${JSON.stringify(DATA_STORE[pairName])}`);
+        console.log(`Yahoo OK: ${pairName} — ${JSON.stringify(DATA_STORE[pairName])}`);
         return true;
 
     } catch(e) {
-        console.log(`Stooq error ${pairName}:`, e.message);
+        console.log(`Yahoo error ${pairName}:`, e.message);
         return false;
     }
 }
