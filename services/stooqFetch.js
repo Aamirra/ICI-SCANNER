@@ -1,7 +1,7 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ Alpha Vantage symbols
+// ✅ Alpha Vantage symbols (ETFs used for global indices)
 const PAIRS = {
     'US500':  { av: 'SPY',  type: 'ETF' },   // S&P 500
     'US100':  { av: 'QQQ',  type: 'ETF' },   // NASDAQ 100
@@ -12,9 +12,8 @@ const PAIRS = {
     'XAGUSD': { av: 'SLV',  type: 'ETF' },   // Silver
 };
 
-// ✅ Apna Alpha Vantage API key yahan daalo
-// Free key: https://www.alphavantage.co/support/#api-key
-const AV_KEY = process.env.ALPHA_VANTAGE_KEY || 'demo';
+// ✅ FIXED: Aapki real free API key yahan add kar di hai
+const AV_KEY = process.env.ALPHA_VANTAGE_KEY || 'QDFG0XFR4ECG18AZ';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -142,7 +141,8 @@ function build4H(hourlyRows) {
     const candles = [];
     for (const key of Object.keys(grouped).sort()) {
         const group = grouped[key];
-        if (group.length === 4) {
+        // 🟢 FIXED: '=== 4' ko badal kar '> 0' kiya taake missing candles delete na hon
+        if (group.length > 0) {
             candles.push({
                 close: group[group.length - 1].close,
                 high:  Math.max(...group.map(g => g.high)),
@@ -232,7 +232,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
         // ════════════════════════════════
         // Daily Data
         // ════════════════════════════════
-        await sleep(15000); // AV free = 5 req/min, so 15s wait
+        await sleep(15000); // AV free tier limit = 5 requests per minute (15s sleep is good)
         console.log(`⏳ Fetching Daily: ${pairName}`);
         const rawDaily = await fetchAV(symbol, 'TIME_SERIES_DAILY');
         const daily = rawDaily ? parseDaily(rawDaily) : null;
