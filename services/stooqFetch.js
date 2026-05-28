@@ -1,32 +1,33 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ Twelve Data — Direct Index Symbols
-const STOOQ_PAIRS = {
-    'US500':  'SPX',      // S&P 500
-    'US100':  'NDX',      // NASDAQ 100
-    'US30':   'DJI',      // Dow Jones
-    'GER40':  'DAX',      // Germany DAX
-    'UK100':  'FTSE',     // UK FTSE 100
-    'JPN225': 'N225',     // Japan Nikkei
-    'XAGUSD': 'XAG/USD',  // Silver
+// ✅ Alpha Vantage symbols
+const PAIRS = {
+    'US500':  { av: 'SPY',  type: 'ETF' },   // S&P 500
+    'US100':  { av: 'QQQ',  type: 'ETF' },   // NASDAQ 100
+    'US30':   { av: 'DIA',  type: 'ETF' },   // Dow Jones
+    'GER40':  { av: 'EWG',  type: 'ETF' },   // Germany
+    'UK100':  { av: 'EWU',  type: 'ETF' },   // UK FTSE
+    'JPN225': { av: 'EWJ',  type: 'ETF' },   // Japan Nikkei
+    'XAGUSD': { av: 'SLV',  type: 'ETF' },   // Silver
 };
 
-// Render environment variable
-const TD_KEY = process.env.TWELVE_DATA_KEY || process.env.TWELVEDATA_API_KEY || '';
+// ✅ Apna Alpha Vantage API key yahan daalo
+// Free key: https://www.alphavantage.co/support/#api-key
+const AV_KEY = process.env.ALPHA_VANTAGE_KEY || 'demo';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ════════════════════════════════════════
-// Twelve Data se fetch
+// Alpha Vantage se data fetch
 // ════════════════════════════════════════
-function fetchTD(symbol, interval, outputsize = 100) {
-    const encoded = encodeURIComponent(symbol);
-    const path = `/time_series?symbol=${encoded}&interval=${interval}&outputsize=${outputsize}&apikey=${TD_KEY}&format=JSON`;
+function fetchAV(symbol, func, interval = null) {
+    let path = `/query?function=${func}&symbol=${symbol}&apikey=${AV_KEY}&outputsize=full&datatype=json`;
+    if (interval) path += `&interval=${interval}`;
 
     return new Promise((resolve) => {
         const req = https.get({
-            hostname: 'api.twelvedata.com',
+            hostname: 'www.alphavantage.co',
             path: path,
             headers: {
                 'User-Agent': 'Mozilla/5.0',
@@ -39,45 +40,21 @@ function fetchTD(symbol, interval, outputsize = 100) {
                 try {
                     const j = JSON.parse(data);
 
-                    // Rate limit ya error check
-                    if (j.status === 'error') {
-                        console.log(`⚠️  TD Error [${symbol} ${interval}]: ${j.message}`);
+                    // Rate limit check
+                    if (j['Note'] || j['Information']) {
+                        console.log(`⚠️  AV Rate limit: ${j['Note'] || j['Information']}`);
                         resolve(null);
                         return;
                     }
 
-                    // Values array check
-                    if (!j.values || !Array.isArray(j.values) || j.values.length === 0) {
-                        console.log(`⚠️  TD Empty [${symbol} ${interval}]`);
-                        resolve(null);
-                        return;
-                    }
-
-                    // Parse rows — TD newest first deta hai, isliye reverse
-                    const rows = j.values
-                        .map(v => ({
-                            date:  v.datetime,
-                            open:  parseFloat(v.open),
-                            high:  parseFloat(v.high),
-                            low:   parseFloat(v.low),
-                            close: parseFloat(v.close),
-                        }))
-                        .filter(r =>
-                            !isNaN(r.close) && r.close > 0 &&
-                            !isNaN(r.high)  && r.high  > 0 &&
-                            !isNaN(r.low)   && r.low   > 0
-                        )
-                        .reverse(); // oldest first
-
-                    resolve(rows.length > 0 ? rows : null);
-
+                    resolve(j);
                 } catch(e) {
-                    console.log(`TD Parse error [${symbol} ${interval}]:`, e.message);
+                    console.log(`AV Parse error ${symbol}:`, e.message);
                     resolve(null);
                 }
             });
         }).on('error', (e) => {
-            console.log(`TD Network error [${symbol}]:`, e.message);
+            console.log(`AV Network error ${symbol}:`, e.message);
             resolve(null);
         });
 
@@ -86,7 +63,68 @@ function fetchTD(symbol, interval, outputsize = 100) {
 }
 
 // ════════════════════════════════════════
-// 4H candles — 1H se build karo
+// Hourly data parse karo
+// ════════════════════════════════════════
+function parseIntraday(json) {
+    const series = json?.['Time Series (60min)'];
+    if (!series) return null;
+
+    const rows = Object.entries(series)
+        .map(([date, v]) => ({
+            date,
+            open:  parseFloat(v['1. open']),
+            high:  parseFloat(v['2. high']),
+            low:   parseFloat(v['3. low']),
+            close: parseFloat(v['4. close']),
+        }))
+        .filter(r => !isNaN(r.close) && r.close > 0)
+        .sort((a, b) => a.date.localeCompare(b.date)); // oldest first
+
+    return rows.length > 0 ? rows : null;
+}
+
+// ════════════════════════════════════════
+// Daily data parse karo
+// ════════════════════════════════════════
+function parseDaily(json) {
+    const series = json?.['Time Series (Daily)'];
+    if (!series) return null;
+
+    const rows = Object.entries(series)
+        .map(([date, v]) => ({
+            date,
+            close: parseFloat(v['4. close']),
+            high:  parseFloat(v['2. high']),
+            low:   parseFloat(v['3. low']),
+        }))
+        .filter(r => !isNaN(r.close) && r.close > 0)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    return rows.length > 0 ? rows : null;
+}
+
+// ════════════════════════════════════════
+// Weekly data parse karo
+// ════════════════════════════════════════
+function parseWeekly(json) {
+    const series = json?.['Weekly Time Series'];
+    if (!series) return null;
+
+    const rows = Object.entries(series)
+        .map(([date, v]) => ({
+            date,
+            close: parseFloat(v['4. close']),
+            high:  parseFloat(v['2. high']),
+            low:   parseFloat(v['3. low']),
+        }))
+        .filter(r => !isNaN(r.close) && r.close > 0)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    return rows.length > 0 ? rows : null;
+}
+
+// ════════════════════════════════════════
+// 4H candles — hourly se build karo
 // ════════════════════════════════════════
 function build4H(hourlyRows) {
     const grouped = {};
@@ -107,7 +145,6 @@ function build4H(hourlyRows) {
         if (group.length === 4) {
             candles.push({
                 close: group[group.length - 1].close,
-                open:  group[0].open,
                 high:  Math.max(...group.map(g => g.high)),
                 low:   Math.min(...group.map(g => g.low)),
             });
@@ -118,7 +155,7 @@ function build4H(hourlyRows) {
 }
 
 // ════════════════════════════════════════
-// EMA + Bull/Bear helpers
+// EMA + Bull/Bear helper
 // ════════════════════════════════════════
 function safeEMA(closes, period) {
     if (!closes || closes.length < period) return null;
@@ -139,40 +176,37 @@ function getBullBear(lastClose, ema, marginPct = 0.001) {
 // MAIN FUNCTION
 // ════════════════════════════════════════
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
-    const symbol = STOOQ_PAIRS[pairName];
-    if (!symbol) {
+    const pair = PAIRS[pairName];
+    if (!pair) {
         console.log(`❌ Unknown pair: ${pairName}`);
         return false;
     }
 
-    if (!TD_KEY) {
-        console.log(`❌ TWELVE_DATA_KEY environment variable missing!`);
-        return false;
-    }
-
+    const symbol = pair.av;
     if (!DATA_STORE[pairName]) DATA_STORE[pairName] = {};
 
     try {
         // ════════════════════════════════
-        // 1H Data — last 500 candles
+        // 1H + 4H Data
         // ════════════════════════════════
-        console.log(`⏳ [${pairName}] Fetching 1H...`);
-        const hourly = await fetchTD(symbol, '1h', 500);
+        console.log(`⏳ Fetching 1H: ${pairName} (${symbol})`);
+        const rawIntraday = await fetchAV(symbol, 'TIME_SERIES_INTRADAY', '60min');
+        const hourly = rawIntraday ? parseIntraday(rawIntraday) : null;
 
         if (!hourly || hourly.length < 25) {
-            console.log(`❌ [${pairName}] 1H failed — rows: ${hourly?.length ?? 0}`);
+            console.log(`❌ 1H failed: ${pairName} — rows: ${hourly?.length ?? 0}`);
             return false;
         }
 
         // 1H Bull/Bear
         const closes1H = hourly.map(r => r.close);
-        const ema1H    = safeEMA(closes1H, 20);
-        const last1H   = closes1H[closes1H.length - 1];
+        const ema1H = safeEMA(closes1H, 20);
+        const last1H = closes1H[closes1H.length - 1];
 
         if (ema1H) {
-            DATA_STORE[pairName]['1h']       = getBullBear(last1H, ema1H);
-            DATA_STORE[pairName]['1h_price'] = last1H.toFixed(2);
-            DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(2);
+            DATA_STORE[pairName]['1h'] = getBullBear(last1H, ema1H);
+            DATA_STORE[pairName]['1h_price'] = last1H.toFixed(4);
+            DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(4);
         }
 
         RAW_1H[pairName] = {
@@ -182,74 +216,65 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             time:   hourly[hourly.length - 1].date
         };
 
-        // ════════════════════════════════
-        // 4H Data — 1H se build
-        // ════════════════════════════════
+        // 4H Bull/Bear
         const candles4H = build4H(hourly);
         if (candles4H.length >= 20) {
             const closes4H = candles4H.map(c => c.close);
-            const ema4H    = safeEMA(closes4H, 20);
-            const last4H   = closes4H[closes4H.length - 1];
-
+            const ema4H = safeEMA(closes4H, 20);
+            const last4H = closes4H[closes4H.length - 1];
             if (ema4H) {
-                DATA_STORE[pairName]['4h']       = getBullBear(last4H, ema4H);
-                DATA_STORE[pairName]['4h_price'] = last4H.toFixed(2);
-                DATA_STORE[pairName]['4h_ema']   = ema4H.toFixed(2);
+                DATA_STORE[pairName]['4h'] = getBullBear(last4H, ema4H);
+                DATA_STORE[pairName]['4h_price'] = last4H.toFixed(4);
+                DATA_STORE[pairName]['4h_ema']   = ema4H.toFixed(4);
             }
-        } else {
-            console.log(`⚠️  [${pairName}] 4H: only ${candles4H.length} complete candles`);
         }
 
         // ════════════════════════════════
-        // Daily Data — last 200 candles
+        // Daily Data
         // ════════════════════════════════
-        await sleep(500);
-        console.log(`⏳ [${pairName}] Fetching Daily...`);
-        const daily = await fetchTD(symbol, '1day', 200);
+        await sleep(15000); // AV free = 5 req/min, so 15s wait
+        console.log(`⏳ Fetching Daily: ${pairName}`);
+        const rawDaily = await fetchAV(symbol, 'TIME_SERIES_DAILY');
+        const daily = rawDaily ? parseDaily(rawDaily) : null;
 
         if (daily && daily.length >= 20) {
             const closesD = daily.map(r => r.close);
-            const emaD    = safeEMA(closesD, 20);
-            const lastD   = closesD[closesD.length - 1];
-
+            const emaD = safeEMA(closesD, 20);
+            const lastD = closesD[closesD.length - 1];
             if (emaD) {
-                DATA_STORE[pairName]['1day']       = getBullBear(lastD, emaD);
-                DATA_STORE[pairName]['1day_price'] = lastD.toFixed(2);
-                DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(2);
+                DATA_STORE[pairName]['1day'] = getBullBear(lastD, emaD);
+                DATA_STORE[pairName]['1day_price'] = lastD.toFixed(4);
+                DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(4);
             }
-        } else {
-            console.log(`⚠️  [${pairName}] Daily: insufficient data (${daily?.length ?? 0} rows)`);
         }
 
         // ════════════════════════════════
-        // Weekly Data — last 100 candles
+        // Weekly Data
         // ════════════════════════════════
-        await sleep(500);
-        console.log(`⏳ [${pairName}] Fetching Weekly...`);
-        const weekly = await fetchTD(symbol, '1week', 100);
+        await sleep(15000);
+        console.log(`⏳ Fetching Weekly: ${pairName}`);
+        const rawWeekly = await fetchAV(symbol, 'TIME_SERIES_WEEKLY');
+        const weekly = rawWeekly ? parseWeekly(rawWeekly) : null;
 
         if (weekly && weekly.length >= 20) {
             const closesW = weekly.map(r => r.close);
-            const emaW    = safeEMA(closesW, 20);
-            const lastW   = closesW[closesW.length - 1];
-
+            const emaW = safeEMA(closesW, 20);
+            const lastW = closesW[closesW.length - 1];
             if (emaW) {
-                DATA_STORE[pairName]['1week']       = getBullBear(lastW, emaW);
-                DATA_STORE[pairName]['1week_price'] = lastW.toFixed(2);
-                DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(2);
+                DATA_STORE[pairName]['1week'] = getBullBear(lastW, emaW);
+                DATA_STORE[pairName]['1week_price'] = lastW.toFixed(4);
+                DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(4);
             }
-        } else {
-            console.log(`⚠️  [${pairName}] Weekly: insufficient data (${weekly?.length ?? 0} rows)`);
         }
 
         DATA_STORE[pairName]['fetched_at'] = new Date().toISOString();
-        console.log(`✅ [${pairName}] Done →`, JSON.stringify(DATA_STORE[pairName]));
+        console.log(`✅ Done: ${pairName} →`, JSON.stringify(DATA_STORE[pairName]));
         return true;
 
     } catch(e) {
-        console.log(`❌ [${pairName}] Error:`, e.message);
+        console.log(`❌ Error ${pairName}:`, e.message);
         return false;
     }
 }
 
-module.exports = { fetchStooqData, STOOQ_PAIRS };
+module.exports = { fetchStooqData, STOOQ_PAIRS: PAIRS };
