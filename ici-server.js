@@ -24,6 +24,15 @@ setInterval(checkBroadcasts, 2 * 60 * 1000);
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
+
+    // Manual scan route
+    if (safePath === '/scan') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'Scan started!' }));
+        masterScan();
+        return;
+    }
+
     const filePath = path.join(__dirname, safePath === '/' ? 'index.html' : safePath);
     const ext = path.extname(filePath);
     const contentTypes = {
@@ -45,7 +54,6 @@ http.createServer((req, res) => {
 }).listen(PORT, async () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 
-    // Firebase se real API status lo
     const url = `${config.FIREBASE_URL}/api_status.json`;
     https.get(url, (res) => {
         let d = '';
@@ -56,7 +64,6 @@ http.createServer((req, res) => {
                 if (data && data.remaining !== undefined) {
                     console.log(`API Status loaded: ${data.remaining}/${data.total}`);
                 } else {
-                    // Firebase mein data nahi — fresh start
                     updateApiStatus(
                         Object.fromEntries(config.KEYS.map(k => [k, 800]))
                     );
