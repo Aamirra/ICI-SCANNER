@@ -1,15 +1,15 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ Exact original ETF tickers mapping for layout compatibility
+// ✅ Dual Mapping Array: Frontend jis key ko bhi read karega, use data milega!
 const PAIRS = {
-    'US500':  { yahoo: 'SPY',      type: 'ETF' },   // S&P 500 Index ETF
-    'US100':  { yahoo: 'QQQ',      type: 'ETF' },   // NASDAQ 100 Index ETF
-    'US30':   { yahoo: 'DIA',      type: 'ETF' },   // Dow Jones Index ETF
-    'GER40':  { yahoo: 'EWG',      type: 'ETF' },   // Germany DAX ETF
-    'UK100':  { yahoo: 'EWU',      type: 'ETF' },   // UK FTSE ETF
-    'JPN225': { yahoo: 'EWJ',      type: 'ETF' },   // Japan Nikkei ETF
-    'XAGUSD': { yahoo: 'SLV',      type: 'ETF' },   // Silver ETF
+    'US500':  { yahoo: 'SPY',  alt: 'SPY' },
+    'US100':  { yahoo: 'QQQ',  alt: 'QQQ' },
+    'US30':   { yahoo: 'DIA',  alt: 'DIA' },
+    'GER40':  { yahoo: 'EWG',  alt: 'EWG' },
+    'UK100':  { yahoo: 'EWU',  alt: 'EWU' },
+    'JPN225': { yahoo: 'EWJ',  alt: 'EWJ' },
+    'XAGUSD': { yahoo: 'SLV',  alt: 'SLV' }
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -124,7 +124,7 @@ function getBullBear(lastClose, ema, marginPct = 0.0005) {
 }
 
 // ════════════════════════════════════════
-// MAIN FUNCTION (Exact Mapping with Database Keys)
+// MAIN FUNCTION (Dual Mapping Engine)
 // ════════════════════════════════════════
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
     const pair = PAIRS[pairName];
@@ -134,7 +134,11 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
     }
 
     const symbol = pair.yahoo;
+    const alternativeKey = pair.alt;
+
+    // Dono slots initialize karein fallback ke liye
     if (!DATA_STORE[pairName]) DATA_STORE[pairName] = {};
+    if (!DATA_STORE[alternativeKey]) DATA_STORE[alternativeKey] = {};
 
     try {
         // 1. Fetch 1H Data
@@ -147,17 +151,29 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const last1H = closes1H[closes1H.length - 1];
 
             if (ema1H) {
-                DATA_STORE[pairName]['1h'] = getBullBear(last1H, ema1H);
-                DATA_STORE[pairName]['1h_price'] = last1H.toFixed(4);
-                DATA_STORE[pairName]['1h_ema']   = ema1H.toFixed(4);
+                const trend1H = getBullBear(last1H, ema1H);
+                const p1H = last1H.toFixed(4);
+                const e1H = ema1H.toFixed(4);
+
+                // Save to primary key
+                DATA_STORE[pairName]['1h'] = trend1H;
+                DATA_STORE[pairName]['1h_price'] = p1H;
+                DATA_STORE[pairName]['1h_ema'] = e1H;
+
+                // Save to alternative key
+                DATA_STORE[alternativeKey]['1h'] = trend1H;
+                DATA_STORE[alternativeKey]['1h_price'] = p1H;
+                DATA_STORE[alternativeKey]['1h_ema'] = e1H;
             }
 
-            RAW_1H[pairName] = {
+            const rawPayload = {
                 closes: closes1H,
                 highs:  hourly.map(r => r.high),
                 lows:   hourly.map(r => r.low),
                 time:   hourly[hourly.length - 1].date
             };
+            RAW_1H[pairName] = rawPayload;
+            RAW_1H[alternativeKey] = rawPayload;
 
             // 2. Build 4H Data from 1H
             const candles4H = build4H(hourly);
@@ -166,9 +182,17 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
                 const ema4H = safeEMA(closes4H, 20);
                 const last4H = closes4H[closes4H.length - 1];
                 if (ema4H) {
-                    DATA_STORE[pairName]['4h'] = getBullBear(last4H, ema4H);
-                    DATA_STORE[pairName]['4h_price'] = last4H.toFixed(4);
-                    DATA_STORE[pairName]['4h_ema']   = ema4H.toFixed(4);
+                    const trend4H = getBullBear(last4H, ema4H);
+                    const p4H = last4H.toFixed(4);
+                    const e4H = ema4H.toFixed(4);
+
+                    DATA_STORE[pairName]['4h'] = trend4H;
+                    DATA_STORE[pairName]['4h_price'] = p4H;
+                    DATA_STORE[pairName]['4h_ema'] = e4H;
+
+                    DATA_STORE[alternativeKey]['4h'] = trend4H;
+                    DATA_STORE[alternativeKey]['4h_price'] = p4H;
+                    DATA_STORE[alternativeKey]['4h_ema'] = e4H;
                 }
             }
         } else {
@@ -185,10 +209,17 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const emaD = safeEMA(closesD, 20);
             const lastD = closesD[closesD.length - 1];
             if (emaD) {
-                // 🟢 Original Key Alignment: '1day' 
-                DATA_STORE[pairName]['1day'] = getBullBear(lastD, emaD);
-                DATA_STORE[pairName]['1day_price'] = lastD.toFixed(4);
-                DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(4);
+                const trendD = getBullBear(lastD, emaD);
+                const pD = lastD.toFixed(4);
+                const eD = emaD.toFixed(4);
+
+                DATA_STORE[pairName]['1day'] = trendD;
+                DATA_STORE[pairName]['1day_price'] = pD;
+                DATA_STORE[pairName]['1day_ema'] = eD;
+
+                DATA_STORE[alternativeKey]['1day'] = trendD;
+                DATA_STORE[alternativeKey]['1day_price'] = pD;
+                DATA_STORE[alternativeKey]['1day_ema'] = eD;
             }
         }
 
@@ -202,15 +233,25 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const emaW = safeEMA(closesW, 20);
             const lastW = closesW[closesW.length - 1];
             if (emaW) {
-                // 🟢 Original Key Alignment: '1week'
-                DATA_STORE[pairName]['1week'] = getBullBear(lastW, emaW);
-                DATA_STORE[pairName]['1week_price'] = lastW.toFixed(4);
-                DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(4);
+                const trendW = getBullBear(lastW, emaW);
+                const pW = lastW.toFixed(4);
+                const eW = emaW.toFixed(4);
+
+                DATA_STORE[pairName]['1week'] = trendW;
+                DATA_STORE[pairName]['1week_price'] = pW;
+                DATA_STORE[pairName]['1week_ema'] = eW;
+
+                DATA_STORE[alternativeKey]['1week'] = trendW;
+                DATA_STORE[alternativeKey]['1week_price'] = pW;
+                DATA_STORE[alternativeKey]['1week_ema'] = eW;
             }
         }
 
-        DATA_STORE[pairName]['fetched_at'] = new Date().toISOString();
-        console.log(`✅ Yahoo Done: ${pairName} →`, JSON.stringify(DATA_STORE[pairName]));
+        const timestamp = new Date().toISOString();
+        DATA_STORE[pairName]['fetched_at'] = timestamp;
+        DATA_STORE[alternativeKey]['fetched_at'] = timestamp;
+
+        console.log(`✅ Yahoo Dual Done: ${pairName}/${alternativeKey} mapped successfully.`);
         return true;
 
     } catch (e) {
