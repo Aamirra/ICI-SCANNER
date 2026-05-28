@@ -21,7 +21,11 @@ const db = admin.database();
 const firebasePut = (key, data) => db.ref(key).set(data);
 const firebaseGet = (key) => db.ref(key).once('value').then(snap => snap.val());
 
+// ════════════════════════════════════════
+// Scan lock — double scan se bachao
+// ════════════════════════════════════════
 let scanRunning = false;
+
 async function safeMasterScan() {
     if (scanRunning) {
         console.warn('[safeMasterScan] Scan pehle se chal raha hai — skip.');
@@ -29,7 +33,9 @@ async function safeMasterScan() {
     }
     scanRunning = true;
     try {
+        console.log(`[Scan] Starting @ ${new Date().toISOString()}`);
         await masterScan();
+        console.log(`[Scan] Done @ ${new Date().toISOString()}`);
     } catch (err) {
         console.error('[safeMasterScan] Error:', err?.message || err);
     } finally {
@@ -41,24 +47,48 @@ function getDefaultApiStatus() {
     return Object.fromEntries(config.KEYS.map(k => [k, 800]));
 }
 
-setInterval(checkBroadcasts, 2 * 60 * 1000);
+// ════════════════════════════════════════
+// ✅ FIX: Auto refresh intervals
+// Broadcasts  → har 2 min
+// Master Scan → har 5 min (live data ke liye)
+// ════════════════════════════════════════
+const SCAN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+setInterval(checkBroadcasts, 2 * 60 * 1000);
+setInterval(() => {
+    console.log('[AutoScan] Scheduled refresh trigger...');
+    safeMasterScan();
+}, SCAN_INTERVAL_MS);
+
+// ════════════════════════════════════════
+// HTTP Server
+// ════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
+    // Manual scan trigger endpoint
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'Scan started!' }));
+        res.end(JSON.stringify({ status: 'Scan started!', time: new Date().toISOString() }));
         safeMasterScan();
         return;
     }
 
-    // Leading slash hata do aur __dirname se join karo
+    // ✅ Status check endpoint — last scan time dekhne ke liye
+    if (safePath === '/status') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            scanRunning,
+            nextScanIn: `${SCAN_INTERVAL_MS / 60000} minutes interval`,
+            serverTime: new Date().toISOString()
+        }));
+        return;
+    }
+
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
 
-    // Security: sirf __dirname ke andar files serve karo
     if (!filePath.startsWith(__dirname + path.sep) && filePath !== __dirname) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -67,9 +97,9 @@ http.createServer((req, res) => {
 
     const ext = path.extname(filePath);
     const contentTypes = {
-        '.html': 'text/html',
-        '.js': 'application/javascript',
-        '.css': 'text/css',
+        '.html': 'application/javascript',
+        '.js':   'application/javascript',
+        '.css':  'text/css',
         '.json': 'application/json'
     };
     const contentType = contentTypes[ext] || 'text/plain';
@@ -86,7 +116,7 @@ http.createServer((req, res) => {
 
 }).listen(PORT, async () => {
     console.log(`[Server] Port ${PORT} pe chal raha hai.`);
-    sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
+    sendTG(`✅ *ICI SCANNER ONLINE*\nServer started! Auto-refresh: har ${SCAN_INTERVAL_MS / 60000} minute.`);
 
     try {
         const url = `${config.FIREBASE_URL}/api_status.json`;
@@ -115,6 +145,8 @@ http.createServer((req, res) => {
 
     await restoreState(firebaseGet);
     checkBroadcasts();
+
+    // ✅ Server start pe pehla scan
     safeMasterScan();
 });
 
