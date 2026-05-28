@@ -2,14 +2,7 @@ let chartPairs = [], cIdx = 0;
 
 function openCFromTable(i) {
     chartPairs = [...fPairs];
-    cIdx = i;
-    openC(cIdx);
-}
-
-function openCFromTarget(i, targetListPairs) {
-    chartPairs = [...targetListPairs];
-    cIdx = i;
-    openC(cIdx);
+    openC(i);
 }
 
 function openC(i) {
@@ -36,10 +29,7 @@ function openC(i) {
 
 function movePair(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) {
-        cIdx = newIdx;
-        openC(cIdx);
-    }
+    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
 }
 
 function closeC() {
