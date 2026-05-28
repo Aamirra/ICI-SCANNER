@@ -16,7 +16,8 @@ async function saveTargetList(PB_STATE, firebasePut) {
 
         if (!s || !s.phase || !s.dir) continue;
 
-        if (s.phase === 'pullback' || s.phase === 'fired' || s.phase === 'fractal_wait') {
+        // fired bhi rakho — jab tak invalid na ho
+        if (s.phase === 'pullback' || s.phase === 'fractal_wait' || s.phase === 'fired') {
             const cleanName = pName.replace(/_1h$/, '').replace(/_4h$/, '');
             targets[cleanName] = {
                 dir: s.dir,
@@ -26,12 +27,8 @@ async function saveTargetList(PB_STATE, firebasePut) {
         }
     }
 
-    if (Object.keys(targets).length === 0) {
-        console.log('[saveTargetList] Koi eligible target nahi — Firebase call skip.');
-        return;
-    }
-
     try {
+        // Chahe khali ho — Firebase ko update karo taake purana data remove ho
         await firebasePut('pb_state', targets);
         console.log(`[saveTargetList] ${Object.keys(targets).length} targets save ho gaye.`);
     } catch (err) {
