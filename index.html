@@ -61,5 +61,14 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 <script src="js/render.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
+<script>
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        if (document.getElementById('st').textContent === 'Connecting...') {
+            location.reload();
+        }
+    }, 5000);
+});
+</script>
 </body>
 </html>
