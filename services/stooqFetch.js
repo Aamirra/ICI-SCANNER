@@ -1,279 +1,151 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ Complete Pair Map
-const PAIRS = {
-    'US500':  { yahoo: 'SPY',  alt: 'SPY' },
-    'US100':  { yahoo: 'QQQ',  alt: 'QQQ' },
-    'US30':   { yahoo: 'DIA',  alt: 'DIA' },
-    'GER40':  { yahoo: 'EWG',  alt: 'EWG' },
-    'UK100':  { yahoo: 'EWU',  alt: 'EWU' },
-    'JPN225': { yahoo: 'EWJ',  alt: 'EWJ' },
-    'XAGUSD': { yahoo: 'SLV',  alt: 'SLV' },
-    // ✅ Forex pairs — Yahoo format
-    'EURUSD': { yahoo: 'EURUSD=X', alt: 'EURUSD' },
-    'GBPUSD': { yahoo: 'GBPUSD=X', alt: 'GBPUSD' },
-    'USDJPY': { yahoo: 'USDJPY=X', alt: 'USDJPY' },
-    'AUDUSD': { yahoo: 'AUDUSD=X', alt: 'AUDUSD' },
-    'USDCAD': { yahoo: 'USDCAD=X', alt: 'USDCAD' },
-    'XAUUSD': { yahoo: 'GC=F',     alt: 'XAUUSD' },
+// Sirf yeh 7 pairs Yahoo se — baaki sab TwelveData se
+const STOOQ_PAIRS = {
+    'US500':  '^GSPC',
+    'US100':  '^NDX',
+    'US30':   '^DJI',
+    'GER40':  '^GDAXI',
+    'UK100':  '^FTSE',
+    'JPN225': '^N225',
+    'XAGUSD': 'SI=F'
 };
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// ════════════════════════════════════════
-// ✅ FIXED: Correct ranges per interval
-// Yahoo limits:
-//   1h  → max 60d
-//   1d  → max 1y (use "1y")
-//   1wk → max 2y (use "2y")
-// ════════════════════════════════════════
-function getIntervalConfig(timeframe) {
-    if (timeframe === '1h')  return { interval: '1h',  range: '60d'  }; // ✅ was 730d — FIXED
-    if (timeframe === '1w')  return { interval: '1wk', range: '2y'   };
-    return                          { interval: '1d',  range: '1y'   }; // ✅ was 3mo — more data
-}
-
-function fetchYahooData(symbol, timeframe) {
-    const { interval, range } = getIntervalConfig(timeframe);
-    const path = `/v7/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&indicators=quote&includeTimestamps=true`;
+function fetchYahoo(symbol, interval, range) {
+    const encoded = encodeURIComponent(symbol);
+    const path = `/v8/finance/chart/${encoded}?interval=${interval}&range=${range}`;
 
     return new Promise((resolve) => {
         const req = https.get({
             hostname: 'query1.finance.yahoo.com',
-            path,
+            path: path,
             headers: {
-                // ✅ Updated User-Agent — older one gets blocked
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
             }
         }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
-                    const json = JSON.parse(data);
-                    const chart = json?.chart?.result?.[0];
+                    const j = JSON.parse(data);
+                    const result = j?.chart?.result?.[0];
+                    if (!result) { resolve(null); return; }
 
-                    // ✅ Log Yahoo error reason if blocked/invalid
-                    if (!chart) {
-                        const err = json?.chart?.error;
-                        console.warn(`⚠️ Yahoo returned no chart for ${symbol} [${interval}/${range}]: ${err?.description || 'unknown'}`);
-                        resolve(null);
-                        return;
-                    }
-                    if (!chart.timestamp) {
-                        console.warn(`⚠️ No timestamps for ${symbol}`);
-                        resolve(null);
-                        return;
-                    }
+                    const timestamps = result.timestamp || [];
+                    const quotes = result.indicators?.quote?.[0] || {};
+                    const closes = quotes.close || [];
+                    const highs = quotes.high || [];
+                    const lows = quotes.low || [];
 
-                    const timestamps = chart.timestamp;
-                    const quotes = chart.indicators.quote[0];
-                    const rows = [];
+                    let rows = timestamps.map((t, i) => ({
+                        date:  new Date(t * 1000).toISOString(),
+                        close: closes[i],
+                        high:  highs[i],
+                        low:   lows[i]
+                    })).filter(r => r.close != null && !isNaN(r.close) && r.close > 0);
 
-                    for (let i = 0; i < timestamps.length; i++) {
-                        const c = quotes.close[i];
-                        if (c === null || c === undefined || isNaN(c)) continue;
+                    // Market open ho toh last candle incomplete hoti hai
+                    if (rows.length > 1) rows = rows.slice(0, -1);
 
-                        rows.push({
-                            date:  new Date(timestamps[i] * 1000).toISOString(),
-                            open:  parseFloat(quotes.open[i])  || 0,
-                            high:  parseFloat(quotes.high[i])  || parseFloat(c),
-                            low:   parseFloat(quotes.low[i])   || parseFloat(c),
-                            close: parseFloat(c),
-                        });
-                    }
-
-                    console.log(`📊 ${symbol} [${interval}] → ${rows.length} candles fetched`);
                     resolve(rows.length > 0 ? rows : null);
-                } catch (e) {
-                    console.error(`❌ JSON parse error for ${symbol}:`, e.message);
+                } catch(e) {
                     resolve(null);
                 }
             });
-        }).on('error', (e) => {
-            console.error(`❌ Network error for ${symbol}:`, e.message);
-            resolve(null);
-        });
+        }).on('error', () => resolve(null));
 
-        req.setTimeout(15000, () => {
-            console.warn(`⏱️ Timeout for ${symbol}`);
+        req.setTimeout(10000, () => {
             req.destroy();
             resolve(null);
         });
     });
 }
 
-// ════════════════════════════════════════
-// Build 4H candles from 1H rows
-// ════════════════════════════════════════
 function build4H(hourlyRows) {
-    const grouped = {};
-    for (const row of hourlyRows) {
-        const dayKey = row.date.slice(0, 10);
-        const hour = new Date(row.date).getUTCHours();
-        const slot = Math.floor(hour / 4);
-        const key = `${dayKey}_${slot}`;
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(row);
-    }
-
     const candles = [];
-    for (const key of Object.keys(grouped).sort()) {
-        const group = grouped[key];
-        if (group.length > 0) {
-            candles.push({
-                close: group[group.length - 1].close,
-                high:  Math.max(...group.map(g => g.high)),
-                low:   Math.min(...group.map(g => g.low)),
-            });
-        }
+    for (let i = 0; i + 3 < hourlyRows.length; i += 4) {
+        const group = hourlyRows.slice(i, i + 4);
+        candles.push({
+            close: group[group.length - 1].close,
+            high:  Math.max(...group.map(g => g.high)),
+            low:   Math.min(...group.map(g => g.low))
+        });
     }
     return candles;
 }
 
-function safeEMA(closes, period) {
-    if (!closes || closes.length < period) return null;
-    const ema = calcEMA(closes, period);
-    if (!ema || isNaN(ema) || ema <= 0) return null;
-    return ema;
-}
-
-function getBullBear(lastClose, ema, marginPct = 0.0005) {
-    if (!ema || !lastClose) return null;
-    const diff = (lastClose - ema) / ema;
-    if (diff > marginPct)  return 'bull';
-    if (diff < -marginPct) return 'bear';
-    return 'neutral';
-}
-
-// ════════════════════════════════════════
-// Store helper — writes to both keys
-// ════════════════════════════════════════
-function storeResult(DATA_STORE, keys, tf, trend, price, ema) {
-    for (const k of keys) {
-        if (!DATA_STORE[k]) DATA_STORE[k] = {};
-        DATA_STORE[k][tf]            = trend;
-        DATA_STORE[k][`${tf}_price`] = price;
-        DATA_STORE[k][`${tf}_ema`]   = ema;
-    }
-}
-
-// ════════════════════════════════════════
-// MAIN ENGINE
-// ════════════════════════════════════════
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
+    const symbol = STOOQ_PAIRS[pairName];
+    if (!symbol) return false;
+
     if (!DATA_STORE[pairName]) DATA_STORE[pairName] = {};
 
-    const pair = PAIRS[pairName];
-
-    // ✅ Unknown pair — try Yahoo directly using pairName as symbol
-    const symbol = pair ? pair.yahoo : pairName;
-    const altKey  = pair ? pair.alt  : pairName;
-    const storeKeys = [pairName, altKey].filter((v, i, a) => a.indexOf(v) === i); // dedupe
-
-    if (!DATA_STORE[altKey]) DATA_STORE[altKey] = {};
-
     try {
-        console.log(`⏳ Fetching: ${pairName} → ${symbol}`);
-
-        // ── 1H + 4H ─────────────────────────────
-        const hourly = await fetchYahooData(symbol, '1h');
-        if (hourly && hourly.length >= 25) {
-            const closes1H = hourly.map(r => r.close);
-            const ema1H    = safeEMA(closes1H, 20);
-            const last1H   = closes1H[closes1H.length - 1];
-
-            if (ema1H) {
-                storeResult(DATA_STORE, storeKeys, '1h',
-                    getBullBear(last1H, ema1H),
-                    last1H.toFixed(4),
-                    ema1H.toFixed(4)
-                );
-            }
-
-            const rawPayload = {
-                closes: closes1H,
-                highs:  hourly.map(r => r.high),
-                lows:   hourly.map(r => r.low),
-                time:   hourly[hourly.length - 1].date
-            };
-            for (const k of storeKeys) RAW_1H[k] = rawPayload;
-
-            const candles4H = build4H(hourly);
-            if (candles4H.length >= 20) {
-                const closes4H = candles4H.map(c => c.close);
-                const ema4H    = safeEMA(closes4H, 20);
-                const last4H   = closes4H[closes4H.length - 1];
-                if (ema4H) {
-                    storeResult(DATA_STORE, storeKeys, '4h',
-                        getBullBear(last4H, ema4H),
-                        last4H.toFixed(4),
-                        ema4H.toFixed(4)
-                    );
-                }
-            }
-        } else {
-            console.warn(`⚠️ ${pairName}: Not enough 1H candles (got ${hourly?.length ?? 0})`);
+        // === 1H Data ===
+        const hourly = await fetchYahoo(symbol, '1h', '30d');
+        if (!hourly || hourly.length < 25) {
+            console.log(`Yahoo 1H failed: ${pairName} — rows: ${hourly?.length}`);
+            return false;
         }
 
-        await sleep(1500);
+        const closes1H = hourly.map(r => r.close);
+        const ema1H = calcEMA(closes1H, 20);
+        if (ema1H) {
+            DATA_STORE[pairName]['1h'] =
+                closes1H[closes1H.length - 1] > ema1H ? 'bull' : 'bear';
+        }
 
-        // ── 1D ──────────────────────────────────
-        const daily = await fetchYahooData(symbol, '1d');
+        RAW_1H[pairName] = {
+            closes: closes1H,
+            highs:  hourly.map(r => r.high),
+            lows:   hourly.map(r => r.low),
+            time:   hourly[hourly.length - 1].date
+        };
+
+        // === 4H Data ===
+        const candles4H = build4H(hourly);
+        if (candles4H.length >= 20) {
+            const closes4H = candles4H.map(c => c.close);
+            const ema4H = calcEMA(closes4H, 20);
+            if (ema4H) {
+                DATA_STORE[pairName]['4h'] =
+                    closes4H[closes4H.length - 1] > ema4H ? 'bull' : 'bear';
+            }
+        }
+
+        // === Daily Data ===
+        await new Promise(r => setTimeout(r, 500));
+        const daily = await fetchYahoo(symbol, '1d', '6mo');
         if (daily && daily.length >= 20) {
             const closesD = daily.map(r => r.close);
-            const emaD    = safeEMA(closesD, 20);
-            const lastD   = closesD[closesD.length - 1];
+            const emaD = calcEMA(closesD, 20);
             if (emaD) {
-                storeResult(DATA_STORE, storeKeys, '1day',
-                    getBullBear(lastD, emaD),
-                    lastD.toFixed(4),
-                    emaD.toFixed(4)
-                );
+                DATA_STORE[pairName]['1day'] =
+                    closesD[closesD.length - 1] > emaD ? 'bull' : 'bear';
             }
-        } else {
-            console.warn(`⚠️ ${pairName}: Not enough Daily candles (got ${daily?.length ?? 0})`);
         }
 
-        await sleep(1500);
-
-        // ── 1W ──────────────────────────────────
-        const weekly = await fetchYahooData(symbol, '1w');
+        // === Weekly Data ===
+        await new Promise(r => setTimeout(r, 500));
+        const weekly = await fetchYahoo(symbol, '1wk', '2y');
         if (weekly && weekly.length >= 20) {
             const closesW = weekly.map(r => r.close);
-            const emaW    = safeEMA(closesW, 20);
-            const lastW   = closesW[closesW.length - 1];
+            const emaW = calcEMA(closesW, 20);
             if (emaW) {
-                storeResult(DATA_STORE, storeKeys, '1week',
-                    getBullBear(lastW, emaW),
-                    lastW.toFixed(4),
-                    emaW.toFixed(4)
-                );
+                DATA_STORE[pairName]['1week'] =
+                    closesW[closesW.length - 1] > emaW ? 'bull' : 'bear';
             }
-        } else {
-            console.warn(`⚠️ ${pairName}: Not enough Weekly candles (got ${weekly?.length ?? 0})`);
         }
 
-        const timestamp = new Date().toISOString();
-        for (const k of storeKeys) DATA_STORE[k]['fetched_at'] = timestamp;
-
-        console.log(`✅ Done: ${pairName}`);
+        console.log(`Yahoo OK: ${pairName} — ${JSON.stringify(DATA_STORE[pairName])}`);
         return true;
 
-    } catch (e) {
-        console.error(`❌ Engine Error [${pairName}]:`, e.message);
+    } catch(e) {
+        console.log(`Yahoo error ${pairName}:`, e.message);
         return false;
     }
 }
 
-// ════════════════════════════════════════
-// EXPORTS
-// ════════════════════════════════════════
-module.exports = {
-    fetchStooqData,
-    fetchBybitData: async () => true, // disabled
-    STOOQ_PAIRS: PAIRS
-};
+module.exports = { fetchStooqData, STOOQ_PAIRS };
