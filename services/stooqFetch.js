@@ -12,15 +12,21 @@ const STOOQ_PAIRS = {
 };
 
 function fetchCSV(symbol, interval) {
-    const today = new Date();
-    const from = new Date();
+    let url;
 
-    if (interval === 'h') from.setDate(today.getDate() - 30);
-    else if (interval === 'd') from.setDate(today.getDate() - 120);
-    else if (interval === 'w') from.setDate(today.getDate() - 365);
+    // Hourly mein date range nahi — Stooq block karta hai
+    if (interval === 'h') {
+        url = `https://stooq.com/q/d/l/?s=${symbol}&i=h`;
+    } else {
+        const today = new Date();
+        const from = new Date();
 
-    const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
-    const url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${fmt(from)}&d2=${fmt(today)}`;
+        if (interval === 'd') from.setDate(today.getDate() - 120);
+        else if (interval === 'w') from.setDate(today.getDate() - 365);
+
+        const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
+        url = `https://stooq.com/q/d/l/?s=${symbol}&i=${interval}&d1=${fmt(from)}&d2=${fmt(today)}`;
+    }
 
     return new Promise((resolve) => {
         const req = https.get(url, (res) => {
@@ -51,7 +57,6 @@ function fetchCSV(symbol, interval) {
             });
         }).on('error', () => resolve(null));
 
-        // 10 second timeout
         req.setTimeout(10000, () => {
             req.destroy();
             resolve(null);
