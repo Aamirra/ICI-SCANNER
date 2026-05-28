@@ -1,8 +1,7 @@
 const https = require('https');
 const calcEMA = require('../utils/emaCalc');
 
-// ✅ 100% Correct CFD/Forex Tracking Tickers for Yahoo Finance
-// Yeh aapke original prices ($500 for SPY, $16000 for DAX) se match karenge!
+// ✅ Exact original ETF tickers mapping for layout compatibility
 const PAIRS = {
     'US500':  { yahoo: 'SPY',      type: 'ETF' },   // S&P 500 Index ETF
     'US100':  { yahoo: 'QQQ',      type: 'ETF' },   // NASDAQ 100 Index ETF
@@ -125,7 +124,7 @@ function getBullBear(lastClose, ema, marginPct = 0.0005) {
 }
 
 // ════════════════════════════════════════
-// MAIN FUNCTION
+// MAIN FUNCTION (Exact Mapping with Database Keys)
 // ════════════════════════════════════════
 async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
     const pair = PAIRS[pairName];
@@ -186,6 +185,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const emaD = safeEMA(closesD, 20);
             const lastD = closesD[closesD.length - 1];
             if (emaD) {
+                // 🟢 Original Key Alignment: '1day' 
                 DATA_STORE[pairName]['1day'] = getBullBear(lastD, emaD);
                 DATA_STORE[pairName]['1day_price'] = lastD.toFixed(4);
                 DATA_STORE[pairName]['1day_ema']   = emaD.toFixed(4);
@@ -202,6 +202,7 @@ async function fetchStooqData(pairName, DATA_STORE, RAW_1H) {
             const emaW = safeEMA(closesW, 20);
             const lastW = closesW[closesW.length - 1];
             if (emaW) {
+                // 🟢 Original Key Alignment: '1week'
                 DATA_STORE[pairName]['1week'] = getBullBear(lastW, emaW);
                 DATA_STORE[pairName]['1week_price'] = lastW.toFixed(4);
                 DATA_STORE[pairName]['1week_ema']   = emaW.toFixed(4);
