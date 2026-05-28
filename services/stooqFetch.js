@@ -38,12 +38,15 @@ function fetchYahoo(symbol, interval, range) {
                     const highs = quotes.high || [];
                     const lows = quotes.low || [];
 
-                    const rows = timestamps.map((t, i) => ({
+                    let rows = timestamps.map((t, i) => ({
                         date:  new Date(t * 1000).toISOString(),
                         close: closes[i],
                         high:  highs[i],
                         low:   lows[i]
-                    })).filter(r => r.close != null && !isNaN(r.close));
+                    })).filter(r => r.close != null && !isNaN(r.close) && r.close > 0);
+
+                    // Last candle skip karo — live/incomplete hoti hai
+                    if (rows.length > 1) rows = rows.slice(0, -1);
 
                     resolve(rows.length > 0 ? rows : null);
                 } catch(e) {
