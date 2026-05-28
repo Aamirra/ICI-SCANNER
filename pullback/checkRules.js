@@ -37,7 +37,6 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
 
     const trendOk = dir === 'bull' ? ema20 > sma50 : ema20 < sma50;
 
-    // Direction set
     if (w1 === dir && d1 === dir && trendOk) {
         if (s.dir !== dir) {
             s = { dir, phase: null, firedAt: 0, reminded: false };
@@ -46,7 +45,6 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
 
     if (s.dir !== dir) return s;
 
-    // Invalid conditions reset
     if (w1 !== dir || d1 !== dir || !trendOk) {
         s = { dir: null, phase: null, firedAt: 0, reminded: false };
         PB_STATE[stateKey] = s;
@@ -54,7 +52,6 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         return s;
     }
 
-    // Pullback — price EMA ke neeche/upar
     const inPullback = dir === 'bull' ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
         s.phase = 'pullback';
@@ -63,22 +60,18 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // EMA cross — fractal_wait phase shuru
-    // Is candle ka HIGH khud fractalRef ban jata hai
     const crossedEMA = dir === 'bull' ? lastClose > ema20 : lastClose < ema20;
     if (s.phase === 'pullback' && crossedEMA) {
         s.phase = 'fractal_wait';
         s.fractalRef = dir === 'bull' ? lastHigh : lastLow;
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
-        return s; // Is candle ko skip karo — agli candle se check shuru
+        return s;
     }
 
-    // Fractal wait — har candle close pe check
     if (s.phase === 'fractal_wait') {
         const isBull = dir === 'bull';
 
-        // Wapas EMA ke neeche/upar gaya — pullback reset
         const wentBack = isBull ? lastClose < ema20 : lastClose > ema20;
         if (wentBack) {
             s.phase = 'pullback';
@@ -88,7 +81,6 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, tf
             return s;
         }
 
-        // Inside bar check — candle ka HIGH <= fractalRef (bull)
         const fractalFound = isBull
             ? lastHigh <= s.fractalRef
             : lastLow >= s.fractalRef;
@@ -126,7 +118,6 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
                 await saveTargetList(PB_STATE, firebasePut);
             }
         } else {
-            // High break ho gaya — is candle ka high naya reference
             s.fractalRef = isBull ? lastHigh : lastLow;
             PB_STATE[stateKey] = s;
         }
@@ -154,8 +145,12 @@ async function checkSetup(p, r, raw, sendTG, firebasePut, tf) {
     const stateKey = `${p.n}_${tf}`;
     let s = PB_STATE[stateKey] || { dir: null, phase: null, firedAt: 0, reminded: false };
 
-    s = await handleDirection('bull', s, stateKey, p, raw, sendTG, firebasePut, tf, r);
-    s = await handleDirection('bear', s, stateKey, p, raw, sendTG, firebasePut, tf, r);
+    // Bull ya Bear — conflict nahi hoga
+    if (w1 === 'bull' && d1 === 'bull') {
+        s = await handleDirection('bull', s, stateKey, p, raw, sendTG, firebasePut, tf, r);
+    } else if (w1 === 'bear' && d1 === 'bear') {
+        s = await handleDirection('bear', s, stateKey, p, raw, sendTG, firebasePut, tf, r);
+    }
 
     PB_STATE[stateKey] = s;
 }
