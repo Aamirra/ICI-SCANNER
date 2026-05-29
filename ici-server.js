@@ -11,11 +11,19 @@ const updateApiStatus = require('./services/apiTracker');
 const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
+// Pullback state init
+const { initState } = require('./pullback/checkRules');
+
 // Firebase init
 admin.initializeApp({
     credential: admin.credential.cert(require('/etc/secrets/serviceAccount.json')),
     databaseURL: config.FIREBASE_URL
 });
+
+// Firebase helper functions
+function firebaseGet(path) {
+    return admin.database().ref(path).once('value').then(snap => snap.val());
+}
 
 // Broadcast check — every 2 minutes (independent of scan)
 setInterval(checkBroadcasts, 2 * 60 * 1000);
@@ -54,6 +62,7 @@ http.createServer((req, res) => {
 }).listen(PORT, async () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 
+    // Firebase se API status load karo
     const url = `${config.FIREBASE_URL}/api_status.json`;
     https.get(url, (res) => {
         let d = '';
@@ -79,6 +88,9 @@ http.createServer((req, res) => {
             Object.fromEntries(config.KEYS.map(k => [k, 800]))
         );
     });
+
+    // Pullback state Firebase se load karo — scan se pehle
+    await initState(firebaseGet);
 
     checkBroadcasts();
     masterScan();
