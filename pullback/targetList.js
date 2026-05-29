@@ -2,11 +2,12 @@ function saveTargetList(PB_STATE, firebasePut) {
     const targets = {};
     for (const pName in PB_STATE) {
         const s = PB_STATE[pName];
-        if (s.dir !== null) {  // Fix #1: phase null wale bhi save honge
+        if (s.dir !== null) {
             targets[pName] = {
                 dir: s.dir,
                 phase: s.phase,
-                lastAlertKey: s.lastAlertKey || null,  // Fix #2: duplicate alert rokne ke liye
+                lastAlertKey: s.lastAlertKey || null,
+                reminded: s.reminded || false,  // Fix #3: reminded bhi save karo
                 timestamp: s.firedAt || Date.now()
             };
         }
