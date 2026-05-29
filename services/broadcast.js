@@ -15,8 +15,20 @@ async function checkBroadcasts() {
                 if (data && data.timestamp > lastBroadcastTimestamp) {
                     if (lastBroadcastTimestamp !== 0) {
                         const message = {
-                            notification: { title: "ICI Update", body: data.message },
-                            topic: 'all_users'
+                            notification: { 
+                                title: "ICI Update", 
+                                body: data.message 
+                            },
+                            topic: 'all_users',
+                            // --- Fast Delivery Settings ---
+                            android: {
+                                priority: "high", // Sabse fast delivery ke liye
+                                notification: {
+                                    sound: 'default',
+                                    click_action: 'TOPIC_NOTIFICATION',
+                                    channel_id: 'ici_notif' // Jo humne app mein set kiya hai
+                                }
+                            }
                         };
                         admin.messaging().send(message).catch(() => {});
                     }
