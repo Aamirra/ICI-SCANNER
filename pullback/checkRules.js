@@ -3,7 +3,11 @@ const calcSMA = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
 let PB_STATE = {};
-let LAST_ALERT_TIME = {};
+
+// Firebase se state load karo startup pe
+async function initState(firebaseGet) {
+    PB_STATE = await firebaseGet('pb_state') || {};
+}
 
 function checkRules(p, r, raw, sendTG, firebasePut) {
     if (!raw?.closes || raw.closes.length < 50) return;
@@ -18,26 +22,28 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     if (!ema20 || !sma50) return;
 
     const tvLink = `https://www.tradingview.com/chart/?symbol=${p.n}`;
-    let s = PB_STATE[p.n] || { dir: null, phase: null, firedAt: 0, reminded: false };
+    let s = PB_STATE[p.n] || { dir: null, phase: null, firedAt: 0, lastAlertKey: null };
 
     // ── BULL LOGIC ──
     if (w1 === 'bull' && d1 === 'bull' && ema20 > sma50) {
         if (s.dir !== 'bull') {
-            s = { dir: 'bull', phase: null, firedAt: 0, reminded: false };
+            s = { dir: 'bull', phase: null, firedAt: 0, lastAlertKey: null };
+            PB_STATE[p.n] = s;
+            saveTargetList(PB_STATE, firebasePut); // Fix #1: direction change immediately save
         }
     }
 
     if (s.dir === 'bull') {
         // Cancel: EMA cross ya 1W/1D bear
         if (w1 !== 'bull' || d1 !== 'bull' || ema20 < sma50) {
-            s = { dir: null, phase: null, firedAt: 0, reminded: false };
+            s = { dir: null, phase: null, firedAt: 0, lastAlertKey: null };
             PB_STATE[p.n] = s;
             saveTargetList(PB_STATE, firebasePut);
             return;
         }
 
         // Price EMA20 ke neeche close → pullback
-        if ((s.phase === null || s.phase === 'fired') && lastClose < ema20) {
+        if (s.phase === null && lastClose < ema20) { // Fix #2: 'fired' hata diya, sirf null
             s.phase = 'pullback';
             saveTargetList(PB_STATE, firebasePut);
         }
@@ -45,8 +51,8 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
         // Price EMA20 ke upar close → BUY ALERT
         if (s.phase === 'pullback' && lastClose > ema20) {
             const key = `${p.n}_bull_${raw.time}`;
-            if (LAST_ALERT_TIME[p.n] !== key) {
-                LAST_ALERT_TIME[p.n] = key;
+            if (s.lastAlertKey !== key) { // Fix #4: memory variable ki jagah state mein save
+                s.lastAlertKey = key;
                 sendTG(
 `🎯 *ICI ALERT*
 
@@ -62,7 +68,6 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
                 );
                 s.phase = 'fired';
                 s.firedAt = Date.now();
-                s.reminded = false;
                 saveTargetList(PB_STATE, firebasePut);
             }
         }
@@ -71,21 +76,23 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     // ── BEAR LOGIC ──
     if (w1 === 'bear' && d1 === 'bear' && ema20 < sma50) {
         if (s.dir !== 'bear') {
-            s = { dir: 'bear', phase: null, firedAt: 0, reminded: false };
+            s = { dir: 'bear', phase: null, firedAt: 0, lastAlertKey: null };
+            PB_STATE[p.n] = s;
+            saveTargetList(PB_STATE, firebasePut); // Fix #1: direction change immediately save
         }
     }
 
     if (s.dir === 'bear') {
         // Cancel: EMA cross ya 1W/1D bull
         if (w1 !== 'bear' || d1 !== 'bear' || ema20 > sma50) {
-            s = { dir: null, phase: null, firedAt: 0, reminded: false };
+            s = { dir: null, phase: null, firedAt: 0, lastAlertKey: null };
             PB_STATE[p.n] = s;
             saveTargetList(PB_STATE, firebasePut);
             return;
         }
 
         // Price EMA20 ke upar close → pullback
-        if ((s.phase === null || s.phase === 'fired') && lastClose > ema20) {
+        if (s.phase === null && lastClose > ema20) { // Fix #2: 'fired' hata diya, sirf null
             s.phase = 'pullback';
             saveTargetList(PB_STATE, firebasePut);
         }
@@ -93,8 +100,8 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
         // Price EMA20 ke neeche close → SELL ALERT
         if (s.phase === 'pullback' && lastClose < ema20) {
             const key = `${p.n}_bear_${raw.time}`;
-            if (LAST_ALERT_TIME[p.n] !== key) {
-                LAST_ALERT_TIME[p.n] = key;
+            if (s.lastAlertKey !== key) { // Fix #4: memory variable ki jagah state mein save
+                s.lastAlertKey = key;
                 sendTG(
 `🎯 *ICI ALERT*
 
@@ -110,7 +117,6 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
                 );
                 s.phase = 'fired';
                 s.firedAt = Date.now();
-                s.reminded = false;
                 saveTargetList(PB_STATE, firebasePut);
             }
         }
@@ -119,4 +125,4 @@ function checkRules(p, r, raw, sendTG, firebasePut) {
     PB_STATE[p.n] = s;
 }
 
-module.exports = { checkRules, getPBState: () => PB_STATE };
+module.exports = { checkRules, getPBState: () => PB_STATE, initState };
