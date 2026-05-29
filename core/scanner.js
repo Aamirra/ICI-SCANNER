@@ -119,12 +119,11 @@ async function masterScan() {
         failed = stillFailed;
         attempt++;
         if (failed.length > 0) {
-            // Thoda wait karo dobara try se pehle
             await new Promise(res => setTimeout(res, 5000));
         }
     }
 
-    pullbackEngine.checkReminders(sendTG);
+    checkReminders(sendTG, firebasePut);  // ✅ FIX: yahi ek line thi
     console.log(`=== Scan fully complete: ${new Date().toLocaleTimeString()} ===`);
 
     setTimeout(masterScan, msUntilNextHourClose());
