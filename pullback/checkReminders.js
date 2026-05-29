@@ -1,8 +1,9 @@
 const { getPBState } = require('./checkRules');
+const saveTargetList = require('./targetList');
 
 const REMINDER_MS = 60 * 60 * 1000;
 
-function checkReminders(sendTG) {
+function checkReminders(sendTG, firebasePut) {  // Fix #1: firebasePut add kiya
     const now = Date.now();
     const PB_STATE = getPBState();
 
@@ -40,7 +41,9 @@ function checkReminders(sendTG) {
 🔗 ${tvLink}`
                 );
             }
+
             s.reminded = true;
+            saveTargetList(PB_STATE, firebasePut);  // Fix #2: Firebase mein save karo
         }
     }
 }
