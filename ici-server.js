@@ -11,8 +11,8 @@ const updateApiStatus = require('./services/apiTracker');
 const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
-// Pullback state init
-const { initState } = require('./pullback/checkRules');
+// Pullback state restore
+const { restoreState } = require('./pullback/checkRules');
 
 // Firebase init
 admin.initializeApp({
@@ -20,12 +20,12 @@ admin.initializeApp({
     databaseURL: config.FIREBASE_URL
 });
 
-// Firebase helper functions
-function firebaseGet(path) {
-    return admin.database().ref(path).once('value').then(snap => snap.val());
+// Firebase helper
+function firebaseGet(p) {
+    return admin.database().ref(p).once('value').then(snap => snap.val());
 }
 
-// Broadcast check — every 2 minutes (independent of scan)
+// Broadcast check — every 2 minutes
 setInterval(checkBroadcasts, 2 * 60 * 1000);
 
 // HTTP Server
@@ -33,7 +33,6 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // Manual scan route
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'Scan started!' }));
@@ -41,7 +40,15 @@ http.createServer((req, res) => {
         return;
     }
 
-    const filePath = path.join(__dirname, safePath === '/' ? 'index.html' : safePath);
+    const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
+    const filePath = path.join(__dirname, relativePath);
+
+    if (!filePath.startsWith(path.join(__dirname))) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+    }
+
     const ext = path.extname(filePath);
     const contentTypes = {
         '.html': 'text/html',
@@ -62,7 +69,6 @@ http.createServer((req, res) => {
 }).listen(PORT, async () => {
     sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 
-    // Firebase se API status load karo
     const url = `${config.FIREBASE_URL}/api_status.json`;
     https.get(url, (res) => {
         let d = '';
@@ -89,8 +95,7 @@ http.createServer((req, res) => {
         );
     });
 
-    // Pullback state Firebase se load karo — scan se pehle
-    await initState(firebaseGet);
+    await restoreState(firebaseGet);
 
     checkBroadcasts();
     masterScan();
