@@ -8,6 +8,7 @@ let PB_STATE = {};
 let LAST_ALERT_TIME = {};
 
 const MAX_ALERT_CACHE = 500;
+const REMINDER_DELAY_MS = 4 * 60 * 60 * 1000; // 4 ghante baad reminder
 
 function isWeekend() {
     const day = new Date().getUTCDay();
@@ -53,6 +54,23 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, r)
         return s;
     }
 
+    // FIX: Reminder — fired ke 4 ghante baad agar entry nahi li
+    if (s.phase === 'fired' && !s.reminded && s.firedAt && (Date.now() - s.firedAt) >= REMINDER_DELAY_MS) {
+        const tvLink = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(p.n)}`;
+        const reminderMsg =
+`⏰ *REMINDER — Setup Still Active*
+
+*${p.n}* — ${isBull ? '🟢 *BUY SETUP*' : '🔴 *SELL SETUP*'}
+
+Setup abhi bhi valid hai. Entry nahi li? Check karo.
+
+🔗 ${tvLink}`;
+        await sendTG(reminderMsg);
+        s.reminded = true;
+        PB_STATE[stateKey] = s;
+        await saveTargetList(PB_STATE, firebasePut);
+    }
+
     // Pullback — price EMA ke neeche/upar close ho
     const inPullback = isBull ? lastClose < ema20 : lastClose > ema20;
     if ((s.phase === null || s.phase === 'fired') && inPullback) {
@@ -63,14 +81,13 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, r)
     }
 
     // EMA cross — fractal_wait shuru
-    // Is candle ka HIGH/LOW fractalRef ban jata hai
     const crossedEMA = isBull ? lastClose > ema20 : lastClose < ema20;
     if (s.phase === 'pullback' && crossedEMA) {
         s.phase = 'fractal_wait';
         s.fractalRef = isBull ? lastHigh : lastLow;
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
-        return s; // Is candle skip — agli candle se check
+        return s;
     }
 
     // Fractal wait
@@ -92,7 +109,10 @@ async function handleDirection(dir, s, stateKey, p, raw, sendTG, firebasePut, r)
             : lastLow >= s.fractalRef;
 
         if (fractalFound) {
-            const candleTime = raw.time || Date.now();
+            const candleTime = raw.time
+                ? raw.time
+                : Math.floor(Date.now() / 60000) * 60000;
+
             const key = `${stateKey}_${dir}_${candleTime}`;
 
             if (LAST_ALERT_TIME[stateKey] !== key) {
@@ -114,7 +134,7 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
 
 🔗 ${tvLink}`;
 
-                sendTG(msg);
+                await sendTG(msg);
 
                 s.phase = 'fired';
                 s.firedAt = Date.now();
@@ -124,9 +144,9 @@ ${isBull ? '📈 Place *Buy Stop* above the fractal high' : '📉 Place *Sell St
                 await saveTargetList(PB_STATE, firebasePut);
             }
         } else {
-            // High/Low break — naya reference
             s.fractalRef = isBull ? lastHigh : lastLow;
             PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
         }
     }
 
@@ -145,13 +165,17 @@ async function checkSetup(p, r, raw, sendTG, firebasePut) {
     const sma50 = calcSMA(raw.closes, 50);
     if (!ema20 || !sma50) return;
 
-    const stateKey = `${p.n}_1h`;
-    let s = PB_STATE[stateKey] || { dir: null, phase: null, firedAt: 0, reminded: false, fractalRef: null };
+    const bullKey = `${p.n}_1h_bull`;
+    const bearKey = `${p.n}_1h_bear`;
 
-    s = await handleDirection('bull', s, stateKey, p, raw, sendTG, firebasePut, r);
-    s = await handleDirection('bear', s, stateKey, p, raw, sendTG, firebasePut, r);
+    let sBull = PB_STATE[bullKey] || { dir: null, phase: null, firedAt: 0, reminded: false, fractalRef: null };
+    let sBear = PB_STATE[bearKey] || { dir: null, phase: null, firedAt: 0, reminded: false, fractalRef: null };
 
-    PB_STATE[stateKey] = s;
+    sBull = await handleDirection('bull', sBull, bullKey, p, raw, sendTG, firebasePut, r);
+    sBear = await handleDirection('bear', sBear, bearKey, p, raw, sendTG, firebasePut, r);
+
+    PB_STATE[bullKey] = sBull;
+    PB_STATE[bearKey] = sBear;
 }
 
 async function checkRules(p, r, raw, sendTG, firebasePut) {
@@ -164,13 +188,23 @@ async function restoreState(firebaseGet) {
         if (saved && typeof saved === 'object') {
             for (const key in saved) {
                 const entry = saved[key];
-                PB_STATE[key] = {
+                const restored = {
                     dir: entry.dir || null,
                     phase: entry.phase || null,
-                    firedAt: entry.timestamp || 0,
-                    reminded: false,
+                    // FIX: pehle entry.timestamp tha — firedAt bhi check karo
+                    firedAt: entry.firedAt || entry.timestamp || 0,
+                    reminded: entry.reminded || false,
                     fractalRef: entry.fractalRef || null
                 };
+
+                // FIX: purana _1h key mila to dono naye keys mein migrate karo
+                // — warna restart pe koi bhi state restore nahi hoti thi
+                if (key.endsWith('_1h') && !key.endsWith('_bull') && !key.endsWith('_bear')) {
+                    PB_STATE[`${key}_bull`] = { ...restored };
+                    PB_STATE[`${key}_bear`] = { ...restored };
+                } else {
+                    PB_STATE[key] = restored;
+                }
             }
             console.log(`[restoreState] ${Object.keys(PB_STATE).length} states restore ho gaye.`);
         }
