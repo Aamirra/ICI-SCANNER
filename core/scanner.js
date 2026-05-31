@@ -33,7 +33,8 @@ function getKey() {
 
 async function fetchTF(p, tf) {
     const key = getKey();
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=65&apikey=${key}`;
+    // ✅ FIX: outputsize 65 → 500 (accurate EMA calculation ke liye)
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=500&apikey=${key}`;
 
     return new Promise(resolve => {
         https.get(url, { agent }, (r) => {
@@ -123,7 +124,7 @@ async function masterScan() {
         }
     }
 
-    checkReminders(sendTG, firebasePut);  // ✅ FIX: yahi ek line thi
+    checkReminders(sendTG, firebasePut);
     console.log(`=== Scan fully complete: ${new Date().toLocaleTimeString()} ===`);
 
     setTimeout(masterScan, msUntilNextHourClose());
