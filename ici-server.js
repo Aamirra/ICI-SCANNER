@@ -12,7 +12,7 @@ const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
 // Pullback state restore
-const { restoreState } = require('./pullback/checkRules');
+const { restoreState } = require('./pullback/setupScanner'); // ← fix
 
 // Firebase init
 admin.initializeApp({
