@@ -1,28 +1,24 @@
 // ─────────────────────────────────────────
 // bullSetupLogic.js
 // Kaam: Sirf BULL setup ki poori logic
-// Bear se koi lena dena nahi
 //
 // FLOW:
-//   1W+1D bull → 1H pe monitor shuru
-//   price < 20EMA close  → PULLBACK (watchlist add)
-//   price > 20EMA close  → refHigh mark karo
-//   next candle high > refHigh → refHigh update, wait karo
+//   1W+1D price > 20EMA → monitor shuru
+//   1H price < 20EMA close  → PULLBACK
+//   1H price > 20EMA close  → refHigh mark
+//   next candle high > refHigh → update, wait
 //   next candle high ≤ refHigh → INSIDE BAR → 🔔 ALERT
-//   Reminder → checkReminders.js handle karta hai (30 min baad)
-//   20EMA < 50SMA kabhi bhi → INVALID, pair remove
+//   Reminder → checkReminders.js (30 min baad)
 // ─────────────────────────────────────────
 
 const calcEMA  = require('../utils/emaCalc');
-const calcSMA  = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
 const { PB_STATE,
         LAST_ALERT_TIME,
-        trimAlertCache,
-        removeFromWatchlist } = require('./tradeStateManager');
+        trimAlertCache }      = require('./tradeStateManager');
 
-const { buildICIAlertMsg } = require('./telegramAlertBuilder');
+const { buildICIAlertMsg }    = require('./telegramAlertBuilder');
 
 function defaultBullState() {
     return {
@@ -43,15 +39,11 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     const lastHigh  = highs[highs.length - 1];
 
     const ema20 = calcEMA(cls, 20);
-    const sma50 = calcSMA(cls, 50);
 
+    // 1W+1D: price > 20EMA hona chahiye
     const trendValid = r['1week'] === 'bull' && r['1day'] === 'bull';
-    const emaOk      = ema20 > sma50;
 
     let s = PB_STATE[stateKey] || defaultBullState();
-
-    // Already invalid → kuch mat karo
-    if (s.phase === 'invalid') return s;
 
     // 1W/1D trend khatam → reset
     if (!trendValid) {
@@ -62,18 +54,6 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         }
         return s;
     }
-
-    // INVALID: 20EMA ne 50SMA cross kiya neeche
-    if (!emaOk && s.phase !== null) {
-        s.phase = 'invalid';
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        await removeFromWatchlist(p, firebasePut);
-        console.log(`[BULL INVALID] ${p.n} — 20EMA < 50SMA, pair remove`);
-        return s;
-    }
-
-    if (!emaOk) return s;
 
     // null → watching
     if (s.phase === null) {
