@@ -1,49 +1,30 @@
-const { getPBState } = require('./checkRules');
-const saveTargetList = require('./targetList');
+// ─────────────────────────────────────────
+// checkReminders.js
+// Kaam: Alert ke 30 min baad reminder bhejna
+//       Yeh timer pe chalta hai — candle ka wait nahi
+// ─────────────────────────────────────────
 
-const REMINDER_MS = 60 * 60 * 1000;
+const { getPBState }       = require('./setupScanner');
+const { buildReminderMsg } = require('./telegramAlertBuilder');
+const saveTargetList       = require('./targetList');
+const { REMINDER_DELAY_MS } = require('./alertSettings'); // 30 min
 
-function checkReminders(sendTG, firebasePut) {  // Fix #1: firebasePut add kiya
-    const now = Date.now();
+function checkReminders(sendTG, firebasePut) {
+    const now      = Date.now();
     const PB_STATE = getPBState();
 
     for (const pName in PB_STATE) {
         const s = PB_STATE[pName];
-        if (s.phase === 'fired' && !s.reminded && (now - s.firedAt) >= REMINDER_MS) {
-            const tvLink = `https://www.tradingview.com/chart/?symbol=${pName}`;
 
-            if (s.dir === 'bull') {
-                sendTG(
-`🔔 *ICI REMINDER*
+        // Sirf fired phase mein — aur reminded nahi hua abhi tak
+        if (s.phase === 'fired' && !s.reminded && s.firedAt &&
+           (now - s.firedAt) >= REMINDER_DELAY_MS) {
 
-*${pName}* — 🟢 *BULL SETUP STILL ACTIVE*
-
-📌 *ENTRY PLAN:*
-⏳ Wait for a bullish fractal to form
-📈 Place *Buy Stop* above the fractal high
-🛑 Stop Loss below the fractal low
-⚖️ After 1:1 RR move Stop Loss to Breakeven
-
-🔗 ${tvLink}`
-                );
-            } else {
-                sendTG(
-`🔔 *ICI REMINDER*
-
-*${pName}* — 🔴 *BEAR SETUP STILL ACTIVE*
-
-📌 *ENTRY PLAN:*
-⏳ Wait for a bearish fractal to form
-📉 Place *Sell Stop* below the fractal low
-🛑 Stop Loss above the fractal high
-⚖️ After 1:1 RR move Stop Loss to Breakeven
-
-🔗 ${tvLink}`
-                );
-            }
+            const isBull = s.dir === 'bull';
+            sendTG(buildReminderMsg(pName, isBull));
 
             s.reminded = true;
-            saveTargetList(PB_STATE, firebasePut);  // Fix #2: Firebase mein save karo
+            saveTargetList(PB_STATE, firebasePut);
         }
     }
 }
