@@ -12,7 +12,7 @@ const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
 // Pullback state restore
-const { restoreState } = require('./pullback/setupScanner'); // ← fix
+const { restoreState } = require('./pullback/setupScanner');
 
 // Firebase init
 admin.initializeApp({
@@ -33,10 +33,16 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
+    // ✅ FIX: /scan endpoint pe duplicate scan blocked
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'Scan started!' }));
-        masterScan();
+        if (masterScan.isBusy()) {
+            res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
+            console.log('⚠️ /scan hit but scan already running — blocked');
+        } else {
+            res.end(JSON.stringify({ status: 'Scan started!' }));
+            masterScan();
+        }
         return;
     }
 
