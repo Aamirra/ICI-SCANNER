@@ -14,17 +14,17 @@ const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
 let DATA_STORE = {};
 let RAW_1H = {};
 let keyUsage = {};
-let keyCallTimes = {};   // ✅ FIX: per-key per-minute call tracker
+let keyCallTimes = {};
 let currentKeyIdx = 0;
 let lastReportTime = Date.now();
-let isScanning = false;  // ✅ FIX: duplicate scan lock
+let isScanning = false;
 
 config.KEYS.forEach(k => {
     keyUsage[k] = 800;
     keyCallTimes[k] = [];
 });
 
-// ✅ FIX: max 7 calls per key per minute
+// Max 7 calls per key per minute
 function getAvailableKey() {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
@@ -33,7 +33,6 @@ function getAvailableKey() {
         const idx = (currentKeyIdx + i) % config.KEYS.length;
         const k = config.KEYS[idx];
 
-        // 1 minute se purane calls hata do
         keyCallTimes[k] = (keyCallTimes[k] || []).filter(t => t > oneMinuteAgo);
 
         const hasCredit = (keyUsage[k] === undefined || keyUsage[k] >= 10);
@@ -45,10 +44,9 @@ function getAvailableKey() {
             return k;
         }
     }
-    return null; // sab keys rate-limited
+    return null;
 }
 
-// ✅ FIX: key available hone ka wait karo
 async function getKey() {
     while (true) {
         const key = getAvailableKey();
@@ -60,10 +58,12 @@ async function getKey() {
 
 async function fetchTF(p, tf) {
     const key = await getKey();
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=500&apikey=${key}`;
+    // ✅ FIX: 500 → 200 (fast + accurate EMA)
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=200&apikey=${key}`;
 
     return new Promise(resolve => {
-        https.get(url, { agent }, (r) => {
+        // ✅ FIX: 15 second timeout — request hang nahi karega
+        const req = https.get(url, { agent }, (r) => {
             const rem = r.headers['api-usage-remaining'] || r.headers['x-api-usage-remaining'];
             if (rem) {
                 keyUsage[key] = parseInt(rem);
@@ -93,7 +93,16 @@ async function fetchTF(p, tf) {
                     resolve(false);
                 }
             });
-        }).on('error', (err) => {
+        });
+
+        // ✅ FIX: 15s timeout
+        req.setTimeout(15000, () => {
+            console.log(`⏱️ Timeout: ${p.n} ${tf}`);
+            req.destroy();
+            resolve(false);
+        });
+
+        req.on('error', (err) => {
             console.log(`Network error ${p.n}:`, err.message);
             resolve(false);
         });
@@ -101,7 +110,6 @@ async function fetchTF(p, tf) {
 }
 
 async function masterScan() {
-    // ✅ FIX: ek waqt mein sirf ek scan
     if (isScanning) {
         console.log('⚠️ Scan already running — duplicate call blocked');
         return;
@@ -116,7 +124,6 @@ async function masterScan() {
     }
 
     try {
-        // Pehla scan
         let failed = [];
         for (const p of config.PAIRS) {
             for (const tf of ['1h', '4h', '1day', '1week']) {
@@ -133,7 +140,6 @@ async function masterScan() {
             }
         }
 
-        // Retry loop
         let attempt = 1;
         while (failed.length > 0) {
             console.log(`=== Retry attempt ${attempt} — ${failed.length} remaining ===`);
@@ -162,7 +168,7 @@ async function masterScan() {
         console.log(`=== Scan fully complete: ${new Date().toLocaleTimeString()} ===`);
 
     } finally {
-        isScanning = false; // ✅ error ho ya na ho, lock hamesha release hoga
+        isScanning = false;
     }
 
     const nextMs = msUntilNextHourClose();
@@ -170,7 +176,5 @@ async function masterScan() {
     setTimeout(masterScan, nextMs);
 }
 
-// ici-server.js ko check karne deta hai
 masterScan.isBusy = () => isScanning;
-
 module.exports = masterScan;
