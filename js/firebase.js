@@ -17,6 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let MARKET_DATA = {}, PB_STATE = {};
+window.sentimentData = {}; // Global store for sentiment
 
 db.ref('marketData').on('value', (snap) => {
     MARKET_DATA = snap.val() || {};
@@ -30,4 +31,18 @@ db.ref('marketData').on('value', (snap) => {
 db.ref('pb_state').on('value', (snap) => {
     PB_STATE = snap.val() || {};
     if (typeof updateBadge === 'function') updateBadge();
+});
+
+// Sentiment Listener
+db.ref('sentiment').on('value', function(snap) {
+    const data = snap.val();
+    if (data) {
+        window.sentimentData = data;
+    } else {
+        window.sentimentData = {};
+    }
+
+    if (typeof renderTable === 'function') {
+        renderTable();
+    }
 });
