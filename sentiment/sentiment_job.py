@@ -58,10 +58,10 @@ if __name__ == '__main__':
     # Pehli baar turant chalao
     run_job()
 
-    # Phir har ghante
-    schedule.every(1).hours.do(run_job)
-    logger.info("Scheduled: every 1 hour.")
+    # Timing 1 hour se badal kar 5 minutes kar di hai
+    schedule.every(5).minutes.do(run_job)
+    logger.info("Scheduled: every 5 minutes.")
 
     while True:
         schedule.run_pending()
-        time.sleep(60)
+        time.sleep(1) # 1 second sleep taake schedule missing na ho
