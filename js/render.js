@@ -1,4 +1,4 @@
-Let curF = 'all', fPairs = [];
+let curF = 'all', fPairs = [];
 
 function render() {
     const tbody = document.getElementById('tb');
