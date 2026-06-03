@@ -53,7 +53,8 @@ function maybeResetDaily() {
     }
 }
 
-// --- Sentiment Update Function (EMA-based, UNCHANGED) ---
+// --- Sentiment Update Function (EMA-based) ---
+// FIX: bullish_pct field mein pehle bearish_pct ka variable tha — ab sahi hai
 function updateSentiment(pairName, data) {
     const timeframes = ['1h', '4h', '1day', '1week'];
     let bullCount = 0;
@@ -67,42 +68,90 @@ function updateSentiment(pairName, data) {
         const bullish_pct = (bullCount / total) * 100;
         const bearish_pct = (bearCount / total) * 100;
         firebasePut(`sentiment/${pairName}`, {
-            bearish_pct: parseFloat(bearish_pct.toFixed(2)),
-            bullish_pct: parseFloat(bearish_pct.toFixed(2))
+            bullish_pct: parseFloat(bullish_pct.toFixed(2)),   // <-- FIXED (pehle bearish_pct tha)
+            bearish_pct: parseFloat(bearish_pct.toFixed(2))
         }).catch(err => console.log('Sentiment update error:', err));
     }
 }
 
-// --- External Sentiment Fetch & Save (NEW) ---
-// Fire-and-forget: call without `await` to avoid blocking masterScan loop.
-// Uses the shared `agent` (keepAlive) — no TwelveData keys or rate-limiting touched.
-function fetchAndSaveSentiment(pairName) {
-    // TODO: Replace this URL with your actual sentiment API endpoint.
-    // The response JSON must contain `bullish_pct` and `bearish_pct` fields.
-    const SENTIMENT_API_URL = `https://your-sentiment-api.com/data?symbol=${encodeURIComponent(pairName)}&apikey=YOUR_API_KEY_HERE`;
+// --- MentFX Daily Sentiment: Single Request, Sabhi Pairs ---
+// Ek hi baar poora HTML fetch karo, phir har pair ka DAILY data regex se nikalo.
+// Fire-and-forget — masterScan() mein bina await ke call karo.
+function fetchMentFXSentiment() {
+    const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
 
-    const req = https.get(SENTIMENT_API_URL, { agent }, (res) => {
+    const options = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        },
+        agent
+    };
+
+    const req = https.get(MENTFX_URL, options, (res) => {
         let raw = '';
         res.on('data', chunk => raw += chunk);
         res.on('end', () => {
             try {
-                const json = JSON.parse(raw);
-                // Expected shape: { bullish_pct: 65.4, bearish_pct: 34.6 }
-                if (json && json.bullish_pct !== undefined && json.bearish_pct !== undefined) {
+                // HTML structure (MentFX):
+                // Har pair ka ek block hota hai jisme pair name aur timeframe rows hoti hain.
+                // DAILY row ka pattern:
+                //   <td ...>EURUSD</td> ... <td>Daily</td> ... <td>65.4</td> ... <td>34.6</td>
+                //
+                // Regex: pair name capture karo, phir "Daily" row dhundo,
+                // uske baad pehle do numeric TD values = bullish%, bearish%
+
+                // Step 1: HTML ko pair-blocks mein todna (har pair ka section alag karo)
+                // MentFX ka layout: har pair ke liye ek <tr> group hota hai jisme pair name
+                // pehli cell mein hota hai, aur timeframe (Daily/Weekly/etc.) doosri cell mein.
+                // Yeh regex saari "Daily" wali rows pakdti hai:
+                //   Group 1 = Pair name (e.g. EURUSD)
+                //   Group 2 = Bullish %
+                //   Group 3 = Bearish %
+                //
+                // NOTE: Agar MentFX ka HTML structure alag nikle toh yahan regex adjust karna padega.
+                // Debugging ke liye: console.log(raw.substring(0, 3000)) karke actual HTML dekho.
+
+                const rowRegex = />\s*([A-Z]{6})\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*Daily\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>/gi;
+
+                let match;
+                let savedCount = 0;
+
+                while ((match = rowRegex.exec(raw)) !== null) {
+                    const pairName        = match[1].toUpperCase();   // e.g. "EURUSD"
+                    const daily_bullish   = match[2];                  // e.g. "65.4"
+                    const daily_bearish   = match[3];                  // e.g. "34.6"
+
+                    // Sirf wohi pairs save karo jo config.PAIRS mein hain
+                    const knownPair = config.PAIRS.find(p => p.n === pairName);
+                    if (!knownPair) continue;
+
                     firebasePut(`sentiment/${pairName}`, {
-                        bullish_pct: parseFloat(parseFloat(json.bullish_pct).toFixed(2)),
-                        bearish_pct: parseFloat(parseFloat(json.bearish_pct).toFixed(2))
-                    }).catch(err => console.log(`[fetchAndSaveSentiment] Firebase error for ${pairName}:`, err));
+                        bullish_pct: parseFloat(daily_bullish),
+                        bearish_pct: parseFloat(daily_bearish)
+                    }).catch(err => console.log(`MentFX save error (${pairName}):`, err));
+
+                    savedCount++;
                 }
+
+                if (savedCount === 0) {
+                    // Regex match nahi hui — HTML structure check karo
+                    console.log('[MentFX] WARNING: Koi bhi DAILY row match nahi hui. HTML snippet:', raw.substring(0, 500));
+                } else {
+                    console.log(`[MentFX] ${savedCount} pairs ka DAILY sentiment Firebase mein save kiya.`);
+                }
+
             } catch (e) {
-                console.log(`[fetchAndSaveSentiment] JSON parse error for ${pairName}:`, e.message);
+                console.log('[MentFX] Parse error:', e.message);
             }
         });
     });
 
-    // 10s timeout — silently destroyed so scanner is never blocked
-    req.setTimeout(10000, () => { req.destroy(); });
-    req.on('error', (err) => console.log(`[fetchAndSaveSentiment] Network error for ${pairName}:`, err.message));
+    // 15s timeout — silently destroy, scanner block nahi hoga
+    req.setTimeout(15000, () => {
+        req.destroy();
+        console.log('[MentFX] Request timeout.');
+    });
+    req.on('error', (err) => console.log('[MentFX] Network error:', err.message));
 }
 
 async function fetchKeyUsage(key) {
@@ -224,16 +273,19 @@ async function masterScan() {
     maybeResetDaily();
     const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
     let failed = await fetchBatch(jobs);
-    
+
+    // MentFX: Ek hi request mein poora HTML lo, sabhi pairs ka DAILY sentiment nikalo
+    // No await — background mein chalta hai, masterScan loop block nahi hoti
+    fetchMentFXSentiment();
+
     for (const p of config.PAIRS) {
         if (DATA_STORE[p.n]) {
             await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-            updateSentiment(p.n, DATA_STORE[p.n]);      // EMA-based sentiment (existing)
-            fetchAndSaveSentiment(p.n);                  // External API sentiment (new, no await — runs in background)
+            updateSentiment(p.n, DATA_STORE[p.n]);   // EMA-based sentiment (existing)
             pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
         }
     }
-    
+
     await refreshRealUsage();
     isScanning = false;
     setTimeout(masterScan, msUntilNextHourClose());
