@@ -2,7 +2,7 @@ import os
 import sys
 
 # ============================================================
-# STEP 1: Local packages folder ko sys.path mein add karo
+# STEP 1: Local packages folder ko sys.path mein SABSE PEHLE add karo
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCAL_PACKAGES_DIR = os.path.join(SCRIPT_DIR, "packages")
@@ -17,43 +17,73 @@ if LOCAL_PACKAGES_DIR not in sys.path:
     print(f"[INFO] sys.path mein add kiya: {LOCAL_PACKAGES_DIR}")
 
 # ============================================================
-# STEP 2: Packages import karo (FIXED - No crash)
+# STEP 2: Third-party packages import karo
 # ============================================================
 try:
     import schedule
-    print(f"[OK] schedule imported successfully")
+    print("[OK] schedule imported successfully")
 except ImportError as e:
     print(f"[ERROR] schedule import failed: {e}")
     sys.exit(1)
 
 try:
     import cloudscraper
-    print(f"[OK] cloudscraper imported successfully")
+    print("[OK] cloudscraper imported successfully")
 except ImportError as e:
     print(f"[ERROR] cloudscraper import failed: {e}")
     sys.exit(1)
 
 try:
     from bs4 import BeautifulSoup
-    print(f"[OK] BeautifulSoup imported successfully")
+    print("[OK] BeautifulSoup imported successfully")
 except ImportError as e:
     print(f"[ERROR] beautifulsoup4 import failed: {e}")
     sys.exit(1)
 
+# FIXED: Agar dotenv nahi bhi mila toh script crash nahi hogi, Render pe direct env vars chalengi
+HAS_DOTENV = False
+try:
+    from dotenv import load_dotenv
+    HAS_DOTENV = True
+    print("[OK] dotenv imported successfully")
+except ImportError as e:
+    print("[INFO] dotenv library nahi mili. Render Environment variables use hongi. No problem!")
+
 # ============================================================
-# STEP 3: Standard & Custom Project Imports (ICI SCANNER)
+# STEP 3: Standard Library Imports
 # ============================================================
 import time
 import logging
-from dotenv import load_dotenv
 
-# Aapke original database aur scraper modules
-from sentiment_db import create_sentiment_table, get_existing_pairs, upsert_sentiment
-from sentiment_scraper import fetch_sentiment_data
+# ============================================================
+# STEP 4: Project ke Custom Modules Import karo
+# ============================================================
+try:
+    from sentiment_db import create_sentiment_table, get_existing_pairs, upsert_sentiment
+    print("[OK] sentiment_db imported successfully")
+except ImportError as e:
+    print(f"[ERROR] sentiment_db import failed: {e}")
+    sys.exit(1)
 
-load_dotenv()
+try:
+    from sentiment_scraper import fetch_sentiment_data
+    print("[OK] sentiment_scraper imported successfully")
+except ImportError as e:
+    print(f"[ERROR] sentiment_scraper import failed: {e}")
+    sys.exit(1)
 
-# Logging setup
+# ============================================================
+# STEP 5: Environment Variables Load karo
+# ============================================================
+if HAS_DOTENV:
+    load_dotenv()
+    print("[OK] Environment variables load ho gayi (.env file se)")
+else:
+    print("[OK] Native Render Environment variables active hain")
+
+# ============================================================
+# STEP 6: Logging Setup
+# ============================================================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -62,7 +92,7 @@ logging.basicConfig(
 logger = logging.getLogger('sentiment_job')
 
 # ============================================================
-# STEP 4: Asli Sentiment Job Logic
+# STEP 7: Main Sentiment Job Logic
 # ============================================================
 def run_job():
     logger.info("══════════ Sentiment Job START ══════════")
@@ -81,38 +111,58 @@ def run_job():
             return
 
         # Step 3: Sirf whitelisted pairs ko database mein save karo
-        saved = skipped = 0
+        saved = 0
+        skipped = 0
         for pair, data in scraped.items():
             if pair in existing_pairs:
-                upsert_sentiment(pair, data['bearish_pct'], data['bullish_pct'])
-                logger.info(f"  ✓ {pair:<10} | Bear: {data['bearish_pct']}%  Bull: {data['bullish_pct']}%")
+                upsert_sentiment(
+                    pair, data['bearish_pct'], data['bullish_pct']
+                )
+                logger.info(
+                    f"  ✓ {pair:<10} | "
+                    f"Bear: {data['bearish_pct']}% "
+                    f"Bull: {data['bullish_pct']}%"
+                )
                 saved += 1
             else:
                 skipped += 1
                 
-        logger.info(f"══════════ Done — Saved: {saved} | Skipped: {skipped} ══════════")
+        logger.info(
+            f"══════════ Done — "
+            f"Saved: {saved} | "
+            f"Skipped: {skipped} ══════════"
+        )
     except Exception as e:
         logger.error(f"Error aaya job run mein: {e}", exc_info=True)
 
 # ============================================================
-# STEP 5: Automation Script Entry Point
+# STEP 8: Entry Point
 # ============================================================
 if __name__ == "__main__":
     logger.info("------------------------------------------")
-    logger.info(" Python Sentiment Job Script Start Hua ")
+    logger.info("  Python Sentiment Job Script Start Hua   ")
     logger.info("------------------------------------------")
-    
-    # DB Table structure automatic check/create karo
-    create_sentiment_table()
-    
-    # Pehli baar script chalte hi turant live data fetch karo
+    logger.info(f"Python Version : {sys.version}")
+    logger.info(f"Script Dir     : {SCRIPT_DIR}")
+    logger.info(f"Packages Dir   : {LOCAL_PACKAGES_DIR}")
+
+    # DB table check/create karo
+    try:
+        create_sentiment_table()
+        logger.info("[OK] Database table ready hai")
+    except Exception as e:
+        logger.error(f"Database table create nahi hua: {e}", exc_info=True)
+        sys.exit(1)
+
+    # Pehli baar turant run karo
+    logger.info("Pehla run abhi kar rahe hain...")
     run_job()
 
-    # Har 5 minute baad background mein automatic chalao
+    # Har 5 minute baad schedule karo
     schedule.every(5).minutes.do(run_job)
-    logger.info("Scheduled: har 5 minute baad automatic chalega.")
+    logger.info("Scheduled: Har 5 minute baad automatic chalega")
 
-    # Infinite loop scheduler ko active rakhne ke liye
+    # Infinite loop - scheduler active rakhne ke liye
     while True:
         schedule.run_pending()
         time.sleep(1)
