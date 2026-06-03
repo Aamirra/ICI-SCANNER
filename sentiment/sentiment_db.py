@@ -1,33 +1,38 @@
 import os
 import logging
 import psycopg2
+import json
+import firebase_admin
+from firebase_admin import credentials, db
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------
-# Agar aapke 'pairs' table mein pair column ka naam 'pair' nahi
-# balke 'symbol' ya kuch aur hai, toh yahan change karo.
+# --- Firebase Initialization ---
+if not firebase_admin._apps:
+    try:
+        cred_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
+        if cred_json:
+            cred_dict = json.loads(cred_json)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://fatima-16b38-default-rtdb.firebaseio.com'
+            })
+            logger.info("Firebase initialized successfully.")
+    except Exception as e:
+        logger.error(f"Firebase init error: {e}")
+
 # ---------------------------------------------------------------
 PAIRS_SYMBOL_COLUMN = 'pair'
 
-
 def _get_conn():
-    """Returns a new PostgreSQL connection."""
     url = os.environ.get('DATABASE_URL', '')
-    # Render ke URLs kabhi kabhi 'postgres://' se shuru hote hain;
-    # psycopg2 ko 'postgresql://' chahiye.
     if url.startswith('postgres://'):
         url = url.replace('postgres://', 'postgresql://', 1)
     return psycopg2.connect(url)
 
-
 def create_sentiment_table():
-    """
-    Ek baar chalta hai startup par.
-    'sentiment' table nahi hai toh banata hai.
-    """
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
@@ -47,12 +52,7 @@ def create_sentiment_table():
     finally:
         conn.close()
 
-
 def get_existing_pairs() -> set:
-    """
-    'pairs' table se sare pair names fetch karta hai.
-    Yeh whitelist hai — scraper sirf inhi ko save karega.
-    """
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
@@ -65,11 +65,8 @@ def get_existing_pairs() -> set:
     finally:
         conn.close()
 
-
 def upsert_sentiment(pair: str, bearish_pct: float, bullish_pct: float):
-    """
-    Pair exist kare toh UPDATE, nahi kare toh INSERT.
-    """
+    # 1. PostgreSQL Update
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
@@ -87,3 +84,14 @@ def upsert_sentiment(pair: str, bearish_pct: float, bullish_pct: float):
         conn.rollback()
     finally:
         conn.close()
+
+    # 2. Firebase Update
+    try:
+        if firebase_admin._apps:
+            ref = db.reference(f'sentiment/{pair}')
+            ref.set({
+                'bearish_pct': round(bearish_pct, 2),
+                'bullish_pct': round(bullish_pct, 2)
+            })
+    except Exception as e:
+        logger.error(f"Firebase update failed for {pair}: {e}")
