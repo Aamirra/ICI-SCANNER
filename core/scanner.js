@@ -53,8 +53,6 @@ function maybeResetDaily() {
     }
 }
 
-// --- Sentiment Update Function (EMA-based) ---
-// FIX: bullish_pct field mein pehle bearish_pct ka variable tha — ab sahi hai
 function updateSentiment(pairName, data) {
     const timeframes = ['1h', '4h', '1day', '1week'];
     let bullCount = 0;
@@ -68,15 +66,12 @@ function updateSentiment(pairName, data) {
         const bullish_pct = (bullCount / total) * 100;
         const bearish_pct = (bearCount / total) * 100;
         firebasePut(`sentiment/${pairName}`, {
-            bullish_pct: parseFloat(bullish_pct.toFixed(2)),   // <-- FIXED (pehle bearish_pct tha)
+            bullish_pct: parseFloat(bullish_pct.toFixed(2)),
             bearish_pct: parseFloat(bearish_pct.toFixed(2))
         }).catch(err => console.log('Sentiment update error:', err));
     }
 }
 
-// --- MentFX Daily Sentiment: Single Request, Sabhi Pairs ---
-// Ek hi baar poora HTML fetch karo, phir har pair ka DAILY data regex se nikalo.
-// Fire-and-forget — masterScan() mein bina await ke call karo.
 function fetchMentFXSentiment() {
     const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
 
@@ -92,36 +87,16 @@ function fetchMentFXSentiment() {
         res.on('data', chunk => raw += chunk);
         res.on('end', () => {
             try {
-                // HTML structure (MentFX):
-                // Har pair ka ek block hota hai jisme pair name aur timeframe rows hoti hain.
-                // DAILY row ka pattern:
-                //   <td ...>EURUSD</td> ... <td>Daily</td> ... <td>65.4</td> ... <td>34.6</td>
-                //
-                // Regex: pair name capture karo, phir "Daily" row dhundo,
-                // uske baad pehle do numeric TD values = bullish%, bearish%
-
-                // Step 1: HTML ko pair-blocks mein todna (har pair ka section alag karo)
-                // MentFX ka layout: har pair ke liye ek <tr> group hota hai jisme pair name
-                // pehli cell mein hota hai, aur timeframe (Daily/Weekly/etc.) doosri cell mein.
-                // Yeh regex saari "Daily" wali rows pakdti hai:
-                //   Group 1 = Pair name (e.g. EURUSD)
-                //   Group 2 = Bullish %
-                //   Group 3 = Bearish %
-                //
-                // NOTE: Agar MentFX ka HTML structure alag nikle toh yahan regex adjust karna padega.
-                // Debugging ke liye: console.log(raw.substring(0, 3000)) karke actual HTML dekho.
-
                 const rowRegex = />\s*([A-Z]{6})\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*Daily\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>/gi;
 
                 let match;
                 let savedCount = 0;
 
                 while ((match = rowRegex.exec(raw)) !== null) {
-                    const pairName        = match[1].toUpperCase();   // e.g. "EURUSD"
-                    const daily_bullish   = match[2];                  // e.g. "65.4"
-                    const daily_bearish   = match[3];                  // e.g. "34.6"
+                    const pairName      = match[1].toUpperCase();
+                    const daily_bullish = match[2];
+                    const daily_bearish = match[3];
 
-                    // Sirf wohi pairs save karo jo config.PAIRS mein hain
                     const knownPair = config.PAIRS.find(p => p.n === pairName);
                     if (!knownPair) continue;
 
@@ -134,7 +109,6 @@ function fetchMentFXSentiment() {
                 }
 
                 if (savedCount === 0) {
-                    // Regex match nahi hui — HTML structure check karo
                     console.log('[MentFX] WARNING: Koi bhi DAILY row match nahi hui. HTML snippet:', raw.substring(0, 500));
                 } else {
                     console.log(`[MentFX] ${savedCount} pairs ka DAILY sentiment Firebase mein save kiya.`);
@@ -146,7 +120,6 @@ function fetchMentFXSentiment() {
         });
     });
 
-    // 15s timeout — silently destroy, scanner block nahi hoga
     req.setTimeout(15000, () => {
         req.destroy();
         console.log('[MentFX] Request timeout.');
@@ -274,14 +247,12 @@ async function masterScan() {
     const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
     let failed = await fetchBatch(jobs);
 
-    // MentFX: Ek hi request mein poora HTML lo, sabhi pairs ka DAILY sentiment nikalo
-    // No await — background mein chalta hai, masterScan loop block nahi hoti
     fetchMentFXSentiment();
 
     for (const p of config.PAIRS) {
         if (DATA_STORE[p.n]) {
             await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-            updateSentiment(p.n, DATA_STORE[p.n]);   // EMA-based sentiment (existing)
+            updateSentiment(p.n, DATA_STORE[p.n]);
             pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
         }
     }
@@ -290,5 +261,8 @@ async function masterScan() {
     isScanning = false;
     setTimeout(masterScan, msUntilNextHourClose());
 }
+
+// ✅ FIX: isBusy attach kiya taake ici-server.js ka error na aaye
+masterScan.isBusy = () => isScanning;
 
 module.exports = masterScan;
