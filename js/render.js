@@ -6,14 +6,44 @@ function render() {
         if (curF === 'all') return true;
         return ['4h','1day','1week'].every(tf => (MARKET_DATA[p.n]||{})[tf] === curF);
     });
+    
     tbody.innerHTML = fPairs.map((p, idx) =>
         `<tr>
             <td class="pn" onclick="openCFromTable(${idx})">${p.n}</td>
             ${['1h','4h','1day','1week'].map(tf =>
                 `<td><div class="sig ${(MARKET_DATA[p.n]||{})[tf] || ''}"></div></td>`
             ).join('')}
+            ${getSentimentCell(p.n)}
         </tr>`
     ).join('');
+}
+
+// Function to render Sentiment column
+function getSentimentCell(pair) {
+    const s = window.sentimentData && window.sentimentData[pair];
+
+    if (!s || s.bearish_pct == null || s.bullish_pct == null) {
+        return `<td class="sent-cell" style="text-align:center">
+                    <span style="font-size:9px; color:#888;">– –</span>
+                </td>`;
+    }
+
+    const bear = Math.round(Number(s.bearish_pct));
+    const bull = Math.round(Number(s.bullish_pct));
+
+    const total = bear + bull;
+    const bearW = total > 0 ? Math.round((bear / total) * 100) : 50;
+    const bullW = 100 - bearW;
+
+    const bearText = bearW >= 18 ? `${bear}%` : '';
+    const bullText = bullW >= 18 ? `${bull}%` : '';
+
+    return `<td class="sent-cell">
+        <div class="sentiment-bar" style="display:flex; height:22px; width:100%; border-radius:4px; overflow:hidden; font-size:10px; color:white; font-weight:bold;">
+            <div class="s-bear" style="width:${bearW}%; background:#954A74; display:flex; align-items:center; justify-content:center;">${bearText}</div>
+            <div class="s-bull" style="width:${bullW}%; background:#3F7E69; display:flex; align-items:center; justify-content:center;">${bullText}</div>
+        </div>
+    </td>`;
 }
 
 function updateCounts() {
