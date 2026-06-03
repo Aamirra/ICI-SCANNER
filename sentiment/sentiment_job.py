@@ -1,3 +1,10 @@
+import os
+import sys
+
+# Render Node environment ke liye local packages ka path sab se upar add kar rahe hain
+local_packages_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'packages'))
+sys.path.insert(0, local_packages_path)
+
 import logging
 import schedule
 import time
@@ -58,10 +65,10 @@ if __name__ == '__main__':
     # Pehli baar turant chalao
     run_job()
 
-    # Timing 1 hour se badal kar 5 minutes kar di hai
+    # Phir har 5 minute baad
     schedule.every(5).minutes.do(run_job)
     logger.info("Scheduled: every 5 minutes.")
 
     while True:
         schedule.run_pending()
-        time.sleep(1) # 1 second sleep taake schedule missing na ho
+        time.sleep(1)
