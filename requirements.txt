@@ -1,3 +1,5 @@
 firebase-admin
 psycopg2-binary
 python-dotenv
+cloudscraper
+beautifulsoup4
