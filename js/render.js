@@ -1,4 +1,4 @@
-let curF = 'all', fPairs = [];
+Let curF = 'all', fPairs = [];
 
 function render() {
     const tbody = document.getElementById('tb');
@@ -18,7 +18,7 @@ function render() {
     ).join('');
 }
 
-// Function to render Sentiment column
+// Function to render Sentiment column (Updated with Claude's glow effect & colors)
 function getSentimentCell(pair) {
     const s = window.sentimentData && window.sentimentData[pair];
 
@@ -40,8 +40,8 @@ function getSentimentCell(pair) {
 
     return `<td class="sent-cell">
         <div class="sentiment-bar" style="display:flex; height:22px; width:100%; border-radius:4px; overflow:hidden; font-size:10px; color:white; font-weight:bold;">
-            <div class="s-bear" style="width:${bearW}%; background:#954A74; display:flex; align-items:center; justify-content:center;">${bearText}</div>
-            <div class="s-bull" style="width:${bullW}%; background:#3F7E69; display:flex; align-items:center; justify-content:center;">${bullText}</div>
+            <div class="s-bear" style="width:${bearW}%; background:#ff2244; box-shadow:0 0 6px #ff2244; display:flex; align-items:center; justify-content:center;">${bearText}</div>
+            <div class="s-bull" style="width:${bullW}%; background:#00cc66; box-shadow:0 0 6px #00cc66; display:flex; align-items:center; justify-content:center;">${bullText}</div>
         </div>
     </td>`;
 }
