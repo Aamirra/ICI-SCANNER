@@ -24,6 +24,7 @@
   --close-color:#ff4466;
   --chart-header:#0d1828; --chart-brd:#333;
   --toggle-icon:"☀️";
+  --sent-nodata:#555;
 }
 /* ── Light Mode ── */
 [data-theme="light"] {
@@ -41,6 +42,7 @@
   --close-color:#cc2233;
   --chart-header:#c8dff5; --chart-brd:#aac4dc;
   --toggle-icon:"🌙";
+  --sent-nodata:#aaa;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; transition:background 0.3s, color 0.3s; }
@@ -68,6 +70,46 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 .m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:var(--txt); }
 #chartOverlay { position:fixed; inset:0; background:var(--bg); z-index:4000; display:none; flex-direction:column; }
 .nav-btn { background:var(--nav-btn-bg); color:var(--nav-btn-color); border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
+
+/* ── ✅ NEW: Sentiment Bar Styles ── */
+.sentiment-bar {
+  display:flex;
+  height:22px;
+  border-radius:5px;
+  overflow:hidden;
+  width:100%;
+  min-width:68px;
+}
+.s-bear {
+  background:#954A74;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:7.5px;
+  font-weight:bold;
+  white-space:nowrap;
+  overflow:hidden;
+  flex-shrink:0;
+  transition:width 0.4s ease;
+}
+.s-bull {
+  background:#3F7E69;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:7.5px;
+  font-weight:bold;
+  white-space:nowrap;
+  overflow:hidden;
+  flex-shrink:0;
+  transition:width 0.4s ease;
+}
+/* SENTIMENT column td specific padding */
+td.sent-cell { padding:6px 8px; }
+th.sent-th { min-width:72px; }
+/* ── END Sentiment Bar Styles ── */
 </style>
 </head>
 <body>
@@ -76,6 +118,103 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
     <div class="brand">ICI <span>SCREENER</span></div>
     <div style="display:flex; align-items:center; gap:8px;">
       <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+      <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+      <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
+    </div>
+  </div>
+  <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
+  <div class="sum">
+    <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
+    <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
+    <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;padding-left:12px">Pair</th>
+          <th>1H</th>
+          <th>4H</th>
+          <th>1D</th>
+          <th>1W</th>
+          <!-- ✅ NEW: 6th Column -->
+          <th class="sent-th">SENT</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+<div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
+<div id="chartOverlay">
+  <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
+    <div style="display:flex; gap:12px; align-items:center">
+      <button class="nav-btn" onclick="movePair(-1)">❮</button>
+      <span id="cp" style="color:var(--brand-color); font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
+      <button class="nav-btn" onclick="movePair(1)">❯</button>
+    </div>
+    <span onclick="closeC()" style="color:var(--close-color); font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
+  </div>
+  <div id="tv_chart_container" style="flex:1"></div>
+</div>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/render.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/modal.js"></script>
+<script>
+// ── Theme Toggle ──
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('ici-theme', newTheme);
+}
+// Saved theme restore on load
+(function() {
+    const saved = localStorage.getItem('ici-theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('themeBtn');
+            if (btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
+        });
+    }
+})();
+
+function manualScan() {
+    const btn = document.querySelector('.scan-btn');
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+    fetch('/scan')
+        .then(() => {
+            btn.textContent = '✅ Started!';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        })
+        .catch(() => {
+            btn.textContent = '❌ Error';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        });
+}
+
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        if (document.getElementById('st').textContent === 'Connecting...') {
+            location.reload();
+        }
+    }, 5000);
+});
+</script>
+</body>
+</html>
       <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
       <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
     </div>
