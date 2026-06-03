@@ -7,36 +7,40 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------
-# Mentfx sentiment page ka URL.
-# Deploy se pehle browser mein khol kar confirm kar lo.
+# Mentfx sentiment page ka ACTUAL URL (Updated)
 # ---------------------------------------------------------------
-MENTFX_URL = "https://www.mentfx.com/sentiment/"
+MENTFX_URL = "https://mentfx.com/sentiment-viewer/index.php"
 
 # ---------------------------------------------------------------
-# Mentfx par jo bhi naam use ho sakta hai → App ka naam
-# Agar scrape ke baad koi pair match nahi karta, toh
-# MENTFX_DEBUG=true set karo aur is dictionary mein
-# Mentfx wala actual naam add karo.
+# MENTFX_TO_APP Dictionary (Upgraded with Forex & Oil Pairs)
+# Isme aapke app ke saare pairs add kar diye hain taake koi skip na ho.
 # ---------------------------------------------------------------
 MENTFX_TO_APP = {
-    # Direct matches
-    'US500': 'US500', 'US100': 'US100', 'US30': 'US30',
-    'GER40': 'GER40', 'UK100': 'UK100', 'JPN225': 'JPN225',
-    'XAGUSD': 'XAGUSD',
-    # S&P 500 variants
-    'SPX500': 'US500', 'SPX': 'US500', 'S&P500': 'US500', 'S&P 500': 'US500',
-    # NASDAQ variants
-    'NAS100': 'US100', 'NASDAQ': 'US100', 'NASDAQ100': 'US100',
-    # Dow variants
-    'DOW': 'US30', 'DOW30': 'US30', 'DJ30': 'US30', 'DOWJONES': 'US30',
-    # DAX variants
-    'DAX': 'GER40', 'DAX40': 'GER40', 'GER30': 'GER40',
-    # FTSE variants
-    'FTSE': 'UK100', 'FTSE100': 'UK100',
-    # Nikkei variants
-    'NIKKEI': 'JPN225', 'NIKKEI225': 'JPN225',
-    # Silver variants
-    'SILVER': 'XAGUSD', 'XAG/USD': 'XAGUSD', 'XAG': 'XAGUSD',
+    # Commodities & Oil
+    'USOIL': 'USOIL', 'WTI': 'USOIL', 'CRUDEOIL': 'USOIL',
+    'XAGUSD': 'XAGUSD', 'SILVER': 'XAGUSD', 'XAG': 'XAGUSD',
+    
+    # Indices
+    'US500': 'US500', 'SPX500': 'US500', 'SPX': 'US500', 'S&P500': 'US500',
+    'US100': 'US100', 'NAS100': 'US100', 'NASDAQ': 'US100', 'NASDAQ100': 'US100',
+    'US30': 'US30', 'DOW': 'US30', 'DOW30': 'US30', 'DJ30': 'US30',
+    'GER40': 'GER40', 'DAX': 'GER40', 'DAX40': 'GER40', 'GER30': 'GER40',
+    'UK100': 'UK100', 'FTSE': 'UK100', 'FTSE100': 'UK100',
+    'JPN225': 'JPN225', 'NIKKEI': 'JPN225', 'NIKKEI225': 'JPN225',
+    
+    # Major Forex Pairs
+    'EURUSD': 'EURUSD', 'EUR/USD': 'EURUSD',
+    'GBPUSD': 'GBPUSD', 'GBP/USD': 'GBPUSD',
+    'USDJPY': 'USDJPY', 'USD/JPY': 'USDJPY',
+    'USDCHF': 'USDCHF', 'USD/CHF': 'USDCHF',
+    'USDCAD': 'USDCAD', 'USD/CAD': 'USDCAD',
+    'AUDUSD': 'AUDUSD', 'AUD/USD': 'AUDUSD',
+    'NZDUSD': 'NZDUSD', 'NZD/USD': 'NZDUSD',
+    
+    # Cross Forex Pairs
+    'EURJPY': 'EURJPY', 'EUR/JPY': 'EURJPY',
+    'GBPJPY': 'GBPJPY', 'GBP/JPY': 'GBPJPY',
+    'AUDJPY': 'AUDJPY', 'AUD/JPY': 'AUDJPY'
 }
 
 
@@ -84,6 +88,7 @@ def _parse(soup: BeautifulSoup) -> dict:
                     if 0 < v <= 100:
                         nums.append(v)
             if len(nums) >= 2:
+                # Note: Mentfx table ke headers ke mutabiq bear/bull sequence check kar lein
                 bear, bull = _normalize(nums[0], nums[1])
                 results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
 
