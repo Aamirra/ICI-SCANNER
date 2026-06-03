@@ -36,4 +36,7 @@ function updateApiStatus(usage) {
     });
 }
 
-module.exports = { updateApiStatus, loadApiStatus };
+// Default export = updateApiStatus (scanner/server isi tarah use karte hain)
+module.exports = updateApiStatus;
+module.exports.updateApiStatus = updateApiStatus;
+module.exports.loadApiStatus = loadApiStatus;

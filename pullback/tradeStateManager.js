@@ -32,7 +32,8 @@ async function restoreState(firebaseGet) {
                     phase:      entry.phase      || null,
                     firedAt:    entry.firedAt    || entry.timestamp || 0, // purana field bhi support
                     reminded:   entry.reminded   || false,
-                    fractalRef: entry.fractalRef || null
+                    refHigh:    entry.refHigh    ?? null,
+                    refLow:     entry.refLow     ?? null
                 };
 
                 // Purana _1h key mila to dono naye keys mein migrate karo

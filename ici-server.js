@@ -103,6 +103,11 @@ http.createServer((req, res) => {
 
     await restoreState(firebaseGet);
 
+    // Server start hote hi real API usage fetch karo (force)
+    if (typeof masterScan.refreshRealUsage === 'function') {
+        await masterScan.refreshRealUsage(true);
+    }
+
     checkBroadcasts();
     masterScan();
 });

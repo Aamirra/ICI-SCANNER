@@ -8,59 +8,95 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 <style>
-:root { --bg:#020812; --sf:#080f1e; --sf2:#0d1828; --brd:rgba(255,255,255,0.08); --acc:#00aaff; --gold:#ffcc00; --txt:#dce8f5; --bull:#00cc66; --bear:#cc3344; }
+/* ── Dark Mode (default) ── */
+[data-theme="dark"] {
+  --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
+  --brd:rgba(255,255,255,0.08); --acc:#00aaff;
+  --gold:#ffcc00; --txt:#dce8f5;
+  --topbar-bg:linear-gradient(135deg,#0d1f42,#071228);
+  --topbar-brd:rgba(0,170,255,0.2);
+  --sc-brd:#333; --th-brd:rgba(255,255,255,0.08);
+  --modal-bg:rgba(0,0,0,0.9);
+  --brand-color:#fff;
+  --cloud-color:#00ff88;
+  --all-color:#fff;
+  --nav-btn-bg:rgba(255,255,255,0.1); --nav-btn-color:#fff;
+  --close-color:#ff4466;
+  --chart-header:#0d1828; --chart-brd:#333;
+  --toggle-icon:"☀️";
+}
+/* ── Light Mode ── */
+[data-theme="light"] {
+  --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
+  --brd:rgba(0,0,0,0.1); --acc:#0077cc;
+  --gold:#cc9900; --txt:#1a2a3a;
+  --topbar-bg:linear-gradient(135deg,#c8dff5,#a0c4e8);
+  --topbar-brd:rgba(0,119,204,0.3);
+  --sc-brd:#ccd6e0; --th-brd:rgba(0,0,0,0.08);
+  --modal-bg:rgba(0,0,0,0.6);
+  --brand-color:#0a1a2e;
+  --cloud-color:#00aa55;
+  --all-color:#1a2a3a;
+  --nav-btn-bg:rgba(0,0,0,0.1); --nav-btn-color:#1a2a3a;
+  --close-color:#cc2233;
+  --chart-header:#c8dff5; --chart-brd:#aac4dc;
+  --toggle-icon:"🌙";
+}
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; }
+body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; transition:background 0.3s, color 0.3s; }
 .wrap { max-width:480px; margin:0 auto; padding:12px; }
-.topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:linear-gradient(135deg,#0d1f42,#071228); border-radius:16px; margin-bottom:12px; border:1px solid rgba(0,170,255,0.2); }
-.brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:var(--topbar-bg); border-radius:16px; margin-bottom:12px; border:1px solid var(--topbar-brd); }
+.brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color); }
 .scan-btn { background:rgba(0,170,255,0.15); color:var(--acc); border:1px solid var(--acc); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; }
 .scan-btn:active { background:rgba(0,170,255,0.35); }
-.sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; }
+/* Theme toggle button */
+.theme-btn { background:none; border:1px solid var(--brd); border-radius:8px; padding:5px 9px; cursor:pointer; font-size:14px; line-height:1; }
+.sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; color:var(--txt); }
 .sum { display:flex; gap:8px; margin-bottom:12px; }
-.sc { flex:1; padding:12px; border-radius:14px; border:1px solid #333; text-align:center; cursor:pointer; }
+.sc { flex:1; padding:12px; border-radius:14px; border:1px solid var(--sc-brd); text-align:center; cursor:pointer; background:var(--sf); }
 .sn { font-size:20px; display:block; font-weight:bold; }
 .tw { background:var(--sf); border-radius:16px; border:1px solid var(--brd); overflow:hidden; }
 table { width:100%; border-collapse:collapse; }
-th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--brd); }
+th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
 td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
-.pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color: var(--acc); cursor: pointer; }
-.sig { display:inline-block; width:34px; height:20px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); }
-.sig.bull { background:#006633; border-color:#00ff88; }
-.sig.bear { background:#801a26; border-color:#ff4466; }
-.modal { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; }
+.pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
+.sig { display:inline-block; width:34px; height:20px; border-radius:4px; border:none; }
+.sig.bull { background:#00cc66; box-shadow:0 0 6px #00cc66; }
+.sig.bear { background:#ff2244; box-shadow:0 0 6px #ff2244; }
+.modal { position:fixed; inset:0; background:var(--modal-bg); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal.open { display:flex; }
-.m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:#fff; }
-#chartOverlay { position:fixed; inset:0; background:#000; z-index:4000; display:none; flex-direction:column; }
-.nav-btn { background:rgba(255,255,255,0.1); color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
+.m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:var(--txt); }
+#chartOverlay { position:fixed; inset:0; background:var(--bg); z-index:4000; display:none; flex-direction:column; }
+.nav-btn { background:var(--nav-btn-bg); color:var(--nav-btn-color); border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="brand">ICI <span>SCREENER</span></div>
-    <div style="display:flex; align-items:center; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
       <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-      <div style="font-size:10px; color:#00ff88">CLOUD ACTIVE</div>
+      <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
     </div>
   </div>
   <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
   <div class="sum">
-    <div class="sc" style="color:#00ff88" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
-    <div class="sc" style="color:#ff4466" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
-    <div class="sc" style="color:#fff" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
+    <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
+    <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
+    <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
   </div>
   <div class="tw"><table><thead><tr><th style="text-align:left;padding-left:12px">Pair</th><th>1H</th><th>4H</th><th>1D</th><th>1W</th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
 <div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
-  <div style="padding:10px 15px; background:#0d1828; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333">
+  <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
     <div style="display:flex; gap:12px; align-items:center">
       <button class="nav-btn" onclick="movePair(-1)">❮</button>
-      <span id="cp" style="color:#fff; font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
+      <span id="cp" style="color:var(--brand-color); font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
       <button class="nav-btn" onclick="movePair(1)">❯</button>
     </div>
-    <span onclick="closeC()" style="color:#ff4466; font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
+    <span onclick="closeC()" style="color:var(--close-color); font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
   </div>
   <div id="tv_chart_container" style="flex:1"></div>
 </div>
@@ -70,6 +106,27 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
+// ── Theme Toggle ──
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('ici-theme', newTheme);
+}
+// Saved theme restore on load
+(function() {
+    const saved = localStorage.getItem('ici-theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('themeBtn');
+            if (btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
+        });
+    }
+})();
+
 function manualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...';

@@ -6,8 +6,10 @@ function saveTargetList(PB_STATE, firebasePut) {
             targets[pName] = {
                 dir: s.dir,
                 phase: s.phase,
-                lastAlertKey: s.lastAlertKey || null,
+                refHigh: s.refHigh ?? null,
+                refLow: s.refLow ?? null,
                 reminded: s.reminded || false,  // Fix #3: reminded bhi save karo
+                firedAt: s.firedAt || 0,
                 timestamp: s.firedAt || Date.now()
             };
         }
