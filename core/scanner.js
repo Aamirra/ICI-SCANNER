@@ -53,7 +53,7 @@ function maybeResetDaily() {
     }
 }
 
-// --- Sentiment Update Function ---
+// --- Sentiment Update Function (EMA-based, UNCHANGED) ---
 function updateSentiment(pairName, data) {
     const timeframes = ['1h', '4h', '1day', '1week'];
     let bullCount = 0;
@@ -71,6 +71,38 @@ function updateSentiment(pairName, data) {
             bullish_pct: parseFloat(bearish_pct.toFixed(2))
         }).catch(err => console.log('Sentiment update error:', err));
     }
+}
+
+// --- External Sentiment Fetch & Save (NEW) ---
+// Fire-and-forget: call without `await` to avoid blocking masterScan loop.
+// Uses the shared `agent` (keepAlive) — no TwelveData keys or rate-limiting touched.
+function fetchAndSaveSentiment(pairName) {
+    // TODO: Replace this URL with your actual sentiment API endpoint.
+    // The response JSON must contain `bullish_pct` and `bearish_pct` fields.
+    const SENTIMENT_API_URL = `https://your-sentiment-api.com/data?symbol=${encodeURIComponent(pairName)}&apikey=YOUR_API_KEY_HERE`;
+
+    const req = https.get(SENTIMENT_API_URL, { agent }, (res) => {
+        let raw = '';
+        res.on('data', chunk => raw += chunk);
+        res.on('end', () => {
+            try {
+                const json = JSON.parse(raw);
+                // Expected shape: { bullish_pct: 65.4, bearish_pct: 34.6 }
+                if (json && json.bullish_pct !== undefined && json.bearish_pct !== undefined) {
+                    firebasePut(`sentiment/${pairName}`, {
+                        bullish_pct: parseFloat(parseFloat(json.bullish_pct).toFixed(2)),
+                        bearish_pct: parseFloat(parseFloat(json.bearish_pct).toFixed(2))
+                    }).catch(err => console.log(`[fetchAndSaveSentiment] Firebase error for ${pairName}:`, err));
+                }
+            } catch (e) {
+                console.log(`[fetchAndSaveSentiment] JSON parse error for ${pairName}:`, e.message);
+            }
+        });
+    });
+
+    // 10s timeout — silently destroyed so scanner is never blocked
+    req.setTimeout(10000, () => { req.destroy(); });
+    req.on('error', (err) => console.log(`[fetchAndSaveSentiment] Network error for ${pairName}:`, err.message));
 }
 
 async function fetchKeyUsage(key) {
@@ -196,7 +228,8 @@ async function masterScan() {
     for (const p of config.PAIRS) {
         if (DATA_STORE[p.n]) {
             await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-            updateSentiment(p.n, DATA_STORE[p.n]); // Sentiment call
+            updateSentiment(p.n, DATA_STORE[p.n]);      // EMA-based sentiment (existing)
+            fetchAndSaveSentiment(p.n);                  // External API sentiment (new, no await — runs in background)
             pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
         }
     }
