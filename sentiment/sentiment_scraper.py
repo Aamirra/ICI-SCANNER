@@ -15,17 +15,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------
 MENTFX_HOME = "https://mentfx.com/"
 MENTFX_URL  = "https://mentfx.com/sentiment-viewer/index.php"
-MENTFX_BASE = "https://mentfx.com/sentiment-viewer/"
-
-# ---------------------------------------------------------------
-# JS-rendered pages ke liye — common PHP API endpoints
-# ---------------------------------------------------------------
-COMMON_API_PATHS = [
-    "data.php", "api.php", "get_data.php", "sentiment.php",
-    "get_sentiment.php", "fetch_data.php", "ajax.php", "json.php",
-    "sentiments.php", "get.php", "load.php", "fetch.php",
-    "sentiment_data.php", "market_data.php", "positions.php",
-]
 
 # ---------------------------------------------------------------
 # Rotating User-Agents
@@ -76,7 +65,6 @@ MENTFX_TO_APP = {
     'AUDJPY': 'AUDJPY', 'AUD/JPY': 'AUDJPY',
 }
 
-
 # ---------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------
@@ -91,21 +79,18 @@ def _map_pair(raw: str) -> Optional[str]:
             return av
     return None
 
-
 def _normalize(a: float, b: float):
     total = a + b
     if total == 0:
         return 50.0, 50.0
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
-
 def _valid_nums(text: str):
     return [float(m) for m in re.findall(r'(\d+(?:\.\d+)?)\s*%?', text)
             if 0 < float(m) <= 100]
 
-
 # ---------------------------------------------------------------
-# Debug — seedha Render logs mein HTML chunks print karta hai
+# Debug HTML Dumper
 # ---------------------------------------------------------------
 def _dump_debug(html_raw: str, soup: BeautifulSoup):
     logger.info("╔══════════ DEBUG: RAW HTML DUMP START ══════════╗")
@@ -121,186 +106,9 @@ def _dump_debug(html_raw: str, soup: BeautifulSoup):
         classes = ' '.join(tag.get('class', []))
         logger.info(f"  <{tag.name} class='{classes}'> {tag.get_text(strip=True)[:120]}")
 
-    scripts = soup.find_all('script')
-    logger.info(f"Script tags total: {len(scripts)}")
-    for i, s in enumerate(scripts):
-        src = s.get('src', '')
-        content = (s.string or '').strip()
-        if src:
-            logger.info(f"  Script[{i}] src: {src}")
-        if content:
-            logger.info(f"  Script[{i}] inline (first 400):\n{content[:400]}")
-
-    tables = soup.find_all('table')
-    logger.info(f"Tables: {len(tables)}")
-    for i, t in enumerate(tables[:2]):
-        logger.info(f"  Table[{i}]: {str(t)[:300]}")
-
-
-# ---------------------------------------------------------------
-# NEW: JS code mein embedded API URLs dhundo
-# ---------------------------------------------------------------
-def _find_api_urls_in_js(html_raw: str) -> set:
-    """
-    HTML/JS mein fetch(), $.get(), $.ajax(), XMLHttpRequest patterns dhundo.
-    Yeh woh actual data URLs hain jo browser JS se call karta hai.
-    """
-    found = set()
-    patterns = [
-        r"fetch\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"\.get\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"\.post\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"url\s*:\s*['\"]([^'\"]+)['\"]",
-        r"\.load\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"\.ajax\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"open\s*\(\s*['\"](?:GET|POST)['\"],\s*['\"]([^'\"]+)['\"]",
-        r"axios\s*\.\s*(?:get|post)\s*\(\s*['\"]([^'\"]+)['\"]",
-        r"src\s*=\s*['\"]([^'\"]+\.php[^'\"]*)['\"]",
-    ]
-    for pattern in patterns:
-        for match in re.findall(pattern, html_raw, re.IGNORECASE):
-            m = match.strip()
-            if not m or len(m) > 200:
-                continue
-            if m.startswith('http'):
-                found.add(m)
-            elif m.startswith('/'):
-                found.add(f"https://mentfx.com{m}")
-            elif m.endswith('.php') or '.php?' in m:
-                found.add(f"{MENTFX_BASE}{m}")
-    return found
-
-
-# ---------------------------------------------------------------
-# NEW: API response parse karo — JSON ya HTML dono handle karta hai
-# ---------------------------------------------------------------
-def _parse_api_response(text: str) -> dict:
-    results = {}
-    text = text.strip()
-
-    # JSON array try karo
-    try:
-        data = json.loads(text)
-        items = data if isinstance(data, list) else (
-            list(data.values()) if isinstance(data, dict) else []
-        )
-        for item in items:
-            if not isinstance(item, dict):
-                # dict nahi — seedha pair:value format check karo
-                continue
-            pair_val = None
-            for k in ('pair', 'symbol', 'name', 'instrument', 'asset', 'currency'):
-                if k in item:
-                    pair_val = _map_pair(str(item[k]))
-                    break
-            if not pair_val:
-                continue
-            bear = bull = None
-            for bk in ('bear', 'bearish', 'short', 'sell', 'bearish_pct', 'negative'):
-                if bk in item:
-                    try:
-                        bear = float(item[bk])
-                        break
-                    except (ValueError, TypeError):
-                        pass
-            for blk in ('bull', 'bullish', 'long', 'buy', 'bullish_pct', 'positive'):
-                if blk in item:
-                    try:
-                        bull = float(item[blk])
-                        break
-                    except (ValueError, TypeError):
-                        pass
-            if bear is not None and bull is not None:
-                b, bl = _normalize(bear, bull)
-                results[pair_val] = {'bearish_pct': b, 'bullish_pct': bl}
-
-        # dict{pair: {bear, bull}} format
-        if not results and isinstance(data, dict):
-            for key, val in data.items():
-                pair_val = _map_pair(str(key))
-                if not pair_val or not isinstance(val, dict):
-                    continue
-                bear = bull = None
-                for bk in ('bear', 'bearish', 'short'):
-                    if bk in val:
-                        bear = float(val[bk])
-                        break
-                for blk in ('bull', 'bullish', 'long'):
-                    if blk in val:
-                        bull = float(val[blk])
-                        break
-                if bear is not None and bull is not None:
-                    b, bl = _normalize(bear, bull)
-                    results[pair_val] = {'bearish_pct': b, 'bullish_pct': bl}
-
-    except (json.JSONDecodeError, ValueError, TypeError):
-        # JSON nahi — HTML try karo
-        if text.startswith('<'):
-            soup = BeautifulSoup(text, 'html.parser')
-            results = _strategy_table(soup)
-            if not results:
-                results = _strategy_text_scan(soup)
-
-    return results
-
-
-# ---------------------------------------------------------------
-# NEW: Direct API calls — JS-rendered pages ke liye main approach
-# ---------------------------------------------------------------
-def _try_direct_api_calls(scraper: cloudscraper.CloudScraper, html_raw: str) -> dict:
-    """
-    2-step approach:
-    1. HTML/JS mein embedded API URLs dhundo aur try karo
-    2. Common PHP endpoint names try karo
-    """
-    ajax_headers = {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept':           'application/json, text/javascript, */*; q=0.01',
-        'Referer':          MENTFX_URL,
-        'Sec-Fetch-Mode':   'cors',
-        'Sec-Fetch-Site':   'same-origin',
-        'Sec-Fetch-Dest':   'empty',
-    }
-
-    # Step 1: JS se dhunde hue URLs
-    js_urls = _find_api_urls_in_js(html_raw)
-    logger.info(f"JS mein {len(js_urls)} API URLs mile: {js_urls}")
-
-    # Step 2: Common paths
-    common_urls = {f"{MENTFX_BASE}{p}" for p in COMMON_API_PATHS}
-
-    all_urls = list(js_urls) + [u for u in common_urls if u not in js_urls]
-
-    for url in all_urls[:20]:
-        try:
-            resp = scraper.get(
-                url, timeout=12,
-                headers={**scraper.headers, **ajax_headers}
-            )
-            size = len(resp.text.strip())
-            logger.debug(f"  [{resp.status_code}] {url} (size={size})")
-
-            if resp.status_code != 200 or size < 10:
-                continue
-
-            preview = resp.text.strip()[:150].replace('\n', ' ')
-            logger.info(f"Non-empty response from {url}: {preview}")
-
-            data = _parse_api_response(resp.text)
-            if data:
-                logger.info(f"✓ API endpoint kaam kiya: {url} — {len(data)} pairs")
-                return data
-
-        except Exception as e:
-            logger.debug(f"  API {url} error: {e}")
-
-    return {}
-
-
 # ================================================================
-# HTML PARSING STRATEGIES (JS-rendered nahi hone ki surat mein)
+# HTML PARSING STRATEGIES
 # ================================================================
-
 def _strategy_script_json(soup: BeautifulSoup) -> dict:
     results = {}
     for script in soup.find_all('script'):
@@ -335,17 +143,7 @@ def _strategy_script_json(soup: BeautifulSoup) -> dict:
                         results[pair_val] = {'bearish_pct': b, 'bullish_pct': bl}
             except (json.JSONDecodeError, ValueError, TypeError):
                 pass
-        for mk, av in MENTFX_TO_APP.items():
-            if mk.lower() not in raw.lower():
-                continue
-            idx = raw.lower().find(mk.lower())
-            chunk = raw[max(0, idx - 20): idx + 150]
-            nums = _valid_nums(chunk)
-            if len(nums) >= 2 and av not in results:
-                b, bl = _normalize(nums[0], nums[1])
-                results[av] = {'bearish_pct': b, 'bullish_pct': bl}
     return results
-
 
 def _strategy_table(soup: BeautifulSoup) -> dict:
     results = {}
@@ -382,7 +180,6 @@ def _strategy_table(soup: BeautifulSoup) -> dict:
                 results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
     return results
 
-
 def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
     results = {}
     width_tags = []
@@ -416,7 +213,6 @@ def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
                 results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
             break
     return results
-
 
 def _strategy_css_classes(soup: BeautifulSoup) -> dict:
     results = {}
@@ -459,7 +255,6 @@ def _strategy_css_classes(soup: BeautifulSoup) -> dict:
             results[ap] = {'bearish_pct': bear, 'bullish_pct': bull}
     return results
 
-
 def _strategy_text_scan(soup: BeautifulSoup) -> dict:
     results = {}
     for tag in soup.find_all(['div', 'li', 'article', 'section', 'span', 'p', 'tr']):
@@ -480,28 +275,16 @@ def _strategy_text_scan(soup: BeautifulSoup) -> dict:
             results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
     return results
 
-
 # ---------------------------------------------------------------
 # Master parse
 # ---------------------------------------------------------------
-def _parse(soup: BeautifulSoup, debug: bool = False,
-           html_raw: str = '', scraper=None) -> dict:
-
+def _parse(soup: BeautifulSoup, debug: bool = False, html_raw: str = '') -> dict:
     if debug:
         _dump_debug(html_raw, soup)
 
-    # STEP 1: JS-rendered page — seedha API try karo (SABSE PEHLE)
-    if scraper and html_raw:
-        logger.info("Step 1: Direct API endpoints try kar rahe hain...")
-        api_results = _try_direct_api_calls(scraper, html_raw)
-        if api_results:
-            return api_results
-        logger.info("Direct API calls se data nahi mila — HTML parse try karte hain...")
-
-    # STEP 2: HTML parsing strategies (fallback)
     strategies = [
-        ("Script/JSON",   _strategy_script_json),
         ("Table",         _strategy_table),
+        ("Script/JSON",   _strategy_script_json),
         ("Progress bars", _strategy_progress_bars),
         ("CSS classes",   _strategy_css_classes),
         ("Text scan",     _strategy_text_scan),
@@ -510,14 +293,11 @@ def _parse(soup: BeautifulSoup, debug: bool = False,
         try:
             results = fn(soup)
             if results:
-                logger.info(f"✓ Strategy '{name}' ne {len(results)} pairs nikale: {list(results.keys())}")
+                logger.info(f"✓ Strategy '{name}' ne {len(results)} pairs nikale.")
                 return results
-            logger.debug(f"✗ Strategy '{name}': koi data nahi mila")
         except Exception as e:
             logger.warning(f"Strategy '{name}' crash: {e}")
-
     return {}
-
 
 # ---------------------------------------------------------------
 # Scraper helpers
@@ -531,7 +311,6 @@ def _make_scraper(ua: str, browser_cfg: dict) -> cloudscraper.CloudScraper:
         'User-Agent':                ua,
         'Accept':                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language':           'en-US,en;q=0.9',
-        'Accept-Encoding':           'gzip, deflate, br',
         'Connection':                'keep-alive',
         'Upgrade-Insecure-Requests': '1',
         'Cache-Control':             'max-age=0',
@@ -546,25 +325,21 @@ def _make_scraper(ua: str, browser_cfg: dict) -> cloudscraper.CloudScraper:
     })
     return scraper
 
-
 def _warmup(scraper: cloudscraper.CloudScraper) -> bool:
     try:
         r = scraper.get(MENTFX_HOME, timeout=20)
-        logger.debug(f"Warmup status: {r.status_code}")
         time.sleep(random.uniform(2, 4))
         return r.status_code < 400
     except Exception as e:
         logger.warning(f"Warmup failed: {e}")
         return False
 
-
 def _fetch_html(max_retries: int = 3):
-    """HTML + active scraper instance dono return karta hai"""
     configs = random.sample(BROWSER_CONFIGS, min(max_retries, len(BROWSER_CONFIGS)))
     for attempt in range(max_retries):
         ua  = random.choice(USER_AGENTS)
         cfg = configs[attempt % len(configs)]
-        logger.info(f"[Attempt {attempt + 1}/{max_retries}] Browser: {cfg['browser']}/{cfg['platform']}")
+        logger.info(f"[Attempt {attempt + 1}/{max_retries}] Scraping Mentfx Sentiment Viewer...")
         scraper = _make_scraper(ua, cfg)
         _warmup(scraper)
         scraper.headers.update({
@@ -575,41 +350,27 @@ def _fetch_html(max_retries: int = 3):
             resp = scraper.get(MENTFX_URL, timeout=30)
             logger.info(f"Response status: {resp.status_code} | Size: {len(resp.text)} chars")
             if resp.status_code == 200:
-                return resp.text, scraper   # dono return karo
-            logger.warning(f"Attempt {attempt + 1}: HTTP {resp.status_code}")
+                return resp.text
         except Exception as e:
             logger.warning(f"Attempt {attempt + 1} exception: {e}")
         wait = (attempt + 1) * random.uniform(4, 8)
-        logger.info(f"Retry wait: {wait:.1f}s ...")
         time.sleep(wait)
-    logger.error(f"Saare {max_retries} attempts fail ho gaye.")
-    return None, None
-
+    return None
 
 # ---------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------
 def fetch_sentiment_data() -> dict:
-    """
-    Returns:
-    { 'US500': {'bearish_pct': 33.0, 'bullish_pct': 67.0}, ... }
-    """
     debug = os.environ.get('MENTFX_DEBUG', 'false').lower() == 'true'
-
-    html, scraper = _fetch_html(max_retries=3)
+    html = _fetch_html(max_retries=3)
     if not html:
         return {}
 
     soup    = BeautifulSoup(html, 'html.parser')
-    results = _parse(soup, debug=debug, html_raw=html, scraper=scraper)
+    results = _parse(soup, debug=debug, html_raw=html)
 
     if not results:
-        logger.error(
-            "Direct API + saari 5 HTML strategies fail ho gayin. "
-            "Logs mein 'Non-empty response from' lines dekho — "
-            "woh paste karo taake next fix ho sake."
-        )
+        logger.error("HTML parse fail ho gaya. Koi data nahi mila.")
     else:
-        logger.info(f"Final: {len(results)} pairs scraped: {list(results.keys())}")
-
+        logger.info(f"Final: {len(results)} pairs successfully scraped!")
     return results
