@@ -58,7 +58,6 @@ import logging
 # STEP 4: Project ke Custom Modules Import karo
 # ============================================================
 try:
-    # SQL functions (initialize aur get_pairs) ko nikal diya hai, sirf upsert_sentiment rakha hai Firebase ke liye
     from sentiment_db import upsert_sentiment
     print("[OK] sentiment_db (Firebase bridge) imported successfully")
 except ImportError as e:
@@ -109,7 +108,6 @@ WHITELIST_PAIRS = [
 def run_job():
     logger.info("══════════ Sentiment Job START ══════════")
     try:
-        # Database se check karne ka jhamela khatam, ab seedha local whitelist print hogi
         logger.info(f"Whitelist [{len(WHITELIST_PAIRS)}]: {sorted(WHITELIST_PAIRS)}")
 
         # Live market data scrape karo
@@ -123,7 +121,6 @@ def run_job():
         skipped = 0
         for pair, data in scraped.items():
             if pair in WHITELIST_PAIRS:
-                # Yeh seedha data pass karega (jo agle step mein sirf Firebase mein jayega)
                 upsert_sentiment(
                     pair, data['bearish_pct'], data['bullish_pct']
                 )
@@ -155,16 +152,15 @@ if __name__ == "__main__":
     logger.info(f"Script Dir     : {SCRIPT_DIR}")
     logger.info(f"Packages Dir   : {LOCAL_PACKAGES_DIR}")
 
-    # [REMOVED] initialize_database() ko yahan se jadd se nikal diya hai!
     logger.info("[OK] SQL Database check bypassed successfully.")
 
     # Pehli baar turant run karo
     logger.info("Pehla run abhi kar rahe hain...")
     run_job()
 
-    # Har 5 minute baad schedule karo
-    schedule.every(5).minutes.do(run_job)
-    logger.info("Scheduled: Har 5 minute baad automatic chalega")
+    # ✅ CHANGED: 5 minutes → 1 hour
+    schedule.every(1).hours.do(run_job)
+    logger.info("Scheduled: Har 1 ghante baad automatic chalega")
 
     # Infinite loop - scheduler active rakhne ke liye
     while True:
