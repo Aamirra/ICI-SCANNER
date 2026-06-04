@@ -4,14 +4,16 @@
 //
 // FLOW:
 //   1W+1D price > 20EMA → monitor shuru
+//   1H 20EMA > 50SMA → structure valid
 //   1H price < 20EMA close  → PULLBACK
 //   1H price > 20EMA close  → refHigh mark
 //   next candle high > refHigh → update, wait
 //   next candle high ≤ refHigh → INSIDE BAR → 🔔 ALERT
-//   Reminder → checkReminders.js (30 min baad)
+//   Invalid sirf tab: 20EMA 50SMA se neeche aa jaaye
 // ─────────────────────────────────────────
 
 const calcEMA  = require('../utils/emaCalc');
+const calcSMA  = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
 const { PB_STATE,
@@ -39,18 +41,30 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     const lastHigh  = highs[highs.length - 1];
 
     const ema20 = calcEMA(cls, 20);
+    const sma50 = calcSMA(cls, 50);
 
-    // 1W+1D: price > 20EMA hona chahiye
-    const trendValid = r['1week'] === 'bull' && r['1day'] === 'bull';
+    // Data kam ho to skip
+    if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
+        return PB_STATE[stateKey] || defaultBullState();
+    }
+
+    // 1W+1D bull hona chahiye
+    const higherTFValid = r['1week'] === 'bull' && r['1day'] === 'bull';
+
+    // 1H structure — 20EMA 50SMA se upar honi chahiye
+    const h1StructureValid = ema20 > sma50;
+
+    const trendValid = higherTFValid && h1StructureValid;
 
     let s = PB_STATE[stateKey] || defaultBullState();
 
-    // 1W/1D trend khatam → reset
+    // ❌ Trend ya structure khatam → poora reset
     if (!trendValid) {
         if (s.phase !== null) {
             s = defaultBullState();
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BULL INVALID] ${p.n} — trend ya structure khatam`);
         }
         return s;
     }
@@ -62,16 +76,19 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // watching / fired → PULLBACK
-    if ((s.phase === 'watching' || s.phase === 'fired') && lastClose < ema20) {
-        s.phase   = 'pullback';
-        s.refHigh = null;
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        console.log(`[BULL PULLBACK] ${p.n}`);
+    // watching / fired / mark_high → price 20EMA se neeche → PULLBACK
+    if (lastClose < ema20) {
+        if (s.phase !== 'pullback') {
+            s.phase   = 'pullback';
+            s.refHigh = null;
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BULL PULLBACK] ${p.n}`);
+        }
+        return s;
     }
 
-    // pullback → MARK_HIGH
+    // pullback → price 20EMA se upar → MARK_HIGH
     if (s.phase === 'pullback' && lastClose > ema20) {
         s.phase   = 'mark_high';
         s.refHigh = lastHigh;
@@ -84,22 +101,13 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     // mark_high — inside bar ka intzaar
     if (s.phase === 'mark_high') {
 
-        // Price wapas neeche → reset
-        if (lastClose < ema20) {
-            s.phase   = 'pullback';
-            s.refHigh = null;
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-            console.log(`[BULL RESET] ${p.n}`);
-            return s;
-        }
-
         if (lastHigh > s.refHigh) {
-            // High toot gaya → update, wait jaari
+            // High toot gaya → update karo, wait jaari
             console.log(`[BULL HIGH BREAK] ${p.n} — ${s.refHigh} → ${lastHigh}`);
             s.refHigh = lastHigh;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
+            return s;
 
         } else {
             // 🔔 Inside bar → ALERT
