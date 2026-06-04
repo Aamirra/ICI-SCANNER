@@ -1,7 +1,7 @@
 let chartPairs = [], cIdx = 0;
+let fromModal = false; // ✅ Track karo kahan se aaye
 
 function getTheme() {
-    // Adjust selector according to your app's dark mode class
     const isDark = document.documentElement.classList.contains('dark') ||
                    document.body.classList.contains('dark') ||
                    document.body.getAttribute('data-theme') === 'dark';
@@ -10,6 +10,7 @@ function getTheme() {
 
 function openCFromTable(i) {
     chartPairs = [...fPairs];
+    fromModal = false; // ✅ Table se aaye
     openC(i);
 }
 
@@ -78,6 +79,11 @@ function movePair(step) {
 function closeC() {
     document.getElementById('chartOverlay').style.display = 'none';
     document.getElementById('tv_chart_container').innerHTML = '';
+    // ✅ Target List se aaye the to wapas kholo
+    if (fromModal) {
+        fromModal = false;
+        openM();
+    }
 }
 
 // Auto reload chart when theme changes
