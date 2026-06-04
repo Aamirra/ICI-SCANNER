@@ -13,13 +13,12 @@ MENTFX_URL = "https://mentfx.com/sentiment-viewer/index.php"
 
 # ---------------------------------------------------------------
 # MENTFX_TO_APP Dictionary (Upgraded with Forex & Oil Pairs)
-# Isme aapke app ke saare pairs add kar diye hain taake koi skip na ho.
 # ---------------------------------------------------------------
 MENTFX_TO_APP = {
     # Commodities & Oil
     'USOIL': 'USOIL', 'WTI': 'USOIL', 'CRUDEOIL': 'USOIL',
     'XAGUSD': 'XAGUSD', 'SILVER': 'XAGUSD', 'XAG': 'XAGUSD',
-    
+
     # Indices
     'US500': 'US500', 'SPX500': 'US500', 'SPX': 'US500', 'S&P500': 'US500',
     'US100': 'US100', 'NAS100': 'US100', 'NASDAQ': 'US100', 'NASDAQ100': 'US100',
@@ -27,7 +26,7 @@ MENTFX_TO_APP = {
     'GER40': 'GER40', 'DAX': 'GER40', 'DAX40': 'GER40', 'GER30': 'GER40',
     'UK100': 'UK100', 'FTSE': 'UK100', 'FTSE100': 'UK100',
     'JPN225': 'JPN225', 'NIKKEI': 'JPN225', 'NIKKEI225': 'JPN225',
-    
+
     # Major Forex Pairs
     'EURUSD': 'EURUSD', 'EUR/USD': 'EURUSD',
     'GBPUSD': 'GBPUSD', 'GBP/USD': 'GBPUSD',
@@ -36,7 +35,7 @@ MENTFX_TO_APP = {
     'USDCAD': 'USDCAD', 'USD/CAD': 'USDCAD',
     'AUDUSD': 'AUDUSD', 'AUD/USD': 'AUDUSD',
     'NZDUSD': 'NZDUSD', 'NZD/USD': 'NZDUSD',
-    
+
     # Cross Forex Pairs
     'EURJPY': 'EURJPY', 'EUR/JPY': 'EURJPY',
     'GBPJPY': 'GBPJPY', 'GBP/JPY': 'GBPJPY',
@@ -88,7 +87,6 @@ def _parse(soup: BeautifulSoup) -> dict:
                     if 0 < v <= 100:
                         nums.append(v)
             if len(nums) >= 2:
-                # Note: Mentfx table ke headers ke mutabiq bear/bull sequence check kar lein
                 bear, bull = _normalize(nums[0], nums[1])
                 results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
 
@@ -133,7 +131,8 @@ def fetch_sentiment_data() -> dict:
     if debug:
         logger.debug("=== RAW HTML (first 4000 chars) ===\n" + resp.text[:4000])
 
-    soup = BeautifulSoup(resp.text, 'lxml')
+    # lxml external library ki zaroorat nahi — html.parser Python built-in hai
+    soup = BeautifulSoup(resp.text, 'html.parser')
     results = _parse(soup)
 
     if not results:
