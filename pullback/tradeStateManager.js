@@ -26,18 +26,25 @@ async function restoreState(firebaseGet) {
         const saved = await firebaseGet('pb_state');
         if (saved && typeof saved === 'object') {
             for (const key in saved) {
+
+                // ✅ FILTER — sirf _1h_bull aur _1h_bear wali entries load karo
+                const isNewFormat = key.endsWith('_1h_bull') || key.endsWith('_1h_bear');
+                const isOldFormat = key.endsWith('_1h') && !key.endsWith('_bull') && !key.endsWith('_bear');
+
+                if (!isNewFormat && !isOldFormat) continue; // purani entries skip
+
                 const entry = saved[key];
                 const restored = {
                     dir:        entry.dir        || null,
                     phase:      entry.phase      || null,
-                    firedAt:    entry.firedAt    || entry.timestamp || 0, // purana field bhi support
+                    firedAt:    entry.firedAt    || entry.timestamp || 0,
                     reminded:   entry.reminded   || false,
                     refHigh:    entry.refHigh    ?? null,
                     refLow:     entry.refLow     ?? null
                 };
 
-                // Purana _1h key mila to dono naye keys mein migrate karo
-                if (key.endsWith('_1h') && !key.endsWith('_bull') && !key.endsWith('_bear')) {
+                // Purana _1h key mila to migrate karo
+                if (isOldFormat) {
                     PB_STATE[`${key}_bull`] = { ...restored };
                     PB_STATE[`${key}_bear`] = { ...restored };
                 } else {
