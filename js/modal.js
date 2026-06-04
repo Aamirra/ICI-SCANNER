@@ -20,12 +20,11 @@ function isTarget(s) {
 
 // Active targets ko pair ke hisaab se collect karo (bull/bear merge)
 function collectTargets() {
-    const map = {}; // pairName -> { dir, phase }
+    const map = {};
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!isTarget(s)) continue;
         const name = pairNameFromKey(key);
-        // Pehla active state rakho; agar dono (bull/bear) hon to pehla
         if (!map[name]) {
             map[name] = { dir: s.dir, phase: s.phase };
         }
@@ -63,8 +62,10 @@ function openM() {
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
     const targetNames = Object.keys(collectTargets());
-    // chartPairs ko target list ke order/pairs se banao taake next/back chale
-    chartPairs = PAIRS.filter(p => targetNames.includes(p.n));
+
+    // ✅ FIX — Target List ka order rakho
+    chartPairs = targetNames.map(n => PAIRS.find(p => p.n === n)).filter(Boolean);
+
     const pbIdx = chartPairs.findIndex(p => p.n === pairName);
     openC(pbIdx !== -1 ? pbIdx : 0);
 }
