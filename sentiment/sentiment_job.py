@@ -58,8 +58,9 @@ import logging
 # STEP 4: Project ke Custom Modules Import karo
 # ============================================================
 try:
-    from sentiment_db import initialize_database, get_existing_pairs, upsert_sentiment
-    print("[OK] sentiment_db imported successfully")
+    # SQL functions (initialize aur get_pairs) ko nikal diya hai, sirf upsert_sentiment rakha hai Firebase ke liye
+    from sentiment_db import upsert_sentiment
+    print("[OK] sentiment_db (Firebase bridge) imported successfully")
 except ImportError as e:
     print(f"[ERROR] sentiment_db import failed: {e}")
     sys.exit(1)
@@ -91,29 +92,38 @@ logging.basicConfig(
 logger = logging.getLogger('sentiment_job')
 
 # ============================================================
+# FIXED WHITELIST (Database dependency hamesha ke liye khatam)
+# ============================================================
+WHITELIST_PAIRS = [
+    'AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BTCUSD',
+    'CADCHF', 'CADJPY', 'CHFJPY', 'ETHUSD', 'EURAUD', 'EURCAD',
+    'EURCHF', 'EURGBP', 'EURJPY', 'EURUSD', 'GBPAUD', 'GBPCAD',
+    'GBPCHF', 'GBPJPY', 'GBPUSD', 'GER40', 'JPN225', 'NZDCAD',
+    'NZDCHF', 'NZDJPY', 'NZDUSD', 'UK100', 'US100', 'US300',
+    'US500', 'USDCAD', 'USDCHF', 'USDJPY', 'USOIL', 'XAUUSD'
+]
+
+# ============================================================
 # STEP 7: Main Sentiment Job Logic
 # ============================================================
 def run_job():
     logger.info("══════════ Sentiment Job START ══════════")
     try:
-        # Step 1: Database se allowed pairs uthao
-        existing_pairs = get_existing_pairs()
-        if not existing_pairs:
-            logger.warning("Database mein koi pairs nahi mili. Job abort.")
-            return
-        logger.info(f"Whitelist [{len(existing_pairs)}]: {sorted(existing_pairs)}")
+        # Database se check karne ka jhamela khatam, ab seedha local whitelist print hogi
+        logger.info(f"Whitelist [{len(WHITELIST_PAIRS)}]: {sorted(WHITELIST_PAIRS)}")
 
-        # Step 2: Live market data scrape karo
+        # Live market data scrape karo
         scraped = fetch_sentiment_data()
         if not scraped:
             logger.error("Scraper se koi data nahi aaya. Job abort.")
             return
 
-        # Step 3: Sirf whitelisted pairs ko database mein save karo
+        # Sirf whitelisted pairs ko process karo
         saved = 0
         skipped = 0
         for pair, data in scraped.items():
-            if pair in existing_pairs:
+            if pair in WHITELIST_PAIRS:
+                # Yeh seedha data pass karega (jo agle step mein sirf Firebase mein jayega)
                 upsert_sentiment(
                     pair, data['bearish_pct'], data['bullish_pct']
                 )
@@ -145,14 +155,8 @@ if __name__ == "__main__":
     logger.info(f"Script Dir     : {SCRIPT_DIR}")
     logger.info(f"Packages Dir   : {LOCAL_PACKAGES_DIR}")
 
-    # SABSE PEHLE: Dono tables (pairs + sentiment) ek saath create karo
-    # get_existing_pairs() tab tak nahi chalega jab tak yeh complete na ho
-    try:
-        initialize_database()
-        logger.info("[OK] Database tables ready hain (pairs + sentiment)")
-    except Exception as e:
-        logger.error(f"Database initialization fail hua — script band ho rahi hai: {e}", exc_info=True)
-        sys.exit(1)
+    # [REMOVED] initialize_database() ko yahan se jadd se nikal diya hai!
+    logger.info("[OK] SQL Database check bypassed successfully.")
 
     # Pehli baar turant run karo
     logger.info("Pehla run abhi kar rahe hain...")
