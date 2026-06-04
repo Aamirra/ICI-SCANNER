@@ -159,8 +159,8 @@ if __name__ == "__main__":
     run_job()
 
     # ✅ CHANGED: 5 minutes → 1 hour
-    schedule.every(2).hours.do(run_job)
-    logger.info("Scheduled: Har 2 ghante baad automatic chalega")
+    schedule.every(150).minutes.do(run_job)
+    logger.info("Scheduled: Har 2.5 ghante baad automatic chalega")
 
     # Infinite loop - scheduler active rakhne ke liye
     while True:
