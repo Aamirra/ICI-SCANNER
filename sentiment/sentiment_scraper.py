@@ -208,17 +208,21 @@ def _build_warmed_session(ua: str, cfg: dict) -> Optional[cloudscraper.CloudScra
         delay=random.uniform(3, 6),   # mimic human page-load time
     )
 
-    # ── Residential Proxy Injection ────────────────────────────────
+    # ── ScraperAPI Proxy Injection ─────────────────────────────────
     # Render ke datacenter IP ko Cloudflare block karta hai.
-    # RESIDENTIAL_PROXY_URL environment variable set karo Render dashboard mein.
-    # Format: http://scraperapi:YOUR_API_KEY@proxy-server.scraperapi.com:8001
-    proxy = os.getenv("RESIDENTIAL_PROXY_URL")
-    if proxy:
-        scraper.proxies.update({"http": proxy, "https": proxy})
-        logger.info("[session] Residential proxy active.")
+    # Render dashboard mein sirf raw API key set karo:
+    #   SCRAPERAPI_KEY = your_key_here
+    scraperapi_key = os.getenv("SCRAPERAPI_KEY")
+    if scraperapi_key:
+        proxy_url = (
+            f"http://scraperapi:{scraperapi_key}"
+            f"@proxy-server.scraperapi.com:8001"
+        )
+        scraper.proxies.update({"http": proxy_url, "https": proxy_url})
+        logger.info("[session] ScraperAPI proxy active.")
     else:
         logger.warning(
-            "[session] No proxy configured (RESIDENTIAL_PROXY_URL not set). "
+            "[session] No proxy configured (SCRAPERAPI_KEY not set). "
             "Render IP may be blocked by Cloudflare."
         )
     # ──────────────────────────────────────────────────────────────
