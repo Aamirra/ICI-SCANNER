@@ -1,3 +1,5 @@
+# sentiment_db.py
+
 import os
 import logging
 import psycopg2
@@ -9,7 +11,9 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# --- Firebase Initialization ---
+# ---------------------------------------------------------------
+# Firebase Initialization
+# ---------------------------------------------------------------
 if not firebase_admin._apps:
     try:
         cred_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
@@ -26,30 +30,18 @@ if not firebase_admin._apps:
 # ---------------------------------------------------------------
 PAIRS_SYMBOL_COLUMN = 'pair'
 
-# Yeh wohi unique APP pairs hain jo MENTFX_TO_APP ki VALUES mein hain
-# Website se jo bhi naam aaye, map hokar inhi mein se ek banega
 DEFAULT_PAIRS = [
-    # Commodities & Metals
     'USOIL',
-    'XAGUSD',
-
-    # Indices
     'US500', 'US100', 'US30',
     'GER40', 'UK100', 'JPN225',
-
-    # Major Forex
     'EURUSD', 'GBPUSD', 'USDJPY',
     'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD',
-
-    # Cross Forex
     'EURJPY', 'GBPJPY', 'AUDJPY',
     'NZDJPY', 'CADJPY', 'CHFJPY',
     'EURGBP', 'EURAUD', 'EURCAD', 'EURCHF',
     'GBPAUD', 'GBPCAD', 'GBPCHF',
     'AUDCAD', 'AUDCHF', 'AUDNZD',
     'NZDCAD', 'NZDCHF', 'CADCHF',
-
-    # Crypto
     'XAUUSD', 'BTCUSD', 'ETHUSD'
 ]
 
@@ -63,34 +55,35 @@ def _get_conn():
     return psycopg2.connect(url)
 
 
-def create_pairs_table():
+def initialize_database():
     """
-    pairs table ensure karta hai:
-    1. Table exist na kare toh create karta hai
-    2. Table khali ho toh DEFAULT_PAIRS insert karta hai
-    Yeh pairs MENTFX_TO_APP ki values se match karti hain
+    Scanner start hotay hi SABSE PEHLE yeh call karo.
+    Ek hi connection mein:
+      1. pairs table create karta hai
+      2. Default pairs insert karta hai (agar table khali ho)
+      3. sentiment table create karta hai
+    Sab kuch ek commit mein — koi table miss nahi hogi.
     """
+    logger.info("═══ Database initialization shuru ═══")
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
 
-            # Step 1: Table create karo
+            # --- Step 1: pairs table ---
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS pairs (
                     id   SERIAL      PRIMARY KEY,
                     pair VARCHAR(20) UNIQUE NOT NULL
                 );
             """)
-            logger.info("pairs table check/create successful.")
+            logger.info("pairs table: check/create done.")
 
-            # Step 2: Kitne records hain?
+            # --- Step 2: Default pairs insert (agar table khali ho) ---
             cur.execute("SELECT COUNT(*) FROM pairs;")
             count = cur.fetchone()[0]
 
-            # Step 3: Khali ho toh insert karo
             if count == 0:
                 logger.info("pairs table khali hai — default pairs insert ho rahe hain...")
-                inserted = 0
                 for pair in DEFAULT_PAIRS:
                     cur.execute(
                         """
@@ -100,25 +93,11 @@ def create_pairs_table():
                         """,
                         (pair,)
                     )
-                    inserted += 1
-                logger.info(f"{inserted} pairs successfully insert ho gaye.")
+                logger.info(f"{len(DEFAULT_PAIRS)} pairs successfully insert ho gaye.")
             else:
                 logger.info(f"pairs table mein pehle se {count} records hain.")
 
-            conn.commit()
-
-    except Exception as e:
-        logger.error(f"create_pairs_table error: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
-
-
-def create_sentiment_table():
-    """sentiment table create karta hai agar exist na kare."""
-    conn = _get_conn()
-    try:
-        with conn.cursor() as cur:
+            # --- Step 3: sentiment table ---
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS sentiment (
                     pair        VARCHAR(20)  PRIMARY KEY,
@@ -127,35 +106,29 @@ def create_sentiment_table():
                     updated_at  TIMESTAMPTZ  DEFAULT NOW()
                 );
             """)
+            logger.info("sentiment table: check/create done.")
+
+            # --- Single commit — dono tables guaranteed ---
             conn.commit()
-            logger.info("sentiment table is ready.")
+            logger.info("═══ Database initialization complete ═══")
+
     except Exception as e:
-        logger.error(f"create_sentiment_table error: {e}")
+        logger.error(f"initialize_database FAILED: {e}")
         conn.rollback()
+        raise  # Upar propagate karo taake app crash kare, silently aage na jaye
     finally:
         conn.close()
-
-
-def initialize_database():
-    """
-    Scanner start hotay hi SABSE PEHLE yeh call karo.
-    Dono tables ensure karta hai.
-    """
-    logger.info("═══ Database initialization shuru ═══")
-    create_pairs_table()     # pehle pairs
-    create_sentiment_table() # phir sentiment
-    logger.info("═══ Database initialization complete ═══")
 
 
 def get_existing_pairs() -> set:
     """
     pairs table se saare valid pairs fetch karta hai.
-    Scraper ka result sirf inhi pairs ke liye save hoga.
+    initialize_database() ke BAAD hi call karo.
     """
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute(f'SELECT DISTINCT "{PAIRS_SYMBOL_COLUMN}" FROM pairs')
+            cur.execute(f'SELECT DISTINCT "{PAIRS_SYMBOL_COLUMN}" FROM pairs;')
             rows = cur.fetchall()
             pairs = {row[0].strip().upper() for row in rows if row[0]}
             logger.debug(f"get_existing_pairs: {len(pairs)} pairs mili hain.")
