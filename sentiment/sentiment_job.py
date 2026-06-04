@@ -40,7 +40,6 @@ except ImportError as e:
     print(f"[ERROR] beautifulsoup4 import failed: {e}")
     sys.exit(1)
 
-# FIXED: Agar dotenv nahi bhi mila toh script crash nahi hogi, Render pe direct env vars chalengi
 HAS_DOTENV = False
 try:
     from dotenv import load_dotenv
@@ -59,7 +58,7 @@ import logging
 # STEP 4: Project ke Custom Modules Import karo
 # ============================================================
 try:
-    from sentiment_db import create_sentiment_table, get_existing_pairs, upsert_sentiment
+    from sentiment_db import initialize_database, get_existing_pairs, upsert_sentiment
     print("[OK] sentiment_db imported successfully")
 except ImportError as e:
     print(f"[ERROR] sentiment_db import failed: {e}")
@@ -126,7 +125,7 @@ def run_job():
                 saved += 1
             else:
                 skipped += 1
-                
+
         logger.info(
             f"══════════ Done — "
             f"Saved: {saved} | "
@@ -146,12 +145,13 @@ if __name__ == "__main__":
     logger.info(f"Script Dir     : {SCRIPT_DIR}")
     logger.info(f"Packages Dir   : {LOCAL_PACKAGES_DIR}")
 
-    # DB table check/create karo
+    # SABSE PEHLE: Dono tables (pairs + sentiment) ek saath create karo
+    # get_existing_pairs() tab tak nahi chalega jab tak yeh complete na ho
     try:
-        create_sentiment_table()
-        logger.info("[OK] Database table ready hai")
+        initialize_database()
+        logger.info("[OK] Database tables ready hain (pairs + sentiment)")
     except Exception as e:
-        logger.error(f"Database table create nahi hua: {e}", exc_info=True)
+        logger.error(f"Database initialization fail hua — script band ho rahi hai: {e}", exc_info=True)
         sys.exit(1)
 
     # Pehli baar turant run karo
