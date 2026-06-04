@@ -26,9 +26,13 @@ import re
 import time
 import random
 import logging
+import urllib3
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, Tuple
+
+# ScraperAPI apna SSL certificate use karta hai — verification warnings suppress karo
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +223,8 @@ def _build_warmed_session(ua: str, cfg: dict) -> Optional[cloudscraper.CloudScra
             f"@proxy-server.scraperapi.com:8001"
         )
         scraper.proxies.update({"http": proxy_url, "https": proxy_url})
-        logger.info("[session] ScraperAPI proxy active.")
+        scraper.verify = False   # ScraperAPI ka apna SSL cert hota hai — verification bypass karo
+        logger.info("[session] ScraperAPI proxy active (SSL verify disabled).")
     else:
         logger.warning(
             "[session] No proxy configured (SCRAPERAPI_KEY not set). "
