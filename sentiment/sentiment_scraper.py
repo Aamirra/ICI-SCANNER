@@ -25,10 +25,12 @@ import json
 import re
 import time
 import random
+import ssl
 import logging
 import urllib3
 import cloudscraper
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
 from typing import Dict, Optional, Tuple
 
 # ScraperAPI apna SSL certificate use karta hai — verification warnings suppress karo
@@ -156,6 +158,27 @@ def _is_cf_challenge(text: str) -> bool:
 #  SECTION 3 – SCRAPER FACTORY & SESSION BUILDER
 # ══════════════════════════════════════════════════════════════════
 
+class _ProxySSLAdapter(HTTPAdapter):
+    """
+    ScraperAPI SSL interception ka fix.
+    scraper.verify = False kaam nahi karta cloudscraper ke saath kyunki
+    check_hostname=True aur CERT_NONE conflict karta hai.
+    Yeh adapter properly dono disable karta hai ek custom SSL context mein.
+    """
+    def _make_ssl_ctx(self):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False   # pehle yeh — warna CERT_NONE raise karta hai
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["ssl_context"] = self._make_ssl_ctx()
+        super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        proxy_kwargs["ssl_context"] = self._make_ssl_ctx()
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
+
 def _make_browser_headers(ua: str) -> dict:
     """
     Full browser-navigation headers.
@@ -223,7 +246,11 @@ def _build_warmed_session(ua: str, cfg: dict) -> Optional[cloudscraper.CloudScra
             f"@proxy-server.scraperapi.com:8001"
         )
         scraper.proxies.update({"http": proxy_url, "https": proxy_url})
-        scraper.verify = False   # ScraperAPI ka apna SSL cert hota hai — verification bypass karo
+        # verify=False cloudscraper ke saath conflict karta hai (check_hostname issue)
+        # Custom adapter use karo jo properly SSL bypass kare
+        _adapter = _ProxySSLAdapter()
+        scraper.mount("https://", _adapter)
+        scraper.mount("http://",  _adapter)
         logger.info("[session] ScraperAPI proxy active (SSL verify disabled).")
     else:
         logger.warning(
