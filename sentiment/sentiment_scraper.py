@@ -20,6 +20,7 @@ Key fixes vs. old version
       (c) Generic div/span grid elements
 """
 
+import os
 import json
 import re
 import time
@@ -206,6 +207,22 @@ def _build_warmed_session(ua: str, cfg: dict) -> Optional[cloudscraper.CloudScra
         browser=cfg,
         delay=random.uniform(3, 6),   # mimic human page-load time
     )
+
+    # ── Residential Proxy Injection ────────────────────────────────
+    # Render ke datacenter IP ko Cloudflare block karta hai.
+    # RESIDENTIAL_PROXY_URL environment variable set karo Render dashboard mein.
+    # Format: http://scraperapi:YOUR_API_KEY@proxy-server.scraperapi.com:8001
+    proxy = os.getenv("RESIDENTIAL_PROXY_URL")
+    if proxy:
+        scraper.proxies.update({"http": proxy, "https": proxy})
+        logger.info("[session] Residential proxy active.")
+    else:
+        logger.warning(
+            "[session] No proxy configured (RESIDENTIAL_PROXY_URL not set). "
+            "Render IP may be blocked by Cloudflare."
+        )
+    # ──────────────────────────────────────────────────────────────
+
     scraper.headers.update(_make_browser_headers(ua))
 
     # Two-step warmup to collect homepage + viewer-page cookies
