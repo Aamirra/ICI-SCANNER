@@ -4,14 +4,16 @@
 //
 // FLOW:
 //   1W+1D price < 20EMA → monitor shuru
+//   1H 20EMA < 50SMA → structure valid
 //   1H price > 20EMA close  → PULLBACK
 //   1H price < 20EMA close  → refLow mark
 //   next candle low < refLow → update, wait
 //   next candle low ≥ refLow → INSIDE BAR → 🔔 ALERT
-//   Reminder → checkReminders.js (30 min baad)
+//   Invalid sirf tab: 20EMA 50SMA se upar aa jaaye
 // ─────────────────────────────────────────
 
 const calcEMA  = require('../utils/emaCalc');
+const calcSMA  = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 
 const { PB_STATE,
@@ -39,18 +41,30 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     const lastLow   = lows[lows.length - 1];
 
     const ema20 = calcEMA(cls, 20);
+    const sma50 = calcSMA(cls, 50);
 
-    // 1W+1D: price < 20EMA hona chahiye
-    const trendValid = r['1week'] === 'bear' && r['1day'] === 'bear';
+    // Data kam ho to skip
+    if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
+        return PB_STATE[stateKey] || defaultBearState();
+    }
+
+    // 1W+1D bear hona chahiye
+    const higherTFValid = r['1week'] === 'bear' && r['1day'] === 'bear';
+
+    // 1H structure — 20EMA 50SMA se neeche honi chahiye
+    const h1StructureValid = ema20 < sma50;
+
+    const trendValid = higherTFValid && h1StructureValid;
 
     let s = PB_STATE[stateKey] || defaultBearState();
 
-    // 1W/1D trend khatam → reset
+    // ❌ Trend ya structure khatam → poora reset
     if (!trendValid) {
         if (s.phase !== null) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BEAR INVALID] ${p.n} — trend ya structure khatam`);
         }
         return s;
     }
@@ -62,16 +76,19 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // watching / fired → PULLBACK
-    if ((s.phase === 'watching' || s.phase === 'fired') && lastClose > ema20) {
-        s.phase  = 'pullback';
-        s.refLow = null;
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        console.log(`[BEAR PULLBACK] ${p.n}`);
+    // watching / fired / mark_low → price 20EMA se upar → PULLBACK
+    if (lastClose > ema20) {
+        if (s.phase !== 'pullback') {
+            s.phase  = 'pullback';
+            s.refLow = null;
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BEAR PULLBACK] ${p.n}`);
+        }
+        return s;
     }
 
-    // pullback → MARK_LOW
+    // pullback → price 20EMA se neeche → MARK_LOW
     if (s.phase === 'pullback' && lastClose < ema20) {
         s.phase  = 'mark_low';
         s.refLow = lastLow;
@@ -84,22 +101,13 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     // mark_low — inside bar ka intzaar
     if (s.phase === 'mark_low') {
 
-        // Price wapas upar → reset
-        if (lastClose > ema20) {
-            s.phase  = 'pullback';
-            s.refLow = null;
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-            console.log(`[BEAR RESET] ${p.n}`);
-            return s;
-        }
-
         if (lastLow < s.refLow) {
-            // Low toot gaya → update, wait jaari
+            // Low toot gaya → update karo, wait jaari
             console.log(`[BEAR LOW BREAK] ${p.n} — ${s.refLow} → ${lastLow}`);
             s.refLow = lastLow;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
+            return s;
 
         } else {
             // 🔔 Inside bar → ALERT
