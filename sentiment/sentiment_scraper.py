@@ -63,6 +63,9 @@ MENTFX_TO_APP = {
     'EURJPY': 'EURJPY', 'EUR/JPY': 'EURJPY',
     'GBPJPY': 'GBPJPY', 'GBP/JPY': 'GBPJPY',
     'AUDJPY': 'AUDJPY', 'AUD/JPY': 'AUDJPY',
+    'XAUUSD': 'XAUUSD', 'GOLD': 'XAUUSD', 'XAU': 'XAUUSD',
+    'BTCUSD': 'BTCUSD', 'BITCOIN': 'BTCUSD', 'BTC': 'BTCUSD',
+    'ETHUSD': 'ETHUSD', 'ETHEREUM': 'ETHUSD', 'ETH': 'ETHUSD'
 }
 
 # ---------------------------------------------------------------
@@ -85,10 +88,6 @@ def _normalize(a: float, b: float):
         return 50.0, 50.0
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
-def _valid_nums(text: str):
-    return [float(m) for m in re.findall(r'(\d+(?:\.\d+)?)\s*%?', text)
-            if 0 < float(m) <= 100]
-
 # ---------------------------------------------------------------
 # Debug HTML Dumper
 # ---------------------------------------------------------------
@@ -107,51 +106,18 @@ def _dump_debug(html_raw: str, soup: BeautifulSoup):
         logger.info(f"  <{tag.name} class='{classes}'> {tag.get_text(strip=True)[:120]}")
 
 # ================================================================
-# HTML PARSING STRATEGIES
+# HTML PARSING STRATEGIES (STRICTLY DAILY ONLY)
 # ================================================================
-def _strategy_script_json(soup: BeautifulSoup) -> dict:
-    results = {}
-    for script in soup.find_all('script'):
-        raw = script.string or ''
-        if not raw.strip():
-            continue
-        for json_chunk in re.findall(r'[\[{][^<]{20,}?[}\]]', raw, re.DOTALL):
-            try:
-                data = json.loads(json_chunk)
-                items = data if isinstance(data, list) else [data]
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    pair_val = None
-                    for k in ('pair', 'symbol', 'name', 'instrument', 'asset'):
-                        if k in item:
-                            pair_val = _map_pair(str(item[k]))
-                            break
-                    if not pair_val:
-                        continue
-                    bear = bull = None
-                    for bk in ('bear', 'bearish', 'short', 'sell'):
-                        if bk in item:
-                            bear = float(item[bk])
-                            break
-                    for blk in ('bull', 'bullish', 'long', 'buy'):
-                        if blk in item:
-                            bull = float(item[blk])
-                            break
-                    if bear is not None and bull is not None:
-                        b, bl = _normalize(bear, bull)
-                        results[pair_val] = {'bearish_pct': b, 'bullish_pct': bl}
-            except (json.JSONDecodeError, ValueError, TypeError):
-                pass
-    return results
 
 def _strategy_table(soup: BeautifulSoup) -> dict:
+    """Table rows se strictly DAILY columns (aakhri 2 percentages) nikalta hai."""
     results = {}
     for table in soup.find_all('table'):
         for row in table.find_all('tr'):
             cells = row.find_all(['td', 'th'])
             if len(cells) < 2:
                 continue
+            
             app_pair = None
             pair_cell_idx = -1
             for i, cell in enumerate(cells):
@@ -161,101 +127,76 @@ def _strategy_table(soup: BeautifulSoup) -> dict:
                     break
             if not app_pair:
                 continue
+
             nums = []
             for i, cell in enumerate(cells):
                 if i == pair_cell_idx:
                     continue
-                style = cell.get('style', '')
-                wm = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', style)
-                if wm:
-                    v = float(wm.group(1))
-                    if 0 < v <= 100:
-                        nums.append(v)
-                for m in re.findall(r'(\d+(?:\.\d+)?)\s*%?', cell.get_text()):
-                    v = float(m)
-                    if 0 < v <= 100:
-                        nums.append(v)
-            if len(nums) >= 2 and app_pair not in results:
-                bear, bull = _normalize(nums[0], nums[1])
+                
+                text_matches = re.findall(r'(\d+(?:\.\d+)?)\s*%?', cell.get_text())
+                if text_matches:
+                    for m in text_matches:
+                        v = float(m)
+                        if 0 < v <= 100:
+                            nums.append(v)
+                else:
+                    style = cell.get('style', '')
+                    wm = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', style)
+                    if wm:
+                        v = float(wm.group(1))
+                        if 0 < v <= 100:
+                            nums.append(v)
+
+            # Agar 4 numbers hain: [Intraday Bear, Intraday Bull, DAILY BEAR, DAILY BULL]
+            if len(nums) == 4:
+                bear, bull = _normalize(nums[2], nums[3])
                 results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
+            # Agar sirf 2 numbers hain, toh confirm karo ke context mein 'daily' ho
+            elif len(nums) == 2:
+                context = (row.get_text() + " " + table.get_text()).lower()
+                if 'daily' in context and 'intraday' not in row.get_text().lower():
+                    bear, bull = _normalize(nums[0], nums[1])
+                    results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
     return results
 
 def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
+    """Progress bars ka data nikal kar strictly DAILY bars target karta hai."""
     results = {}
-    width_tags = []
-    for tag in soup.find_all(True):
-        style = tag.get('style', '')
-        m = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', style)
-        if m:
-            v = float(m.group(1))
-            if 0 < v <= 100:
-                width_tags.append((tag, v))
-    for tag, _ in width_tags:
-        for ancestor in [tag] + list(tag.parents)[:5]:
-            text = ancestor.get_text(separator=' ', strip=True)
-            app_pair = None
-            for mk in MENTFX_TO_APP:
-                if mk.lower() in text.lower():
-                    app_pair = _map_pair(mk)
-                    break
-            if not app_pair or app_pair in results:
-                continue
-            all_widths = []
-            for child in ancestor.find_all(True):
-                cs = child.get('style', '')
-                wm = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', cs)
-                if wm:
-                    v = float(wm.group(1))
-                    if 0 < v <= 100:
-                        all_widths.append(v)
-            if len(all_widths) >= 2:
-                bear, bull = _normalize(all_widths[0], all_widths[1])
-                results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
-            break
-    return results
+    for row in soup.find_all(['tr', 'div', 'li']):
+        text = row.get_text(separator=' ', strip=True)
+        app_pair = None
+        for mk in MENTFX_TO_APP:
+            if mk.lower() in text.lower():
+                app_pair = _map_pair(mk)
+                break
+        if not app_pair or app_pair in results:
+            continue
 
-def _strategy_css_classes(soup: BeautifulSoup) -> dict:
-    results = {}
-    bear_keywords = {'bear', 'bearish', 'short', 'sell', 'negative', 'red'}
-    bull_keywords = {'bull', 'bullish', 'long',  'buy',  'positive',  'green'}
-    pair_data = {}
-    for tag in soup.find_all(True):
-        classes = set(' '.join(tag.get('class', [])).lower().split())
-        is_bear = bool(classes & bear_keywords)
-        is_bull = bool(classes & bull_keywords)
-        if not (is_bear or is_bull):
-            continue
-        val = None
-        sm = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', tag.get('style', ''))
-        if sm:
-            val = float(sm.group(1))
-        else:
-            tm = re.search(r'(\d+(?:\.\d+)?)\s*%', tag.get_text())
-            if tm:
-                val = float(tm.group(1))
-        if not val or not (0 < val <= 100):
-            continue
-        for ancestor in list(tag.parents)[:6]:
-            ancestor_text = ancestor.get_text(separator=' ', strip=True)
-            for mk in MENTFX_TO_APP:
-                if mk.lower() in ancestor_text.lower():
-                    ap = _map_pair(mk)
-                    if ap:
-                        if ap not in pair_data:
-                            pair_data[ap] = {'bear': None, 'bull': None}
-                        if is_bear and pair_data[ap]['bear'] is None:
-                            pair_data[ap]['bear'] = val
-                        if is_bull and pair_data[ap]['bull'] is None:
-                            pair_data[ap]['bull'] = val
-                    break
-            break
-    for ap, vals in pair_data.items():
-        if vals['bear'] is not None and vals['bull'] is not None:
-            bear, bull = _normalize(vals['bear'], vals['bull'])
-            results[ap] = {'bearish_pct': bear, 'bullish_pct': bull}
+        all_widths = []
+        for child in row.find_all(True):
+            cs = child.get('style', '')
+            wm = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', cs)
+            if wm:
+                v = float(wm.group(1))
+                if 0 < v <= 100 and v not in all_widths:
+                    all_widths.append(v)
+            
+            tm = re.findall(r'(\d+(?:\.\d+)?)\s*%', child.get_text())
+            for m in tm:
+                v = float(m)
+                if 0 < v <= 100 and v not in all_widths:
+                    all_widths.append(v)
+
+        if len(all_widths) == 4:
+            bear, bull = _normalize(all_widths[2], all_widths[3])
+            results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
+        elif len(all_widths) == 2 and 'daily' in text.lower():
+            bear, bull = _normalize(all_widths[0], all_widths[1])
+            results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
     return results
 
 def _strategy_text_scan(soup: BeautifulSoup) -> dict:
+    """Raw text sections scan karke target DAILY rows filter karta hai."""
     results = {}
     for tag in soup.find_all(['div', 'li', 'article', 'section', 'span', 'p', 'tr']):
         text = tag.get_text(separator=' ', strip=True)
@@ -268,11 +209,60 @@ def _strategy_text_scan(soup: BeautifulSoup) -> dict:
                 break
         if not app_pair or app_pair in results:
             continue
-        nums = [float(m) for m in re.findall(r'(\d+(?:\.\d+)?)\s*%', text)
-                if 0 < float(m) <= 100]
-        if len(nums) >= 2:
+
+        nums = [float(m) for m in re.findall(r'(\d+(?:\.\d+)?)\s*%', text) if 0 < float(m) <= 100]
+        
+        if len(nums) == 4:
+            bear, bull = _normalize(nums[2], nums[3])
+            results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
+        elif len(nums) == 2 and 'daily' in text.lower() and 'intraday' not in text.lower():
             bear, bull = _normalize(nums[0], nums[1])
             results[app_pair] = {'bearish_pct': bear, 'bullish_pct': bull}
+    return results
+
+def _strategy_script_json(soup: BeautifulSoup) -> dict:
+    """JSON script blocks se strictly DAILY sentiment key match karta hai."""
+    results = {}
+    for script in soup.find_all('script'):
+        raw = script.string or ''
+        if not raw.strip():
+            continue
+        for json_chunk in re.findall(r'[\[{][^<]{20,}?[}\]]', raw, re.DOTALL):
+            try:
+                data = json.loads(json_chunk)
+                items = data if isinstance(data, list) else [data]
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    
+                    # Ensure it is a daily metric if structural keys exist
+                    if 'type' in item and str(item['type']).lower() == 'intraday':
+                        continue
+                    
+                    pair_val = None
+                    for k in ('pair', 'symbol', 'name', 'instrument', 'asset'):
+                        if k in item:
+                            pair_val = _map_pair(str(item[k]))
+                            break
+                    if not pair_val:
+                        continue
+                        
+                    bear = bull = None
+                    # Target explicit daily fields if they exist, else fallback
+                    for bk in ('daily_bear', 'bear_daily', 'bear', 'bearish'):
+                        if bk in item:
+                            bear = float(item[bk])
+                            break
+                    for blk in ('daily_bull', 'bull_daily', 'bull', 'bullish'):
+                        if blk in item:
+                            bull = float(item[blk])
+                            break
+                            
+                    if bear is not None and bull is not None:
+                        b, bl = _normalize(bear, bull)
+                        results[pair_val] = {'bearish_pct': b, 'bullish_pct': bl}
+            except:
+                pass
     return results
 
 # ---------------------------------------------------------------
@@ -283,17 +273,16 @@ def _parse(soup: BeautifulSoup, debug: bool = False, html_raw: str = '') -> dict
         _dump_debug(html_raw, soup)
 
     strategies = [
-        ("Table",         _strategy_table),
-        ("Script/JSON",   _strategy_script_json),
-        ("Progress bars", _strategy_progress_bars),
-        ("CSS classes",   _strategy_css_classes),
-        ("Text scan",     _strategy_text_scan),
+        ("Table (Daily Mode)",         _strategy_table),
+        ("Progress bars (Daily Mode)", _strategy_progress_bars),
+        ("Text scan (Daily Mode)",     _strategy_text_scan),
+        ("Script/JSON (Daily Mode)",   _strategy_script_json),
     ]
     for name, fn in strategies:
         try:
             results = fn(soup)
             if results:
-                logger.info(f"✓ Strategy '{name}' ne {len(results)} pairs nikale.")
+                logger.info(f"✓ Strategy '{name}' ne {len(results)} DAILY pairs nikale.")
                 return results
         except Exception as e:
             logger.warning(f"Strategy '{name}' crash: {e}")
@@ -370,7 +359,7 @@ def fetch_sentiment_data() -> dict:
     results = _parse(soup, debug=debug, html_raw=html)
 
     if not results:
-        logger.error("HTML parse fail ho gaya. Koi data nahi mila.")
+        logger.error("HTML parse fail ho gaya. Koi DAILY data nahi mila.")
     else:
-        logger.info(f"Final: {len(results)} pairs successfully scraped!")
+        logger.info(f"Final: {len(results)} DAILY pairs successfully scraped!")
     return results
