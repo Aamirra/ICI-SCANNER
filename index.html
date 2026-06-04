@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta>
+<meta>
 <title>ICI Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+<link>
+<script></script>
+<script></script>
 <style>
-/* ── Dark Mode (default) ── */
 [data-theme="dark"] {
   --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
   --brd:rgba(255,255,255,0.08); --acc:#00aaff;
@@ -26,7 +22,6 @@
   --toggle-icon:"☀️";
   --sent-nodata:#555;
 }
-/* ── Light Mode ── */
 [data-theme="light"] {
   --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
   --brd:rgba(0,0,0,0.1); --acc:#0077cc;
@@ -46,12 +41,21 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; transition:background 0.3s, color 0.3s; }
+
+/* MOBILE WRAP */
 .wrap { max-width:480px; margin:0 auto; padding:12px; }
+
+/* TOPBAR */
 .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:var(--topbar-bg); border-radius:16px; margin-bottom:12px; border:1px solid var(--topbar-brd); }
 .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color); }
 .scan-btn { background:rgba(0,170,255,0.15); color:var(--acc); border:1px solid var(--acc); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; }
 .scan-btn:active { background:rgba(0,170,255,0.35); }
 .theme-btn { background:none; border:1px solid var(--brd); border-radius:8px; padding:5px 9px; cursor:pointer; font-size:14px; line-height:1; }
+
+/* DESKTOP BUTTON */
+.desktop-btn { background:rgba(255,204,0,0.15); color:var(--gold); border:1px solid var(--gold); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; white-space:nowrap; }
+.desktop-btn:active { background:rgba(255,204,0,0.35); }
+
 .sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; color:var(--txt); }
 .sum { display:flex; gap:8px; margin-bottom:12px; }
 .sc { flex:1; padding:12px; border-radius:14px; border:1px solid var(--sc-brd); text-align:center; cursor:pointer; background:var(--sf); }
@@ -64,105 +68,173 @@ td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
 .sig { display:inline-block; width:34px; height:20px; border-radius:4px; border:none; }
 .sig.bull { background:#00cc66; box-shadow:0 0 6px #00cc66; }
 .sig.bear { background:#ff2244; box-shadow:0 0 6px #ff2244; }
+
+/* MODAL */
 .modal { position:fixed; inset:0; background:var(--modal-bg); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal.open { display:flex; }
 .m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:var(--txt); }
+
+/* CHART OVERLAY - MOBILE */
 #chartOverlay { position:fixed; inset:0; background:var(--bg); z-index:4000; display:none; flex-direction:column; }
 .nav-btn { background:var(--nav-btn-bg); color:var(--nav-btn-color); border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
 
-/* ── Sentiment Bar Styles ── */
-.sentiment-bar {
-  display:flex;
-  height:22px;
-  border-radius:5px;
-  overflow:hidden;
-  width:100%;
-  min-width:80px;
-}
-.s-bear {
-  background:#ff2244;
-  box-shadow:0 0 6px #ff2244;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#fff;
-  font-size:7.5px;
-  font-weight:bold;
-  white-space:nowrap;
-  overflow:hidden;
-  flex-shrink:0;
-  transition:width 0.4s ease;
-}
-.s-bull {
-  background:#00cc66;
-  box-shadow:0 0 6px #00cc66;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#fff;
-  font-size:7.5px;
-  font-weight:bold;
-  white-space:nowrap;
-  overflow:hidden;
-  flex-shrink:0;
-  transition:width 0.4s ease;
-}
+/* SENTIMENT */
+.sentiment-bar { display:flex; height:22px; border-radius:5px; overflow:hidden; width:100%; min-width:80px; }
+.s-bear { background:#ff2244; box-shadow:0 0 6px #ff2244; display:flex; align-items:center; justify-content:center; color:#fff; font-size:7.5px; font-weight:bold; white-space:nowrap; overflow:hidden; flex-shrink:0; transition:width 0.4s ease; }
+.s-bull { background:#00cc66; box-shadow:0 0 6px #00cc66; display:flex; align-items:center; justify-content:center; color:#fff; font-size:7.5px; font-weight:bold; white-space:nowrap; overflow:hidden; flex-shrink:0; transition:width 0.4s ease; }
 td.sent-cell { padding:6px 8px; }
 th.sent-th { min-width:90px; font-size:8px; }
+
+/* DESKTOP MODE */
+body.desktop-mode { overflow:hidden; height:100vh; }
+body.desktop-mode .wrap { max-width:100%; padding:0; height:100vh; display:flex; flex-direction:column; }
+body.desktop-mode .topbar { border-radius:0; margin-bottom:0; flex-shrink:0; }
+.desktop-content { display:none; }
+body.desktop-mode .desktop-content { display:flex; flex:1; overflow:hidden; }
+body.desktop-mode .mobile-content { display:none; }
+
+/* LEFT PANEL */
+.left-panel { width:420px; min-width:320px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--chart-brd); overflow:hidden; background:var(--bg); }
+.left-panel-top { padding:8px 10px; flex-shrink:0; border-bottom:1px solid var(--brd); }
+.left-panel-top .sbar { margin-bottom:8px; border-radius:10px; }
+.left-panel-top .sum { margin-bottom:0; gap:6px; }
+.left-panel-top .sc { padding:8px 6px; border-radius:10px; }
+.left-panel-top .sn { font-size:16px; }
+.left-panel-table { flex:1; overflow-y:auto; overflow-x:hidden; }
+.left-panel-table::-webkit-scrollbar { width:4px; }
+.left-panel-table::-webkit-scrollbar-track { background:var(--bg); }
+.left-panel-table::-webkit-scrollbar-thumb { background:var(--acc); border-radius:2px; }
+.left-panel-table .tw { border-radius:0; border:none; border-bottom:1px solid var(--brd); }
+
+/* RIGHT PANEL */
+.right-panel { flex:1; display:flex; flex-direction:column; background:var(--bg); overflow:hidden; }
+.right-panel-header { padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd); flex-shrink:0; }
+.right-panel-empty { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; color:#444; }
+.right-panel-empty p { font-size:12px; color:#555; }
+#desktop_chart_container { flex:1; display:none; }
+body.desktop-mode tr.active-pair td { background:rgba(0,170,255,0.08); }
+body.desktop-mode tr.active-pair .pn { color:var(--gold); }
 </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="topbar">
-    <div class="brand">ICI <span>SCREENER</span></div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
-      <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-      <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
-    </div>
-  </div>
-  <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
-  <div class="sum">
-    <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
-    <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
-    <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
-  </div>
-  <div class="tw">
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left;padding-left:12px">Pair</th>
-          <th>1H</th>
-          <th>4H</th>
-          <th>1D</th>
-          <th>1W</th>
-          <!-- ✅ FIX: "SENT" → "Daily Sentiment" -->
-          <th class="sent-th">Daily Sentiment</th>
-        </tr>
-      </thead>
-      <tbody id="tb"></tbody>
-    </table>
-  </div>
-</div>
-<div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
-<div id="chartOverlay">
-  <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
-    <div style="display:flex; gap:12px; align-items:center">
-      <button class="nav-btn" onclick="movePair(-1)">❮</button>
-      <span id="cp" style="color:var(--brand-color); font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
-      <button class="nav-btn" onclick="movePair(1)">❯</button>
-    </div>
-    <span onclick="closeC()" style="color:var(--close-color); font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
-  </div>
-  <div id="tv_chart_container" style="flex:1"></div>
-</div>
-<script src="https://s3.tradingview.com/tv.js"></script>
-<script src="js/firebase.js"></script>
-<script src="js/render.js"></script>
-<script src="js/chart.js"></script>
-<script src="js/modal.js"></script>
+
+
+
+
+  
+  
+    ICI SCREENER
+    
+      <button>☀️</button>
+      <button>🖥️ Desktop
+      <button>🔄 SCAN
+      CLOUD ACTIVE
+    
+  
+
+  
+  
+    
+      Connecting...
+      👁 Target List ❯
+    
+    
+      0BULL
+      0BEAR
+      36ALL
+    
+    
+      
+        
+          
+            Pair
+            1H4H1D1W
+            Daily Sentiment
+          
+        
+        
+      
+    
+  
+
+  
+  
+
+    
+    
+      
+        
+          Connecting...
+          👁 Target List ❯
+        
+        
+          0BULL
+          0BEAR
+          36ALL
+        
+      
+      
+        
+          
+            
+              
+                Pair
+                1H4H1D1W
+                Daily Sentiment
+              
+            
+            
+          
+        
+      
+    
+
+    
+    
+      
+        
+          <button>❮
+          —
+          <button>❯
+        
+        ← Pair select karo
+      
+      
+        👈
+        Koi bhi pair click karo chart dekhne ke liye
+      
+      
+    
+
+  
+
+
+
+
+  
+    
+  
+
+
+
+
+  
+    
+      <button>❮
+      Pair
+      <button>❯
+    
+    ✕ CLOSE
+  
+  
+
+
 <script>
-// ── Theme Toggle ──
+<script>
+<script>
+<script>
+<script>
+<script>
+
+// THEME TOGGLE
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
@@ -182,6 +254,7 @@ function toggleTheme() {
     }
 })();
 
+// MANUAL SCAN
 function manualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...';
@@ -189,20 +262,15 @@ function manualScan() {
     fetch('/scan')
         .then(() => {
             btn.textContent = '✅ Started!';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
+            setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
         })
         .catch(() => {
             btn.textContent = '❌ Error';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
+            setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
         });
 }
 
+// AUTO RELOAD
 window.addEventListener('load', function() {
     setTimeout(function() {
         if (document.getElementById('st').textContent === 'Connecting...') {
@@ -210,6 +278,156 @@ window.addEventListener('load', function() {
         }
     }, 5000);
 });
+
+// DESKTOP MODE
+let isDesktopMode = false;
+let desktopCIdx = 0;
+let desktopPairs = [];
+let desktopWidget = null;
+
+function toggleDesktopMode() {
+    isDesktopMode = !isDesktopMode;
+    const btn = document.getElementById('desktopBtn');
+
+    if (isDesktopMode) {
+        document.body.classList.add('desktop-mode');
+        btn.textContent = '📱 Mobile';
+        btn.style.cssText = 'background:rgba(0,255,136,0.15);color:#00ff88;border:1px solid #00ff88;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:10px;font-family:JetBrains Mono,monospace;font-weight:bold;';
+        setTimeout(syncDesktopTable, 100);
+        setTimeout(syncDesktopStatus, 100);
+        localStorage.setItem('ici-view', 'desktop');
+    } else {
+        document.body.classList.remove('desktop-mode');
+        btn.textContent = '🖥️ Desktop';
+        btn.style.cssText = 'background:rgba(255,204,0,0.15);color:var(--gold);border:1px solid var(--gold);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:10px;font-family:JetBrains Mono,monospace;font-weight:bold;';
+        if (desktopWidget) {
+            try { desktopWidget.remove(); } catch(e) {}
+            desktopWidget = null;
+        }
+        document.getElementById('desktop_chart_container').innerHTML = '';
+        document.getElementById('desktop_chart_container').style.display = 'none';
+        document.getElementById('desktopEmptyState').style.display = 'flex';
+        localStorage.setItem('ici-view', 'mobile');
+    }
+}
+
+function syncDesktopTable() {
+    const mobileTbody = document.getElementById('tb');
+    const desktopTbody = document.getElementById('tb2');
+    if (!mobileTbody || !desktopTbody) return;
+    desktopTbody.innerHTML = mobileTbody.innerHTML;
+    desktopPairs = [...fPairs];
+    desktopTbody.querySelectorAll('tr').forEach(function(row, idx) {
+        const pnCell = row.querySelector('.pn');
+        if (pnCell) {
+            pnCell.onclick = function() { openDesktopChart(idx); };
+        }
+    });
+}
+
+function syncDesktopStatus() {
+    const ids = [['st','st2'],['pb','pb2'],['bc','bc2'],['rc','rc2']];
+    ids.forEach(function(pair) {
+        const src = document.getElementById(pair[0]);
+        const dst = document.getElementById(pair[1]);
+        if (src && dst) dst.textContent = src.textContent;
+    });
+}
+
+function openDesktopChart(idx) {
+    desktopPairs = [...fPairs];
+    desktopCIdx = idx;
+    loadDesktopChart();
+}
+
+function loadDesktopChart() {
+    const p = desktopPairs[desktopCIdx];
+    if (!p) return;
+
+    // Active row highlight
+    document.querySelectorAll('#tb2 tr').forEach(function(r) {
+        r.classList.remove('active-pair');
+    });
+    const rows = document.querySelectorAll('#tb2 tr');
+    if (rows[desktopCIdx]) rows[desktopCIdx].classList.add('active-pair');
+
+    // Update pair name
+    document.getElementById('dcp').textContent = p.n;
+    const hint = document.getElementById('desktopHint');
+    if (hint) hint.style.display = 'none';
+
+    // Show chart hide empty
+    document.getElementById('desktopEmptyState').style.display = 'none';
+    const container = document.getElementById('desktop_chart_container');
+    container.style.display = 'flex';
+    container.style.flex = '1';
+    container.innerHTML = '';
+
+    // Destroy old widget
+    if (desktopWidget) {
+        try { desktopWidget.remove(); } catch(e) {}
+        desktopWidget = null;
+    }
+
+    // New TradingView widget
+    desktopWidget = new TradingView.widget({
+        autosize: true,
+        symbol: p.n,
+        interval: "60",
+        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+        container_id: "desktop_chart_container",
+        studies: [
+            {id:"MAExp@tv-basicstudies", inputs:{length:10}},
+            {id:"MAExp@tv-basicstudies", inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
+}
+
+function desktopMovePair(step) {
+    if (!desktopPairs.length) return;
+    const newIdx = desktopCIdx + step;
+    if (newIdx >= 0 && newIdx < desktopPairs.length) {
+        desktopCIdx = newIdx;
+        loadDesktopChart();
+    }
+}
+
+// Render sync
+document.addEventListener('DOMContentLoaded', function() {
+    const origRender = window.render;
+    if (typeof origRender === 'function') {
+        window.render = function() {
+            origRender();
+            if (isDesktopMode) {
+                setTimeout(syncDesktopTable, 100);
+                setTimeout(syncDesktopStatus, 100);
+            }
+        };
+    }
+    const origUpdateCounts = window.updateCounts;
+    if (typeof origUpdateCounts === 'function') {
+        window.updateCounts = function() {
+            origUpdateCounts();
+            if (isDesktopMode) setTimeout(syncDesktopStatus, 100);
+        };
+    }
+    const origUpdateBadge = window.updateBadge;
+    if (typeof origUpdateBadge === 'function') {
+        window.updateBadge = function() {
+            origUpdateBadge();
+            if (isDesktopMode) setTimeout(syncDesktopStatus, 100);
+        };
+    }
+
+    // Restore saved view
+    const savedView = localStorage.getItem('ici-view');
+    if (savedView === 'desktop') {
+        setTimeout(toggleDesktopMode, 600);
+    }
+});
+
 </script>
-</body>
-</html>
+
+
