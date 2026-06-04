@@ -96,52 +96,46 @@ def _normalize(a: float, b: float):
 
 
 def _valid_nums(text: str):
-    """text se saare valid 0-100 numbers nikalta hai."""
     return [float(m) for m in re.findall(r'(\d+(?:\.\d+)?)\s*%?', text)
             if 0 < float(m) <= 100]
 
 
 # ---------------------------------------------------------------
-# Debug helper — HTML file pe save karta hai inspect karne ke liye
+# Debug helper — seedha Render logs mein HTML print karta hai
 # ---------------------------------------------------------------
-def _dump_debug(soup: BeautifulSoup):
+def _dump_debug(html_raw: str, soup: BeautifulSoup):
     """
-    MENTFX_DEBUG=true hone par yeh kaam karta hai:
-    1. Full page text logs mein print karta hai
-    2. /tmp/mentfx_debug.html pe full HTML save karta hai
-    3. % wale elements highlight karta hai
+    MENTFX_DEBUG=true hone par raw HTML seedha Render logs mein print karta hai.
+    /tmp file ki zaroorat nahi — sab kuch logger.info se aayega.
     """
-    full_text = soup.get_text(separator='\n', strip=True)
-    logger.debug("=== PAGE TEXT (first 3000 chars) ===\n" + full_text[:3000])
+    logger.info("╔══════════ DEBUG: RAW HTML DUMP START ══════════╗")
+    # 8000 chars tak, 1000-1000 ke chunks mein (Render log truncation se bachao)
+    chunk_size = 1000
+    raw_slice = html_raw[:8000]
+    for i in range(0, len(raw_slice), chunk_size):
+        logger.info(f"[HTML {i}–{i + chunk_size}]\n{raw_slice[i:i + chunk_size]}")
+    logger.info("╚══════════ DEBUG: RAW HTML DUMP END ══════════╝")
 
-    # HTML file save karo inspect karne ke liye
-    try:
-        with open('/tmp/mentfx_debug.html', 'w', encoding='utf-8') as f:
-            f.write(soup.prettify())
-        logger.debug("Full HTML saved → /tmp/mentfx_debug.html")
-    except Exception as e:
-        logger.debug(f"HTML save nahi hua: {e}")
-
-    # Percentage wale elements
+    # % wale elements — yahan se structure samajh aayega
     pct_tags = [t for t in soup.find_all(True) if '%' in t.get_text()]
-    logger.debug(f"Tags with '%': {len(pct_tags)}")
-    for tag in pct_tags[:20]:
+    logger.info(f"Tags with '%': {len(pct_tags)}")
+    for tag in pct_tags[:15]:
         classes = ' '.join(tag.get('class', []))
-        logger.debug(f"  <{tag.name} class='{classes}'> {tag.get_text(strip=True)[:120]}")
+        logger.info(f"  <{tag.name} class='{classes}'> {tag.get_text(strip=True)[:120]}")
 
-    # Script tags
+    # Script tags — pair names wale
     scripts = soup.find_all('script')
-    logger.debug(f"Script tags: {len(scripts)}")
+    logger.info(f"Script tags total: {len(scripts)}")
     for i, s in enumerate(scripts):
-        content = (s.string or '')[:300]
+        content = (s.string or '')
         if any(mk.lower() in content.lower() for mk in MENTFX_TO_APP):
-            logger.debug(f"  Script[{i}] has pair names:\n{content}")
+            logger.info(f"  [Script {i} has pair names]:\n{content[:500]}")
 
     # Tables
     tables = soup.find_all('table')
-    logger.debug(f"Tables found: {len(tables)}")
-    for i, t in enumerate(tables):
-        logger.debug(f"  Table[{i}]: {str(t)[:400]}")
+    logger.info(f"Tables found: {len(tables)}")
+    for i, t in enumerate(tables[:3]):
+        logger.info(f"  Table[{i}]: {str(t)[:400]}")
 
 
 # ================================================================
@@ -149,18 +143,13 @@ def _dump_debug(soup: BeautifulSoup):
 # ================================================================
 
 def _strategy_script_json(soup: BeautifulSoup) -> dict:
-    """
-    Strategy 0: <script> tags mein embedded JSON data dhundo.
-    Modern websites aksar JS variable mein data rakhti hain jaise:
-      var sentimentData = [{pair:'EURUSD', bear:33, bull:67}, ...]
-    """
+    """Strategy 0: <script> tags mein embedded JSON data dhundo."""
     results = {}
     for script in soup.find_all('script'):
         raw = script.string or ''
         if not raw.strip():
             continue
 
-        # JSON array/object blocks dhundo
         for json_chunk in re.findall(r'[\[{][^<]{20,}?[}\]]', raw, re.DOTALL):
             try:
                 data = json.loads(json_chunk)
@@ -170,7 +159,6 @@ def _strategy_script_json(soup: BeautifulSoup) -> dict:
                 for item in items:
                     if not isinstance(item, dict):
                         continue
-                    # Pair name kisi bhi key mein ho sakti hai
                     pair_val = None
                     for k in ('pair', 'symbol', 'name', 'instrument', 'asset'):
                         if k in item:
@@ -178,7 +166,6 @@ def _strategy_script_json(soup: BeautifulSoup) -> dict:
                             break
                     if not pair_val:
                         continue
-                    # Bear/bull values dhundo
                     bear = bull = None
                     for bk in ('bear', 'bearish', 'short', 'sell'):
                         if bk in item:
@@ -194,7 +181,6 @@ def _strategy_script_json(soup: BeautifulSoup) -> dict:
             except (json.JSONDecodeError, ValueError, TypeError):
                 pass
 
-        # Agar JSON fail ho toh raw script mein pair + numbers dhundo
         for mk, av in MENTFX_TO_APP.items():
             if mk.lower() not in raw.lower():
                 continue
@@ -209,11 +195,7 @@ def _strategy_script_json(soup: BeautifulSoup) -> dict:
 
 
 def _strategy_table(soup: BeautifulSoup) -> dict:
-    """
-    Strategy 1: <table> parsing — improved.
-    Pehle cell ya kisi bhi cell se pair name dhundta hai,
-    baaki cells se numbers nikalata hai.
-    """
+    """Strategy 1: <table> parsing — improved."""
     results = {}
     for table in soup.find_all('table'):
         for row in table.find_all('tr'):
@@ -221,7 +203,6 @@ def _strategy_table(soup: BeautifulSoup) -> dict:
             if len(cells) < 2:
                 continue
 
-            # Kisi bhi cell mein pair name ho sakta hai
             app_pair = None
             pair_cell_idx = -1
             for i, cell in enumerate(cells):
@@ -233,19 +214,16 @@ def _strategy_table(soup: BeautifulSoup) -> dict:
             if not app_pair:
                 continue
 
-            # Remaining cells se numbers nikalo
             nums = []
             for i, cell in enumerate(cells):
                 if i == pair_cell_idx:
                     continue
-                # Inline style mein width% bhi check karo
                 style = cell.get('style', '')
                 width_m = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', style)
                 if width_m:
                     v = float(width_m.group(1))
                     if 0 < v <= 100:
                         nums.append(v)
-                # Normal text numbers
                 for m in re.findall(r'(\d+(?:\.\d+)?)\s*%?', cell.get_text()):
                     v = float(m)
                     if 0 < v <= 100:
@@ -259,16 +237,8 @@ def _strategy_table(soup: BeautifulSoup) -> dict:
 
 
 def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
-    """
-    Strategy 2: Progress bar / inline style width% parsing.
-    Bahut saari sentiment sites style='width:33%' use karti hain.
-    Example:
-      <div class='bear-bar' style='width:33%'>...</div>
-      <div class='bull-bar' style='width:67%'>...</div>
-    """
+    """Strategy 2: Progress bar / inline style width% parsing."""
     results = {}
-
-    # Saare elements jo style mein width% rakhte hain
     width_tags = []
     for tag in soup.find_all(True):
         style = tag.get('style', '')
@@ -279,7 +249,6 @@ def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
                 width_tags.append((tag, v))
 
     for tag, width_val in width_tags:
-        # Is tag ya uske parent mein pair name dhundo
         for ancestor in [tag] + list(tag.parents)[:5]:
             text = ancestor.get_text(separator=' ', strip=True)
             app_pair = None
@@ -290,7 +259,6 @@ def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
             if not app_pair or app_pair in results:
                 continue
 
-            # Is ancestor mein saare width% values nikalo
             all_widths = []
             for child in ancestor.find_all(True):
                 cs = child.get('style', '')
@@ -309,16 +277,10 @@ def _strategy_progress_bars(soup: BeautifulSoup) -> dict:
 
 
 def _strategy_css_classes(soup: BeautifulSoup) -> dict:
-    """
-    Strategy 3: CSS class names se bear/bull detect karo.
-    Example classes: bearish, bullish, bear, bull, short, long, sell, buy
-    Phir parent element mein pair name aur numbers dhundo.
-    """
+    """Strategy 3: CSS class names se bear/bull detect karo."""
     results = {}
     bear_keywords = {'bear', 'bearish', 'short', 'sell', 'negative', 'red'}
     bull_keywords = {'bull', 'bullish', 'long',  'buy',  'positive',  'green'}
-
-    # Pair → (bear_val, bull_val) map banao
     pair_data = {}
 
     for tag in soup.find_all(True):
@@ -328,7 +290,6 @@ def _strategy_css_classes(soup: BeautifulSoup) -> dict:
         if not (is_bear or is_bull):
             continue
 
-        # % value nikalao (text ya style se)
         val = None
         style_m = re.search(r'width\s*:\s*(\d+(?:\.\d+)?)\s*%', tag.get('style', ''))
         if style_m:
@@ -341,7 +302,6 @@ def _strategy_css_classes(soup: BeautifulSoup) -> dict:
         if not val or not (0 < val <= 100):
             continue
 
-        # Parent mein pair name dhundo (5 levels upar tak)
         for ancestor in list(tag.parents)[:6]:
             ancestor_text = ancestor.get_text(separator=' ', strip=True)
             for mk in MENTFX_TO_APP:
@@ -366,17 +326,13 @@ def _strategy_css_classes(soup: BeautifulSoup) -> dict:
 
 
 def _strategy_text_scan(soup: BeautifulSoup) -> dict:
-    """
-    Strategy 4: General text scan — div/span/li/article/section
-    Pair name aur uske paas dono % values dhundta hai.
-    Sab se broad fallback — har element check karta hai.
-    """
+    """Strategy 4: General text scan — broad fallback."""
     results = {}
     all_tags = soup.find_all(['div', 'li', 'article', 'section', 'span', 'p', 'tr'])
 
     for tag in all_tags:
         text = tag.get_text(separator=' ', strip=True)
-        if len(text) > 500:   # Bahut bada element skip karo — noise hoga
+        if len(text) > 500:
             continue
 
         app_pair = None
@@ -400,16 +356,16 @@ def _strategy_text_scan(soup: BeautifulSoup) -> dict:
 # ---------------------------------------------------------------
 # Master parse — saari strategies ek ek try karta hai
 # ---------------------------------------------------------------
-def _parse(soup: BeautifulSoup, debug: bool = False) -> dict:
+def _parse(soup: BeautifulSoup, debug: bool = False, html_raw: str = '') -> dict:
     if debug:
-        _dump_debug(soup)
+        _dump_debug(html_raw, soup)
 
     strategies = [
-        ("Script/JSON",    _strategy_script_json),
-        ("Table",          _strategy_table),
-        ("Progress bars",  _strategy_progress_bars),
-        ("CSS classes",    _strategy_css_classes),
-        ("Text scan",      _strategy_text_scan),
+        ("Script/JSON",   _strategy_script_json),
+        ("Table",         _strategy_table),
+        ("Progress bars", _strategy_progress_bars),
+        ("CSS classes",   _strategy_css_classes),
+        ("Text scan",     _strategy_text_scan),
     ]
 
     for name, fn in strategies:
@@ -427,7 +383,7 @@ def _parse(soup: BeautifulSoup, debug: bool = False) -> dict:
 
 
 # ---------------------------------------------------------------
-# Scraper helpers (unchanged)
+# Scraper helpers
 # ---------------------------------------------------------------
 def _make_scraper(ua: str, browser_cfg: dict) -> cloudscraper.CloudScraper:
     scraper = cloudscraper.create_scraper(
@@ -512,13 +468,13 @@ def fetch_sentiment_data() -> dict:
         return {}
 
     soup    = BeautifulSoup(html, 'html.parser')
-    results = _parse(soup, debug=debug)
+    results = _parse(soup, debug=debug, html_raw=html)  # html_raw pass kiya
 
     if not results:
         logger.warning(
             "Saari 5 strategies fail ho gayin. "
-            "Render mein MENTFX_DEBUG=true set karo, "
-            "phir /tmp/mentfx_debug.html dekh ke _parse() fix karo."
+            "Render mein MENTFX_DEBUG=true set karo — "
+            "logs mein RAW HTML DUMP aayega, woh copy karke do."
         )
     else:
         logger.info(f"Final: {len(results)} pairs scraped: {list(results.keys())}")
