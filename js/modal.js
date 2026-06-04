@@ -37,10 +37,17 @@ function updateBadge() {
     document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
 }
 
+// Global order save karo
+let targetOrder = [];
+
 function openM() {
     const l = document.getElementById('ml');
     const targets = collectTargets();
     const entries = Object.entries(targets);
+
+    // ✅ Order save karo
+    targetOrder = entries.map(([n]) => n);
+
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
         (entries.length
@@ -61,10 +68,12 @@ function openM() {
 
 function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
-    const targetNames = Object.keys(collectTargets());
 
-    // ✅ FIX — Target List ka order rakho
-    chartPairs = targetNames.map(n => PAIRS.find(p => p.n === n)).filter(Boolean);
+    // ✅ fromModal set karo
+    fromModal = true;
+
+    // ✅ Saved order use karo
+    chartPairs = targetOrder.map(n => PAIRS.find(p => p.n === n)).filter(Boolean);
 
     const pbIdx = chartPairs.findIndex(p => p.n === pairName);
     openC(pbIdx !== -1 ? pbIdx : 0);
