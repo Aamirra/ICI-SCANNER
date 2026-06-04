@@ -42,7 +42,7 @@ db.ref('sentiment').on('value', function(snap) {
         window.sentimentData = {};
     }
 
-    if (typeof renderTable === 'function') {
-        renderTable();
+    if (typeof render === 'function') {
+        render();
     }
 });
