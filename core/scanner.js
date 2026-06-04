@@ -229,7 +229,18 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const cls = sorted.map(v => parseFloat(v.close));
                         const ema20 = calcEMA(cls, 20);
                         if (ema20) DATA_STORE[p.n][tf] = cls[cls.length - 1] > ema20 ? 'bull' : 'bear';
-                        if (tf === '1h') RAW_1H[p.n] = { closes: cls, time: sorted[sorted.length - 1]?.datetime };
+                        
+                        // ✅ FIX — highs aur lows bhi add kiye
+                        if (tf === '1h') {
+                            const highs = sorted.map(v => parseFloat(v.high));
+                            const lows  = sorted.map(v => parseFloat(v.low));
+                            RAW_1H[p.n] = {
+                                closes: cls,
+                                highs:  highs,
+                                lows:   lows,
+                                time:   sorted[sorted.length - 1]?.datetime
+                            };
+                        }
                         resolve(true);
                     } else resolve(false);
                 } catch (e) { resolve(false); }
