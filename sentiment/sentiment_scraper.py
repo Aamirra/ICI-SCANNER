@@ -269,7 +269,7 @@ def _build_warmed_session(ua: str, cfg: dict) -> Optional[cloudscraper.CloudScra
 
     for url, label in warmup_steps:
         try:
-            resp = scraper.get(url, timeout=20)
+            resp = scraper.get(url, timeout=20, verify=False)
             logger.debug(
                 f"[session] {label}: HTTP {resp.status_code}, "
                 f"{len(resp.text)} chars, "
@@ -567,7 +567,7 @@ def _fetch_json_endpoint(
     try:
         # Switch to AJAX headers for the actual data request
         scraper.headers.update(_make_ajax_headers(ua))
-        resp = scraper.get(url, timeout=20)
+        resp = scraper.get(url, timeout=20, verify=False)
 
         ct = resp.headers.get("Content-Type", "?")
         logger.debug(
@@ -627,7 +627,7 @@ def _fetch_html_page(
         scraper.headers.update(_make_browser_headers(ua))
         scraper.headers.update({"Referer": MENTFX_HOME})
 
-        resp = scraper.get(MENTFX_VIEWER, timeout=25)
+        resp = scraper.get(MENTFX_VIEWER, timeout=25, verify=False)
 
         logger.debug(
             f"[html_fetch] {MENTFX_VIEWER} → HTTP {resp.status_code}, "
