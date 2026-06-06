@@ -49,7 +49,7 @@ MENTFX_TO_APP: Dict[str, str] = {
 
 def _map_pair(raw: str) -> Optional[str]:
     key = raw.strip().upper().replace(" ", "").replace("/", "")
-    return MMENTFX_TO_APP.get(key, None)
+    return MENTFX_TO_APP.get(key, None)
 
 def _normalize(a: float, b: float) -> Tuple[float, float]:
     total = a + b
