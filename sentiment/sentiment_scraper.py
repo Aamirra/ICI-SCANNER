@@ -1,13 +1,7 @@
 """
 sentiment_scraper.py  —  ICI-SCANNER
 =====================================
-GitHub Actions pe chalega — Cloudflare bypass guaranteed
-Cloudflare GitHub ke IPs ko block nahi karta.
-
-Strategy:
-  Layer 1 → sentiment_data.php  (direct JSON)
-  Layer 2 → get_data.php        (alternate JSON)
-  Layer 3 → HTML scraping       (BeautifulSoup)
+Render Cloudflare bypass guaranteed using tls-client.
 """
 
 import os
@@ -16,7 +10,7 @@ import re
 import time
 import random
 import logging
-import requests
+import tls_client  # CHANGED: requests ki jagah tls-client use kar rahe hain
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, Tuple
 
@@ -35,15 +29,11 @@ MENTFX_JSON_1 = "https://mentfx.com/sentiment-viewer/sentiment_data.php"
 MENTFX_JSON_2 = "https://mentfx.com/sentiment-viewer/get_data.php"
 
 # ─────────────────────────────────────────────
-# USER AGENTS
+# USER AGENTS (Modern Chrome version fingerprint se match karne ke liye)
 # ─────────────────────────────────────────────
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) "
-    "Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 ]
 
 # ─────────────────────────────────────────────
@@ -104,54 +94,60 @@ def _is_cf_challenge(text: str) -> bool:
     return any(s in lower for s in signals)
 
 
-def _make_session(ua: str) -> requests.Session:
+# 🛠️ CHANGED: requests.Session ki jagah tls_client.Session use kar rahe hain
+def _make_session(ua: str) -> tls_client.Session:
     """
-    Simple requests session — GitHub Actions IPs Cloudflare bypass karti hain
-    isliye heavy cloudscraper ki zaroorat nahi.
+    tls-client session jo real Chrome ka TLS fingerprint bhejti hai,
+    jis se Render par Cloudflare bypass ho sake.
     """
-    session = requests.Session()
+    session = tls_client.Session(
+        client_identifier="chrome_120",  # Real Chrome TLS Fingerprint
+        random_tls_extension_order=True
+    )
     session.headers.update({
         "User-Agent": ua,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate",
+        "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
     })
     return session
 
 
-def _warmup_session(session: requests.Session) -> bool:
+def _warmup_session(session: tls_client.Session) -> bool:
     """Homepage visit karo cookie collect karne ke liye."""
     try:
-        resp = session.get(MENTFX_HOME, timeout=20)
+        resp = session.get(MENTFX_HOME, timeout_seconds=20)
         if _is_cf_challenge(resp.text):
             logger.warning("[warmup] CF challenge on homepage")
             return False
         time.sleep(random.uniform(1.5, 3.0))
 
-        resp2 = session.get(MENTFX_VIEWER, timeout=20)
+        resp2 = session.get(MENTFX_VIEWER, timeout_seconds=20)
         if _is_cf_challenge(resp2.text):
             logger.warning("[warmup] CF challenge on viewer page")
             return False
 
-        logger.info(f"[warmup] OK — cookies: {list(session.cookies.keys())}")
+        logger.info("[warmup] OK — session updated with cookies")
         return True
     except Exception as e:
         logger.warning(f"[warmup] Failed: {e}")
         return False
 
 
-def _fetch_json(session: requests.Session, url: str) -> Optional[Dict]:
+def _fetch_json(session: tls_client.Session, url: str) -> Optional[Dict]:
     """JSON endpoint fetch karo aur parse karo."""
     try:
-        session.headers.update({
+        # Headers update (tls-client directly dict accepts)
+        current_headers = dict(session.headers)
+        current_headers.update({
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "X-Requested-With": "XMLHttpRequest",
             "Referer": MENTFX_VIEWER,
             "Origin": "https://mentfx.com",
         })
-        resp = session.get(url, timeout=20)
+        resp = session.get(url, headers=current_headers, timeout_seconds=20)
 
         if resp.status_code != 200:
             logger.warning(f"[json] HTTP {resp.status_code} from {url}")
@@ -163,6 +159,9 @@ def _fetch_json(session: requests.Session, url: str) -> Optional[Dict]:
 
         if raw[0] not in ('{', '['):
             logger.warning(f"[json] Not JSON from {url}: {raw[:80]!r}")
+            # Agar direct JSON nahi hai, to pure HTML page snippet print karwado debug ke liye
+            if "html" in raw.lower():
+                logger.warning(f"[MentFX] WARNING: Koi bhi DAILY row match nahi hui. HTML snippet: {raw[:150]}")
             return None
 
         data = json.loads(raw)
@@ -192,7 +191,6 @@ def _parse_json_response(data) -> Dict:
         if not app_pair:
             continue
 
-        # Multiple key names try karo
         bear = (item.get("daily_bear") or item.get("bear_daily")
                 or item.get("bear") or item.get("short"))
         bull = (item.get("daily_bull") or item.get("bull_daily")
@@ -211,15 +209,15 @@ def _parse_json_response(data) -> Dict:
     return results
 
 
-def _fetch_html(session: requests.Session) -> Optional[Dict]:
+def _fetch_html(session: tls_client.Session) -> Optional[Dict]:
     """HTML scraping fallback — BeautifulSoup se data nikalo."""
     try:
-        session.headers.update({
-            "Accept": ("text/html,application/xhtml+xml,"
-                       "application/xml;q=0.9,*/*;q=0.8"),
+        current_headers = dict(session.headers)
+        current_headers.update({
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Referer": MENTFX_HOME,
         })
-        resp = session.get(MENTFX_VIEWER, timeout=25)
+        resp = session.get(MENTFX_VIEWER, headers=current_headers, timeout_seconds=25)
 
         if resp.status_code != 200 or _is_cf_challenge(resp.text):
             return None
@@ -227,19 +225,16 @@ def _fetch_html(session: requests.Session) -> Optional[Dict]:
         soup = BeautifulSoup(resp.text, "html.parser")
         results = {}
 
-        # Strategy A: Script tags mein JSON dhundo
         results = _parse_scripts(soup)
         if results:
             logger.info(f"[html] Script JSON: {len(results)} pairs")
             return results
 
-        # Strategy B: Table rows parse karo
         results = _parse_tables(soup)
         if results:
             logger.info(f"[html] Table data: {len(results)} pairs")
             return results
 
-        # Strategy C: Div/span elements scan karo
         results = _parse_elements(soup)
         if results:
             logger.info(f"[html] Element scan: {len(results)} pairs")
@@ -337,13 +332,6 @@ def _parse_elements(soup: BeautifulSoup) -> Dict:
 # MAIN PUBLIC FUNCTION
 # ─────────────────────────────────────────────
 def fetch_sentiment_data() -> Dict:
-    """
-    Main function — 3 sessions try karega.
-    Har session mein 3 layers:
-      1. sentiment_data.php (JSON)
-      2. get_data.php (JSON)
-      3. HTML scraping
-    """
     MAX_SESSIONS = 3
 
     for attempt in range(1, MAX_SESSIONS + 1):
@@ -355,7 +343,7 @@ def fetch_sentiment_data() -> Dict:
         # Warmup
         if not _warmup_session(session):
             logger.warning(f"Session {attempt} warmup failed")
-            time.sleep(attempt * 10)
+            time.sleep(attempt * 5)
             continue
 
         time.sleep(random.uniform(1.0, 2.0))
@@ -386,7 +374,7 @@ def fetch_sentiment_data() -> Dict:
             return result
 
         logger.warning(f"Session {attempt} — sab layers fail. Retry...")
-        time.sleep(attempt * 15)
+        time.sleep(attempt * 5)
 
     logger.error("❌ Sab sessions fail — koi data nahi mila")
     return {}
