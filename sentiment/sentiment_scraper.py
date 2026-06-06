@@ -1,7 +1,7 @@
 """
-sentiment_scraper.py  —  ICI-SCANNER (Render Env Version)
-============================================================
-Cloudflare ko bypass karne ke liye ScrapingAnt API aur Render Env variables ka use.
+sentiment_scraper.py  —  ICI-SCANNER (ScrapingAnt JS-Render Version)
+==================================================================
+MentFX Cloudflare bypass karne ke liye JavaScript execution forced.
 """
 
 import os
@@ -20,8 +20,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
-# CONFIGURATION (Render ki settings se key auto-load hogi)
+# CONFIGURATION
 # ─────────────────────────────────────────────
+# Render settings se key uthayega
 ANT_API_KEY = os.environ.get("SCRAPINGANT_API_KEY", "")
 
 MENTFX_VIEWER = "https://mentfx.com/sentiment-viewer/"
@@ -93,19 +94,40 @@ def _parse_json_response(data) -> Dict:
                 continue
     return results
 
-def _call_ant_api(target_url: str) -> Optional[str]:
-    """ScrapingAnt ke zariye request bhejta hai jo Cloudflare bypass kar deta hai."""
+def _parse_html_fallback(html_text: str) -> Dict:
+    """Agar direct JSON na mile, to rendered HTML se table parse karne ka mechanism."""
+    results = {}
+    try:
+        soup = BeautifulSoup(html_text, "html.parser")
+        pct_re = re.compile(r"^(\d{1,3}(?:\.\d+)?)%?$")
+        for table in soup.find_all("table"):
+            for row in table.find_all("tr"):
+                cells = [td.get_text(strip=True) for td in row.find_all(["td", "th"])]
+                pair = next((_map_pair(c) for c in cells if _map_pair(c)), None)
+                if not pair: continue
+                nums = [float(pct_re.match(c.strip().rstrip("%")).group(1)) for c in cells if pct_re.match(c.strip().rstrip("%"))]
+                if len(nums) >= 2:
+                    b, bl = _normalize(nums[0], nums[1])
+                    results[pair] = {"bearish_pct": b, "bullish_pct": bl}
+    except Exception:
+        pass
+    return results
+
+def _call_ant_api(target_url: str, use_browser: bool = True) -> Optional[str]:
+    """ScrapingAnt API supporting JS Browser Rendering."""
     try:
         encoded_url = urllib.parse.quote_plus(target_url)
-        ant_url = f"https://api.scrapingant.com/v2/general?url={encoded_url}&x-api-key={ANT_API_KEY}&browser=false"
+        # browser=true lagane se cloudflare her soorat bypass hoga
+        browser_str = "true" if use_browser else "false"
+        ant_url = f"https://api.scrapingant.com/v2/general?url={encoded_url}&x-api-key={ANT_API_KEY}&browser={browser_str}"
         
         session = tls_client.Session(client_identifier="chrome_120")
-        resp = session.get(ant_url, timeout_seconds=30)
+        resp = session.get(ant_url, timeout_seconds=45)
         
         if resp.status_code == 200:
             return resp.text
         else:
-            logger.warning(f"[Ant-API] Failed with status code: {resp.status_code}")
+            logger.warning(f"[Ant-API] Failed status: {resp.status_code} on browser={browser_str}")
             return None
     except Exception as e:
         logger.error(f"[Ant-API] Error: {e}")
@@ -115,35 +137,34 @@ def _call_ant_api(target_url: str) -> Optional[str]:
 # MAIN PUBLIC FUNCTION
 # ─────────────────────────────────────────────
 def fetch_sentiment_data() -> Dict:
-    logger.info("━━━ Fetching Data via ScrapingAnt Free API ━━━")
+    logger.info("━━━ Fetching Data via ScrapingAnt (JS Render Mode) ━━━")
     
     if not ANT_API_KEY:
         logger.error("Render ki settings mein SCRAPINGANT_API_KEY nahi mili!")
         return {}
 
-    # Layer 1: Try endpoint 1
-    raw_json1 = _call_ant_api(MENTFX_JSON_1)
-    if raw_json1:
-        try:
-            res = _parse_json_response(json.loads(raw_json1))
-            if res:
-                logger.info(f"✅ Success! Found {len(res)} pairs from Endpoint 1.")
-                return res
-        except Exception:
-            pass
+    # Approach 1: Try fetching the full rendered HTML page directly
+    # Jab browser=true chalega, to MentFX poori tarah open ho kar saamne aayegi
+    raw_html = _call_ant_api(MENTFX_VIEWER, use_browser=True)
+    if raw_html:
+        res_html = _parse_html_fallback(raw_html)
+        if res_html:
+            logger.info(f"✅ Success! Found {len(res_html)} pairs via Rendered HTML Table.")
+            return res_html
 
-    # Layer 2: Try endpoint 2
-    raw_json2 = _call_ant_api(MENTFX_JSON_2)
-    if raw_json2:
-        try:
-            res = _parse_json_response(json.loads(raw_json2))
-            if res:
-                logger.info(f"✅ Success! Found {len(res)} pairs from Endpoint 2.")
-                return res
-        except Exception:
-            pass
+    # Approach 2: Fallback to endpoints if HTML fails
+    for endpoint in [MENTFX_JSON_1, MENTFX_JSON_2]:
+        raw_json = _call_ant_api(endpoint, use_browser=False)
+        if raw_json:
+            try:
+                res = _parse_json_response(json.loads(raw_json))
+                if res:
+                    logger.info(f"✅ Success! Found {len(res)} pairs from fallback JSON.")
+                    return res
+            except Exception:
+                pass
 
-    logger.error("❌ ScrapingAnt se data fetch/parse nahi ho saka.")
+    logger.error("❌ ScrapingAnt (JS Mode) se bhi data fetch nahi ho saka.")
     return {}
 
 if __name__ == "__main__":
