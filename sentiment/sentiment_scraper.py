@@ -49,6 +49,7 @@ MENTFX_TO_APP: Dict[str, str] = {
 
 def _map_pair(raw: str) -> Optional[str]:
     key = raw.strip().upper().replace(" ", "").replace("/", "")
+    # FIXED: Yahan single 'M' ke sath MENTFX_TO_APP kar diya hai
     return MENTFX_TO_APP.get(key, None)
 
 def _normalize(a: float, b: float) -> Tuple[float, float]:
