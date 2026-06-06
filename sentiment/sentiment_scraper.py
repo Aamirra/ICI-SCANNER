@@ -1,7 +1,7 @@
 """
-sentiment_scraper.py  —  ICI-SCANNER (GitLab Runner Version)
-============================================================
-Bina kisi proxy ke direct clean request jo GitLab server se chalegi.
+sentiment_scraper.py  —  ICI-SCANNER (GitHub Actions HTML Live Parser)
+====================================================================
+Bina kisi proxy ke direct main page ka table parse karne wala system.
 """
 
 import os
@@ -15,8 +15,7 @@ from typing import Dict, Optional, Tuple
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-MENTFX_JSON_1 = "https://mentfx.com/sentiment-viewer/sentiment_data.php"
-MENTFX_JSON_2 = "https://mentfx.com/sentiment-viewer/get_data.php"
+MENTFX_VIEWER = "https://mentfx.com/sentiment-viewer/"
 
 MENTFX_TO_APP: Dict[str, str] = {
     "USOIL": "USOIL", "WTI": "USOIL", "XAGUSD": "XAGUSD", "SILVER": "XAGUSD",
@@ -37,44 +36,68 @@ def _normalize(a: float, b: float) -> Tuple[float, float]:
     if total == 0: return 50.0, 50.0
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
-def _parse_json_response(data) -> Dict:
-    results = {}
-    items = data if isinstance(data, list) else [data]
-    for item in items:
-        if not isinstance(item, dict) or str(item.get("type", "")).lower() == "intraday": continue
-        pair_raw = item.get("pair") or item.get("symbol") or item.get("asset") or ""
-        app_pair = _map_pair(str(pair_raw))
-        if not app_pair: continue
-        bear = item.get("daily_bear") or item.get("bear") or item.get("short")
-        bull = item.get("daily_bull") or item.get("bull") or item.get("long")
-        if bear is not None and bull is not None:
-            b_pct, bl_pct = _normalize(float(bear), float(bull))
-            results[app_pair] = {"bearish_pct": b_pct, "bullish_pct": bl_pct}
-    return results
-
 def fetch_sentiment_data() -> Dict:
-    logger.info("━━━ Fetching MentFX Data via GitLab Runner (Direct) ━━━")
+    logger.info("━━━ Fetching MentFX Live HTML via GitHub Actions ━━━")
     session = tls_client.Session(client_identifier="chrome_120")
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": "https://mentfx.com/sentiment-viewer/"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Alt-Used": "mentfx.com",
+        "Connection": "keep-alive"
     })
     
-    for url in [MENTFX_JSON_1, MENTFX_JSON_2]:
-        try:
-            resp = session.get(url, timeout_seconds=15)
-            if resp.status_code == 200 and resp.text.strip().startswith(('[', '{')):
-                res = _parse_json_response(json.loads(resp.text))
-                if res:
-                    logger.info(f"✅ Success! Found {len(res)} pairs.")
-                    return res
-        except Exception as e:
-            logger.error(f"Endpoint error: {e}")
-    return {}
+    results = {}
+    try:
+        resp = session.get(MENTFX_VIEWER, timeout_seconds=20)
+        logger.info(f"Page Response Status: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Web page par majood saare tables check karenge
+            tables = soup.find_all("table")
+            logger.info(f"Found {len(tables)} tables on the page.")
+            
+            pct_re = re.compile(r"(\d+(?:\.\d+)?)")
+            
+            for table in tables:
+                rows = table.find_all("tr")
+                for row in rows:
+                    cells = [td.get_text(strip=True) for td in row.find_all(["td", "th"])]
+                    if not cells:
+                        continue
+                    
+                    # Check karein ke row mein koi valid pair hai ya nahi
+                    pair = None
+                    pair_index = -1
+                    for idx, cell in enumerate(cells):
+                        mapped = _map_pair(cell)
+                        if mapped:
+                            pair = mapped
+                            pair_index = idx
+                            break
+                    
+                    if not pair:
+                        continue
+                    
+                    # Pair ke aage se percentages (Bearish/Bullish) nikalna
+                    numbers = []
+                    for cell in cells[pair_index + 1:]:
+                        match = pct_re.search(cell)
+                        if match:
+                            numbers.append(float(match.group(1)))
+                    
+                    if len(numbers) >= 2:
+                        b_pct, bl_pct = _normalize(numbers[0], numbers[1])
+                        results[pair] = {"bearish_pct": b_pct, "bullish_pct": bl_pct}
+                        
+    except Exception as e:
+        logger.error(f"HTML Parsing main error aaya: {e}")
+        
+    return results
 
 if __name__ == "__main__":
-    # Isko test karne ke liye jab script direct chale
     data = fetch_sentiment_data()
+    print("\n📊 --- FINAL PARSED DATA ---")
     print(json.dumps(data, indent=2))
