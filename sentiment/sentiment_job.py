@@ -17,7 +17,7 @@ if LOCAL_PACKAGES_DIR not in sys.path:
     print(f"[INFO] sys.path mein add kiya: {LOCAL_PACKAGES_DIR}")
 
 # ============================================================
-# STEP 2: Third-party packages import karo
+# STEP 2: Third-party packages import karo (CHANGED: cloudscraper -> tls-client)
 # ============================================================
 try:
     import schedule
@@ -27,10 +27,10 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    import cloudscraper
-    print("[OK] cloudscraper imported successfully")
+    import tls_client
+    print("[OK] tls-client imported successfully")
 except ImportError as e:
-    print(f"[ERROR] cloudscraper import failed: {e}")
+    print(f"[ERROR] tls-client import failed: {e}")
     sys.exit(1)
 
 try:
@@ -110,7 +110,7 @@ def run_job():
     try:
         logger.info(f"Whitelist [{len(WHITELIST_PAIRS)}]: {sorted(WHITELIST_PAIRS)}")
 
-        # Live market data scrape karo
+        # Live market data scrape karo (Ab yeh tls-client ke zariye bypass karega)
         scraped = fetch_sentiment_data()
         if not scraped:
             logger.error("Scraper se koi data nahi aaya. Job abort.")
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     logger.info("Pehla run abhi kar rahe hain...")
     run_job()
 
-    # ✅ CHANGED: 5 minutes → 1 hour
+    # Scheduled: Har 2.5 ghante baad automatic chalega (150 minutes)
     schedule.every(150).minutes.do(run_job)
     logger.info("Scheduled: Har 2.5 ghante baad automatic chalega")
 
