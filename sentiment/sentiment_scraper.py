@@ -1,15 +1,14 @@
 """
-sentiment_scraper.py  —  ICI-SCANNER (Proxy Version)
-===================================================
-Render Datacenter IPs ko bypass karne ke liye free proxy rotator integrated hai.
+sentiment_scraper.py  —  ICI-SCANNER (Render Env Version)
+============================================================
+Cloudflare ko bypass karne ke liye ScrapingAnt API aur Render Env variables ka use.
 """
 
 import os
 import json
 import re
-import time
-import random
 import logging
+import urllib.parse
 import tls_client
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, Tuple
@@ -21,23 +20,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
-# URLS & CONFIG
+# CONFIGURATION (Render ki settings se key auto-load hogi)
 # ─────────────────────────────────────────────
-MENTFX_HOME   = "https://mentfx.com/"
+ANT_API_KEY = os.environ.get("SCRAPINGANT_API_KEY", "")
+
 MENTFX_VIEWER = "https://mentfx.com/sentiment-viewer/"
 MENTFX_JSON_1 = "https://mentfx.com/sentiment-viewer/sentiment_data.php"
 MENTFX_JSON_2 = "https://mentfx.com/sentiment-viewer/get_data.php"
-
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-]
-
-# Public free proxy list websites jo use ki ja sakti hain fallback ke liye
-FREE_PROXY_SOURCES = [
-    "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
-    "https://www.proxy-list.download/api/v1/get?type=https"
-]
 
 MENTFX_TO_APP: Dict[str, str] = {
     "USOIL": "USOIL",   "WTI": "USOIL",
@@ -84,85 +73,6 @@ def _normalize(a: float, b: float) -> Tuple[float, float]:
         return 50.0, 50.0
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
-def _is_cf_challenge(text: str) -> bool:
-    lower = (text or "").lower()
-    signals = ["just a moment", "checking your browser", "cloudflare",
-               "challenge-platform", "turnstile", "enable javascript"]
-    return any(s in lower for s in signals)
-
-def _get_free_proxies() -> list:
-    """Internet se automatically working free proxies uthata hai Render IP ko bypass karne ke liye."""
-    proxies = []
-    try:
-        temp_session = tls_client.Session(client_identifier="chrome_120")
-        for url in FREE_PROXY_SOURCES:
-            res = temp_session.get(url, timeout_seconds=10)
-            if res.status_code == 200 and res.text:
-                found = re.findall(r'\d+\.\d+\.\d+\.\d+:\d+', res.text)
-                proxies.extend(found)
-        logger.info(f"[Proxy Rotator] Loaded {len(proxies)} fresh public proxies.")
-    except Exception as e:
-        logger.warning(f"Could not load free proxies: {e}")
-    return proxies
-
-def _make_session(ua: str, proxy: Optional[str] = None) -> tls_client.Session:
-    session = tls_client.Session(
-        client_identifier="chrome_120",
-        random_tls_extension_order=True
-    )
-    session.headers.update({
-        "User-Agent": ua,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-    })
-    if proxy:
-        session.proxies = {
-            "http": f"http://{proxy}",
-            "https": f"http://{proxy}"
-        }
-        logger.info(f"[Session] Using Proxy: {proxy}")
-    return session
-
-def _warmup_session(session: tls_client.Session) -> bool:
-    try:
-        resp = session.get(MENTFX_HOME, timeout_seconds=15)
-        if _is_cf_challenge(resp.text):
-            logger.warning("[warmup] CF challenge detected.")
-            return False
-        time.sleep(random.uniform(1.0, 2.0))
-
-        resp2 = session.get(MENTFX_VIEWER, timeout_seconds=15)
-        if _is_cf_challenge(resp2.text):
-            logger.warning("[warmup] CF challenge on viewer page.")
-            return False
-
-        return True
-    except Exception as e:
-        logger.warning(f"[warmup] Failed connection: {e}")
-        return False
-
-def _fetch_json(session: tls_client.Session, url: str) -> Optional[Dict]:
-    try:
-        current_headers = dict(session.headers)
-        current_headers.update({
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "X-Requested-With": "XMLHttpRequest",
-            "Referer": MENTFX_VIEWER,
-            "Origin": "https://mentfx.com",
-        })
-        resp = session.get(url, headers=current_headers, timeout_seconds=15)
-        if resp.status_code != 200:
-            return None
-        raw = resp.text.strip()
-        if not raw or _is_cf_challenge(raw) or raw[0] not in ('{', '['):
-            return None
-        return _parse_json_response(json.loads(raw))
-    except Exception:
-        return None
-
 def _parse_json_response(data) -> Dict:
     results = {}
     items = data if isinstance(data, list) else [data]
@@ -183,99 +93,57 @@ def _parse_json_response(data) -> Dict:
                 continue
     return results
 
-def _fetch_html(session: tls_client.Session) -> Optional[Dict]:
+def _call_ant_api(target_url: str) -> Optional[str]:
+    """ScrapingAnt ke zariye request bhejta hai jo Cloudflare bypass kar deta hai."""
     try:
-        current_headers = dict(session.headers)
-        current_headers.update({
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Referer": MENTFX_HOME,
-        })
-        resp = session.get(MENTFX_VIEWER, headers=current_headers, timeout_seconds=20)
-        if resp.status_code != 200 or _is_cf_challenge(resp.text):
-            return None
-        soup = BeautifulSoup(resp.text, "html.parser")
+        encoded_url = urllib.parse.quote_plus(target_url)
+        ant_url = f"https://api.scrapingant.com/v2/general?url={encoded_url}&x-api-key={ANT_API_KEY}&browser=false"
         
-        for parser in [_parse_scripts, _parse_tables]:
-            res = parser(soup)
-            if res: return res
+        session = tls_client.Session(client_identifier="chrome_120")
+        resp = session.get(ant_url, timeout_seconds=30)
+        
+        if resp.status_code == 200:
+            return resp.text
+        else:
+            logger.warning(f"[Ant-API] Failed with status code: {resp.status_code}")
+            return None
+    except Exception as e:
+        logger.error(f"[Ant-API] Error: {e}")
         return None
-    except Exception:
-        return None
-
-def _parse_scripts(soup: BeautifulSoup) -> Dict:
-    results = {}
-    pattern = re.compile(r"(?:var\s+\w+|window\.\w+|\w+)\s*=\s*(\[[\s\S]*?\]|\{[\s\S]*?\})\s*;", re.IGNORECASE)
-    for script in soup.find_all("script"):
-        text = script.string or ""
-        if not text or sum(1 for k in ["pair", "bear", "bull"] if k in text.lower()) < 2:
-            continue
-        for match in pattern.finditer(text):
-            try:
-                extracted = _parse_json_response(json.loads(match.group(1).strip()))
-                if extracted: results.update(extracted)
-            except Exception: continue
-    return results
-
-def _parse_tables(soup: BeautifulSoup) -> Dict:
-    results = {}
-    pct_re = re.compile(r"^(\d{1,3}(?:\.\d+)?)%?$")
-    for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cells = [td.get_text(strip=True) for td in row.find_all(["td", "th"])]
-            pair = next((_map_pair(c) for c in cells if _map_pair(c)), None)
-            if not pair: continue
-            nums = [float(pct_re.match(c.strip().rstrip("%")).group(1)) for c in cells if pct_re.match(c.strip().rstrip("%"))]
-            if len(nums) >= 2:
-                b, bl = _normalize(nums[0], nums[1])
-                results[pair] = {"bearish_pct": b, "bullish_pct": bl}
-    return results
 
 # ─────────────────────────────────────────────
 # MAIN PUBLIC FUNCTION
 # ─────────────────────────────────────────────
 def fetch_sentiment_data() -> Dict:
-    # 1. Pehle direct try karo bina proxy ke (Kya pta luck acha ho)
-    ua = random.choice(USER_AGENTS)
-    logger.info("━━━ Attempting Direct Connection (No Proxy) ━━━")
-    session = _make_session(ua)
-    if _warmup_session(session):
-        for url in [MENTFX_JSON_1, MENTFX_JSON_2]:
-            res = _fetch_json(session, url)
-            if res: return res
-        res_html = _fetch_html(session)
-        if res_html: return res_html
+    logger.info("━━━ Fetching Data via ScrapingAnt Free API ━━━")
+    
+    if not ANT_API_KEY:
+        logger.error("Render ki settings mein SCRAPINGANT_API_KEY nahi mili!")
+        return {}
 
-    # 2. Agar direct block ho jaye, to automatically public proxies load karo
-    logger.warning("Direct connection blocked by Cloudflare. Activating Proxy Rotator...")
-    proxies = _get_free_proxies()
-    
-    # Sirf top 10 positions try karenge random filter ke sath taake script latkay nahi
-    sampled_proxies = random.sample(proxies, min(len(proxies), 12))
-    
-    for idx, proxy in enumerate(sampled_proxies):
-        logger.info(f"━━━ Proxy Session {idx+1}/{len(sampled_proxies)} ━━━")
+    # Layer 1: Try endpoint 1
+    raw_json1 = _call_ant_api(MENTFX_JSON_1)
+    if raw_json1:
         try:
-            session = _make_session(ua, proxy=proxy)
-            if not _warmup_session(session):
-                continue
-                
-            # Layer 1 & 2
-            for url in [MENTFX_JSON_1, MENTFX_JSON_2]:
-                result = _fetch_json(session, url)
-                if result:
-                    logger.info(f"✅ Success via Proxy {proxy}: {len(result)} pairs found!")
-                    return result
-            
-            # Layer 3 fallback
-            result = _fetch_html(session)
-            if result:
-                logger.info(f"✅ Success via Proxy HTML {proxy}!")
-                return result
-        except Exception as e:
-            logger.debug(f"Proxy {proxy} failed error: {e}")
-            continue
-            
-    logger.error("❌ All proxy layers and sessions exhausted.")
+            res = _parse_json_response(json.loads(raw_json1))
+            if res:
+                logger.info(f"✅ Success! Found {len(res)} pairs from Endpoint 1.")
+                return res
+        except Exception:
+            pass
+
+    # Layer 2: Try endpoint 2
+    raw_json2 = _call_ant_api(MENTFX_JSON_2)
+    if raw_json2:
+        try:
+            res = _parse_json_response(json.loads(raw_json2))
+            if res:
+                logger.info(f"✅ Success! Found {len(res)} pairs from Endpoint 2.")
+                return res
+        except Exception:
+            pass
+
+    logger.error("❌ ScrapingAnt se data fetch/parse nahi ho saka.")
     return {}
 
 if __name__ == "__main__":
