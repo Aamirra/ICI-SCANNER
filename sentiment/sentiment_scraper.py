@@ -1,7 +1,7 @@
 """
-sentiment_scraper.py  —  ICI-SCANNER (GitHub Actions HTML Live Parser + Firebase)
+sentiment_scraper.py  —  ICI-SCANNER (GitHub Actions HTML Live Parser + Firebase Fix)
 ====================================================================
-Bina kisi proxy ke direct main page ka table parse karke Firebase mein save karne wala system.
+Bina kisi proxy ke direct main page ka table parse karke Firebase ke 'sentiment' node mein save karne wala system.
 """
 
 import os
@@ -39,7 +39,7 @@ def _normalize(a: float, b: float) -> Tuple[float, float]:
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
 def save_to_firebase(data: Dict):
-    """Data ko Firebase Realtime Database mein save karne ka function."""
+    """Data ko Firebase Realtime Database ke direct 'sentiment' node mein save karne ka function."""
     if not data:
         logger.warning("Firebase mein save karne ke liye koi data nahi mila.")
         return
@@ -50,20 +50,17 @@ def save_to_firebase(data: Dict):
         return
 
     try:
-        # JSON string ko dict mein convert karein
         cred_dict = json.loads(cred_json)
         
-        # Firebase initialize karein (agar pehle se nahi hua)
         if not firebase_admin._apps:
-            # Apne project id ke mutabiq databaseURL set karein
             db_url = f"https://{cred_dict['project_id']}-default-rtdb.firebaseio.com/"
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred, {'databaseURL': db_url})
         
-        # Reference set karke data overwrite/update karein
-        ref = db.reference("market_sentiment")
+        # FIX: Purane node path par data overwrite karenge taake App foran pakad le
+        ref = db.reference("sentiment")
         ref.set(data)
-        logger.info("🔥 Data successfully saved to Firebase Database!")
+        logger.info("🔥 Data successfully saved to Firebase 'sentiment' Node!")
     except Exception as e:
         logger.error(f"Firebase mein save karte waqt error aaya: {e}")
 
@@ -123,5 +120,4 @@ if __name__ == "__main__":
     print("\n📊 --- FINAL PARSED DATA ---")
     print(json.dumps(data, indent=2))
     
-    # Firebase mein push karein
     save_to_firebase(data)
