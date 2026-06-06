@@ -1,5 +1,6 @@
-firebase-admin
-psycopg2-binary
-python-dotenv
 tls-client
 beautifulsoup4
+schedule
+python-dotenv
+firebase-admin
+psycopg2-binary
