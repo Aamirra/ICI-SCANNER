@@ -2,9 +2,7 @@ name: MentFX Sentiment Scraper
 
 on:
   schedule:
-    # Har 2.5 ghante baad automatic chalega (Cron Job)
     - cron: '0 */2 * * *'
-  # Agar hum khud click karke check karna chahein to uske liye:
   workflow_dispatch:
 
 jobs:
@@ -18,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-python: '3.10'
+        python-version: '3.10'
 
     - name: Install Packages
       run: |
@@ -26,4 +24,6 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Scraper
+      env:
+        FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       run: python sentiment/sentiment_scraper.py
