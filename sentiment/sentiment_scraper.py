@@ -1,7 +1,7 @@
 """
-sentiment_scraper.py  —  ICI-SCANNER (GitHub Actions HTML Live Parser)
+sentiment_scraper.py  —  ICI-SCANNER (GitHub Actions HTML Live Parser + Firebase)
 ====================================================================
-Bina kisi proxy ke direct main page ka table parse karne wala system.
+Bina kisi proxy ke direct main page ka table parse karke Firebase mein save karne wala system.
 """
 
 import os
@@ -9,6 +9,8 @@ import json
 import re
 import logging
 import tls_client
+import firebase_admin
+from firebase_admin import credentials, db
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, Tuple
 
@@ -36,6 +38,35 @@ def _normalize(a: float, b: float) -> Tuple[float, float]:
     if total == 0: return 50.0, 50.0
     return round(a / total * 100, 2), round(b / total * 100, 2)
 
+def save_to_firebase(data: Dict):
+    """Data ko Firebase Realtime Database mein save karne ka function."""
+    if not data:
+        logger.warning("Firebase mein save karne ke liye koi data nahi mila.")
+        return
+
+    cred_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
+    if not cred_json:
+        logger.error("FIREBASE_SERVICE_ACCOUNT variable GitHub secrets mein nahi mila!")
+        return
+
+    try:
+        # JSON string ko dict mein convert karein
+        cred_dict = json.loads(cred_json)
+        
+        # Firebase initialize karein (agar pehle se nahi hua)
+        if not firebase_admin._apps:
+            # Apne project id ke mutabiq databaseURL set karein
+            db_url = f"https://{cred_dict['project_id']}-default-rtdb.firebaseio.com/"
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred, {'databaseURL': db_url})
+        
+        # Reference set karke data overwrite/update karein
+        ref = db.reference("market_sentiment")
+        ref.set(data)
+        logger.info("🔥 Data successfully saved to Firebase Database!")
+    except Exception as e:
+        logger.error(f"Firebase mein save karte waqt error aaya: {e}")
+
 def fetch_sentiment_data() -> Dict:
     logger.info("━━━ Fetching MentFX Live HTML via GitHub Actions ━━━")
     session = tls_client.Session(client_identifier="chrome_120")
@@ -43,7 +74,6 @@ def fetch_sentiment_data() -> Dict:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Alt-Used": "mentfx.com",
         "Connection": "keep-alive"
     })
     
@@ -54,21 +84,15 @@ def fetch_sentiment_data() -> Dict:
         
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            
-            # Web page par majood saare tables check karenge
             tables = soup.find_all("table")
-            logger.info(f"Found {len(tables)} tables on the page.")
-            
             pct_re = re.compile(r"(\d+(?:\.\d+)?)")
             
             for table in tables:
                 rows = table.find_all("tr")
                 for row in rows:
                     cells = [td.get_text(strip=True) for td in row.find_all(["td", "th"])]
-                    if not cells:
-                        continue
+                    if not cells: continue
                     
-                    # Check karein ke row mein koi valid pair hai ya nahi
                     pair = None
                     pair_index = -1
                     for idx, cell in enumerate(cells):
@@ -78,15 +102,12 @@ def fetch_sentiment_data() -> Dict:
                             pair_index = idx
                             break
                     
-                    if not pair:
-                        continue
+                    if not pair: continue
                     
-                    # Pair ke aage se percentages (Bearish/Bullish) nikalna
                     numbers = []
                     for cell in cells[pair_index + 1:]:
                         match = pct_re.search(cell)
-                        if match:
-                            numbers.append(float(match.group(1)))
+                        if match: numbers.append(float(match.group(1)))
                     
                     if len(numbers) >= 2:
                         b_pct, bl_pct = _normalize(numbers[0], numbers[1])
@@ -101,3 +122,6 @@ if __name__ == "__main__":
     data = fetch_sentiment_data()
     print("\n📊 --- FINAL PARSED DATA ---")
     print(json.dumps(data, indent=2))
+    
+    # Firebase mein push karein
+    save_to_firebase(data)
