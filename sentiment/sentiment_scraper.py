@@ -17,10 +17,10 @@ from typing import Dict, Optional, Tuple
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-# ✅ URL updated to main sentiment page
-MENTFX_VIEWER = "https://mentfx.com/sentiment/"
+# ✅ Actual data URL (iframe source)
+MENTFX_VIEWER = "https://mentfx.com/sentiment-viewer/index.php"
 
-# ✅ Full pair mapping added
+# ✅ Full pair mapping
 MENTFX_TO_APP: Dict[str, str] = {
     # --- Commodities & Crypto ---
     "USOIL": "USOIL",
@@ -72,6 +72,7 @@ MENTFX_TO_APP: Dict[str, str] = {
     # --- NZD Cross Pairs ---
     "NZDCAD": "NZDCAD",
     "NZDCHF": "NZDCHF",
+    "NZDJPY": "NZDJPY",
 
     # --- CAD Cross Pairs ---
     "CADCHF": "CADCHF",
@@ -131,51 +132,32 @@ def fetch_sentiment_data() -> Dict:
         
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            tables = soup.find_all("table")
             pct_re = re.compile(r"(\d+(?:\.\d+)?)")
             
+            # ✅ Table structure: | Symbol | INTRADAY (bear% bull%) | DAILY (bear% bull%) |
+            # Har row mein 3 <td> hain: [0]=Symbol, [1]=Intraday cell, [2]=Daily cell
+            tables = soup.find_all("table")
             for table in tables:
                 rows = table.find_all("tr")
                 for row in rows:
-                    cells = [td.get_text(strip=True) for td in row.find_all(["td", "th"])]
-                    if not cells: continue
-                    
-                    # Pair dhundo
-                    pair = None
-                    pair_index = -1
-                    for idx, cell in enumerate(cells):
-                        mapped = _map_pair(cell)
-                        if mapped:
-                            pair = mapped
-                            pair_index = idx
-                            break
-                    
-                    if not pair: continue
-                    
-                    # ✅ DAILY column logic:
-                    # Website mein structure: [SYMBOL] [INTRADAY_bear%] [INTRADAY_bull%] [DAILY_bear%] [DAILY_bull%]
-                    # Hum sirf DAILY chahiye — isliye pair ke baad se saare numbers nikalo
-                    # aur last 2 numbers lo (jo DAILY column ke hain)
-                    numbers = []
-                    for cell in cells[pair_index + 1:]:
-                        match = pct_re.search(cell)
-                        if match:
-                            numbers.append(float(match.group(1)))
-                    
-                    # DAILY = last 2 numbers (INTRADAY = first 2, DAILY = last 2)
-                    if len(numbers) >= 4:
-                        daily_bear = numbers[2]
-                        daily_bull = numbers[3]
-                    elif len(numbers) == 2:
-                        # Agar sirf 2 numbers hain to wahi le lo
-                        daily_bear = numbers[0]
-                        daily_bull = numbers[1]
-                    else:
+                    cells = row.find_all(["td", "th"])
+                    if len(cells) < 3:
                         continue
                     
-                    b_pct, bl_pct = _normalize(daily_bear, daily_bull)
-                    results[pair] = {"bearish_pct": b_pct, "bullish_pct": bl_pct}
-                    logger.info(f"✅ {pair} → Bear: {b_pct}% | Bull: {bl_pct}% (DAILY)")
+                    # Cell 0 = Symbol
+                    symbol_text = cells[0].get_text(strip=True)
+                    pair = _map_pair(symbol_text)
+                    if not pair:
+                        continue
+                    
+                    # Cell 2 = DAILY column
+                    daily_cell = cells[2].get_text(strip=True)
+                    numbers = [float(m) for m in pct_re.findall(daily_cell)]
+                    
+                    if len(numbers) >= 2:
+                        b_pct, bl_pct = _normalize(numbers[0], numbers[1])
+                        results[pair] = {"bearish_pct": b_pct, "bullish_pct": bl_pct}
+                        logger.info(f"✅ {pair} → Bear: {b_pct}% | Bull: {bl_pct}% (DAILY)")
                         
     except Exception as e:
         logger.error(f"HTML Parsing main error aaya: {e}")
