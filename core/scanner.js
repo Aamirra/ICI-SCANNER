@@ -228,8 +228,18 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const sorted = [...j.values].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
                         const cls = sorted.map(v => parseFloat(v.close));
                         const ema20 = calcEMA(cls, 20);
-                        if (ema20) DATA_STORE[p.n][tf] = cls[cls.length - 1] > ema20 ? 'bull' : 'bear';
-                        
+                        const currentPrice = cls[cls.length - 1];
+
+                        if (ema20) {
+                            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+
+                            // ✅ Alert ke liye currentPrice aur ema20 save karo (1h se)
+                            if (tf === '1h') {
+                                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
+                                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
+                            }
+                        }
+
                         // ✅ FIX — highs aur lows bhi add kiye
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
