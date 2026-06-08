@@ -1,0 +1,250 @@
+// ─────────────────────────────────────────────────────────
+// FILE: services/AlertWorker.kt
+// WorkManager ka worker — background mein chalta hai
+// App band ho tab bhi, har 15 min mein check karta hai
+// ─────────────────────────────────────────────────────────
+package com.yourapp.services
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.yourapp.MainActivity
+import com.yourapp.core.Alert
+import com.yourapp.core.PairData
+import com.yourapp.utils.AlertManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
+
+class AlertWorker(
+    private val context: Context,
+    params: WorkerParameters
+) : CoroutineWorker(context, params) {
+
+    companion object {
+        const val CHANNEL_ID   = "ICI_ALERTS"
+        const val CHANNEL_NAME = "ICI Scanner Alerts"
+
+        // ── Notification channel banao (app start pe call karo) ──
+        fun createChannel(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val ch = NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "ICI Scanner trading alerts"
+                    enableVibration(true)
+                    enableLights(true)
+                }
+                context.getSystemService(NotificationManager::class.java)
+                    .createNotificationChannel(ch)
+            }
+        }
+    }
+
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            // 1. Active alerts check karo — koi nahi toh skip
+            val activeAlerts = AlertManager.getActive(context)
+            if (activeAlerts.isEmpty()) return@withContext Result.success()
+
+            // 2. ─── FRESH DATA FETCH ───────────────────────────────────
+            // TODO: Ye apne existing data fetch se replace karo
+            // Example:
+            //   val freshData = ApiService.fetchPairs()
+            // Ya agar JS se data aata hai toh SharedPreferences mein
+            // save karo aur yahan se read karo:
+            val freshData = getLastKnownData()
+            if (freshData.isEmpty()) return@withContext Result.retry()
+            // ──────────────────────────────────────────────────────────
+
+            // 3. Har pair ke alerts check karo
+            freshData.forEach { pair ->
+                activeAlerts
+                    .filter { it.pair == pair.name }
+                    .forEach { alert ->
+                        if (conditionMet(alert, pair)) {
+                            sendNotification(alert, pair)
+
+                            // Only Once → deactivate
+                            if (alert.frequency == "Only Once") {
+                                AlertManager.deactivate(context, alert.id)
+                            }
+
+                            // WebView ko bhi batao (agar app open ho)
+                            broadcastToApp(alert, pair)
+                        }
+                    }
+            }
+
+            Result.success()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.retry()
+        }
+    }
+
+    // ─── Condition check logic ────────────────────────────
+    private fun conditionMet(alert: Alert, pair: PairData): Boolean {
+        return when (alert.condition) {
+            "BULL_SIGNAL" ->
+                if (alert.timeframe == "Any")
+                    listOf(pair.h1,pair.h4,pair.d1,pair.w1).any { it == "BULL" }
+                else
+                    pair.getSignal(alert.timeframe) == "BULL"
+
+            "BEAR_SIGNAL" ->
+                if (alert.timeframe == "Any")
+                    listOf(pair.h1,pair.h4,pair.d1,pair.w1).any { it == "BEAR" }
+                else
+                    pair.getSignal(alert.timeframe) == "BEAR"
+
+            "ALL_BULL" ->
+                pair.h1=="BULL" && pair.h4=="BULL" && pair.d1=="BULL" && pair.w1=="BULL"
+
+            "ALL_BEAR" ->
+                pair.h1=="BEAR" && pair.h4=="BEAR" && pair.d1=="BEAR" && pair.w1=="BEAR"
+
+            "SENTIMENT_75" -> pair.sentiment >= 75
+            "SENTIMENT_50" -> pair.sentiment >= 50
+
+            else -> false
+        }
+    }
+
+    // ─── Native notification bhejo ───────────────────────
+    private fun sendNotification(alert: Alert, pair: PairData) {
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+            .format(java.util.Date())
+        val message = alert.message
+            .replace("{{ticker}}", pair.name)
+            .replace("{{time}}", time)
+
+        // App kholne ka intent
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("from_alert", true)
+            putExtra("alert_pair", pair.name)
+        }
+        val pi = PendingIntent.getActivity(
+            context, alert.id.toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notif = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // apna icon lagao: R.drawable.ic_bell
+            .setContentTitle("🔔 ${alert.name}")
+            .setContentText("${pair.name}: $message")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("${pair.name}: $message"))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .apply {
+                if (alert.sound) {
+                    setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
+                } else {
+                    setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+                }
+            }
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(
+                "${pair.name}_${alert.id}".hashCode(),
+                notif
+            )
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS permission nahi hai
+        }
+    }
+
+    // ─── App open ho toh WebView ko update karo ──────────
+    private fun broadcastToApp(alert: Alert, pair: PairData) {
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+            .format(java.util.Date())
+        val message = alert.message
+            .replace("{{ticker}}", pair.name)
+            .replace("{{time}}", time)
+
+        Intent("ICI_ALERT_FIRED").apply {
+            putExtra("pair",        pair.name)
+            putExtra("alert_name",  alert.name)
+            putExtra("message",     message)
+            putExtra("alert_id",    alert.id)
+            context.sendBroadcast(this)
+        }
+    }
+
+    // ─── Last known data read karo ───────────────────────
+    // Jab JS scan kare tab Android.saveLatestData(json) call se
+    // SharedPreferences mein save hota hai
+    private fun getLastKnownData(): List<PairData> {
+        val prefs = context.getSharedPreferences("ici_market_data", Context.MODE_PRIVATE)
+        val json = prefs.getString("latest_pairs", null) ?: return emptyList()
+        return try {
+            val type = object : TypeToken<List<PairData>>() {}.type
+            Gson().fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+}
+
+
+// ─────────────────────────────────────────────────────────
+// FILE: services/AlertScheduler.kt
+// WorkManager ko schedule karta hai
+// ─────────────────────────────────────────────────────────
+
+object AlertScheduler {
+
+    private const val WORK_NAME = "ICI_BG_ALERT_CHECK"
+
+    // ── App start pe call karo — sirf ek baar ──
+    fun start(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // Har 15 minute mein (minimum allowed hai Android mein)
+        val periodicWork = PeriodicWorkRequestBuilder<AlertWorker>(
+            15, TimeUnit.MINUTES,
+             5, TimeUnit.MINUTES   // flex window
+        )
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 5, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            periodicWork
+        )
+    }
+
+    // ── Scan complete hone ke baad foran check karo ──
+    fun checkNow(context: Context) {
+        val oneTime = OneTimeWorkRequestBuilder<AlertWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+        WorkManager.getInstance(context).enqueue(oneTime)
+    }
+
+    fun stop(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+    }
+}
