@@ -17,7 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let MARKET_DATA = {}, PB_STATE = {};
-window.sentimentData = {}; // Global store for sentiment
+window.sentimentData = {};
 
 db.ref('marketData').on('value', (snap) => {
     MARKET_DATA = snap.val() || {};
@@ -26,6 +26,30 @@ db.ref('marketData').on('value', (snap) => {
         updateCounts();
     }
     document.getElementById('st').textContent = "✅ Cloud Synced";
+
+    // ✅ Alert check — naya data aate hi fire karo
+    if (typeof checkAllAlerts === 'function') {
+        const pairs = PAIRS.map(p => {
+            const d = MARKET_DATA[p.n] || {};
+            const s = (window.sentimentData && window.sentimentData[p.n]) || {};
+            return {
+                name:         p.n,
+                currentPrice: d.currentPrice  || null,
+                ema20:        d.ema20         || null,
+                sentiment:    s.bullish_pct   || 0,
+                h1:  d['1h']    || null,
+                h4:  d['4h']    || null,
+                d1:  d['1day']  || null,
+                w1:  d['1week'] || null,
+            };
+        });
+        checkAllAlerts(pairs);
+
+        // ✅ Android background worker ke liye bhi save karo
+        if (window.Android) {
+            window.Android.saveLatestData(JSON.stringify(pairs));
+        }
+    }
 });
 
 db.ref('pb_state').on('value', (snap) => {
