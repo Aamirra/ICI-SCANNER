@@ -163,7 +163,7 @@ tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
 .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
 
-/* ✅ NEW: Signal dots with expanding ring pulse */
+/* ✅ EXPANDING RING DOTS */
 .sig {
   display: inline-block;
   width: 12px;
@@ -171,7 +171,7 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   border-radius: 50%;
   position: relative;
   border: none;
-  background: #555; /* fallback, overridden */
+  background: #555;
 }
 .sig.bull { background: #00cc66; }
 .sig.bear { background: #ff2244; }
@@ -363,7 +363,41 @@ function toggleTheme() {
     }
 })();
 
+// ── Filter tab click ──
+function setFilter(f) {
+    document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
+    curF = f;
+    render();
+}
+
+// ── Target List open ──
+function openM() {
+    document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
+    const l = document.getElementById('ml');
+    const targets = collectTargets();
+    const entries = Object.entries(targets);
+    targetOrder = entries.map(([n]) => n);
+    l.innerHTML =
+        `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
+        (entries.length
+            ? entries.map(([n, s]) => {
+                const dir = (s.dir || '').toLowerCase();
+                const dirTxt = dir ? dir.toUpperCase() : '?';
+                const dirCol = dir === 'bull' ? '#00ff88' : (dir === 'bear' ? '#ff4466' : '#888');
+                return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span>
+                    <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(s.phase)}</span>
+                    <span style="color:${dirCol}">${dirTxt}</span>
+                </div>`;
+              }).join('')
+            : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`
+        );
+    document.getElementById('mo').classList.add('open');
+}
+
+// ── Scan button click ──
 function manualScan() {
+    document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...';
     btn.disabled = true;
