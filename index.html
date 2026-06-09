@@ -363,8 +363,9 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
-// ── Theme Toggle ──
+// ── Theme Toggle (tilt reset on theme switch) ──
 function toggleTheme() {
+    document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
@@ -452,12 +453,12 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// 3D Mouse Parallax (only when NOT in desktop mode)
+// 3D Mouse Parallax (disabled in desktop mode)
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 
 function handleParallax(e) {
-  if (document.body.classList.contains('desktop-mode')) return; // ✅ disable in desktop mode
+  if (document.body.classList.contains('desktop-mode')) return;
   const rect = appContainer.getBoundingClientRect();
   const xAxis = (rect.width / 2 - (e.clientX - rect.left)) / 25;
   const yAxis = (rect.height / 2 - (e.clientY - rect.top)) / 25;
@@ -494,9 +495,8 @@ function createParticles() {
 }
 createParticles();
 
-// Desktop Mode Logic (with tilt reset)
+// Desktop Mode Logic (tilt reset on toggle)
 function toggleDesktopMode() {
-    // Reset tilt immediately
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const isDesktop = document.body.classList.toggle('desktop-mode');
     const overlay  = document.getElementById('chartOverlay');
