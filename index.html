@@ -403,7 +403,6 @@ function setFilter(f) {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     curF = f;
     render();
-    setTimeout(updateTechCells, 50); // ✅ ensure tech cells are filled after filter
 }
 
 // ── Target List open ──
@@ -429,7 +428,6 @@ function openM() {
             : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`
         );
     document.getElementById('mo').classList.add('open');
-    setTimeout(updateTechCells, 50); // ✅ in case table gets refreshed
 }
 
 // ── Scan button click ──
@@ -548,51 +546,13 @@ window.addEventListener('load', function() {
 });
 
 // ──────────────────────────────────────────────────
-// TECHNICAL METRICS – Firebase listener + cell updater
+// TECHNICAL METRICS – Firebase listener → re-render table
 // ──────────────────────────────────────────────────
 let techMetrics = {};
 db.ref('technicalMetrics').on('value', (snap) => {
     techMetrics = snap.val() || {};
-    updateTechCells();
+    if (typeof render === 'function') render();
 });
-
-function updateTechCells() {
-    const rows = document.querySelectorAll('#tb tr');
-    rows.forEach(row => {
-        const pairCell = row.querySelector('.pn');
-        if (!pairCell) return;
-        const pairName = pairCell.textContent.trim();
-        const data = techMetrics[pairName];
-        const allCells = row.querySelectorAll('td');
-        // Ensure row has enough cells (pair + 4 signals + sentiment + alert + 5 tech = 12)
-        if (allCells.length < 12) return;
-        const startIdx = allCells.length - 5;
-        const cells = [
-            allCells[startIdx],
-            allCells[startIdx + 1],
-            allCells[startIdx + 2],
-            allCells[startIdx + 3],
-            allCells[startIdx + 4]
-        ];
-
-        const longTerm = data?.longTermTrend != null ? (data.longTermTrend > 0 ? '+' : '') + data.longTermTrend.toFixed(2) + '%' : '—';
-        const shortTerm = data?.shortTermMomentum != null ? (data.shortTermMomentum > 0 ? '+' : '') + data.shortTermMomentum.toFixed(2) + '%' : '—';
-        const micro = data?.microMomentum != null ? (data.microMomentum > 0 ? '+' : '') + data.microMomentum.toFixed(2) + '%' : '—';
-        const vol7d = data?.volume7dAvg != null ? data.volume7dAvg.toLocaleString() : '—';
-        const dollarVol = data?.dollarVolume1d || '—';
-
-        cells[0].textContent = longTerm;
-        cells[0].style.color = data?.longTermTrend >= 0 ? '#00cc66' : '#ff2244';
-        cells[1].textContent = shortTerm;
-        cells[1].style.color = data?.shortTermMomentum >= 0 ? '#00cc66' : '#ff2244';
-        cells[2].textContent = micro;
-        cells[2].style.color = data?.microMomentum >= 0 ? '#00cc66' : '#ff2244';
-        cells[3].textContent = vol7d;
-        cells[3].style.color = 'var(--txt)';
-        cells[4].textContent = dollarVol;
-        cells[4].style.color = 'var(--txt)';
-    });
-}
 </script>
 </body>
 </html>
