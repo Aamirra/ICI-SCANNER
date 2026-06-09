@@ -15,11 +15,22 @@ function render() {
             ).join('')}
             ${getSentimentCell(p.n)}
             <td class="alert-cell">${typeof getBellHtml === 'function' ? getBellHtml(p.n) : ''}</td>
+            <!-- ✅ NEW TECH CELLS (empty initially, filled by updateTechCells) -->
+            <td class="tech-cell"></td>
+            <td class="tech-cell"></td>
+            <td class="tech-cell"></td>
+            <td class="tech-cell"></td>
+            <td class="tech-cell"></td>
         </tr>`
     ).join('');
+    
+    // Immediately update tech metrics once rows are in the DOM
+    if (typeof updateTechCells === 'function') {
+        setTimeout(updateTechCells, 10);
+    }
 }
 
-// Function to render Sentiment column (Updated with Claude's glow effect & colors)
+// Function to render Sentiment column (unchanged)
 function getSentimentCell(pair) {
     const s = window.sentimentData && window.sentimentData[pair];
 
