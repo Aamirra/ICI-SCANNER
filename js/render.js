@@ -2,35 +2,46 @@ let curF = 'all', fPairs = [];
 
 function render() {
     const tbody = document.getElementById('tb');
+    // filter logic
     fPairs = PAIRS.filter(p => {
         if (curF === 'all') return true;
         return ['4h','1day','1week'].every(tf => (MARKET_DATA[p.n]||{})[tf] === curF);
     });
-    
-    tbody.innerHTML = fPairs.map((p, idx) =>
-        `<tr>
+
+    tbody.innerHTML = fPairs.map((p, idx) => {
+        const t = techMetrics ? (techMetrics[p.n] || {}) : {};
+
+        // 200D trend
+        const longTerm = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '—';
+        const longColor = t.longTermTrend >= 0 ? '#00cc66' : '#ff2244';
+        // 10D momentum
+        const shortTerm = t.shortTermMomentum != null ? (t.shortTermMomentum > 0 ? '+' : '') + t.shortTermMomentum.toFixed(2) + '%' : '—';
+        const shortColor = t.shortTermMomentum >= 0 ? '#00cc66' : '#ff2244';
+        // 1H micro momentum
+        const micro = t.microMomentum != null ? (t.microMomentum > 0 ? '+' : '') + t.microMomentum.toFixed(2) + '%' : '—';
+        const microColor = t.microMomentum >= 0 ? '#00cc66' : '#ff2244';
+        // Volume 7d avg
+        const vol7d = t.volume7dAvg != null ? t.volume7dAvg.toLocaleString() : '—';
+        // Dollar volume
+        const dollarVol = t.dollarVolume1d || '—';
+
+        return `<tr>
             <td class="pn" onclick="openCFromTable(${idx})">${p.n}</td>
             ${['1h','4h','1day','1week'].map(tf =>
                 `<td><div class="sig ${(MARKET_DATA[p.n]||{})[tf] || ''}"></div></td>`
             ).join('')}
             ${getSentimentCell(p.n)}
             <td class="alert-cell">${typeof getBellHtml === 'function' ? getBellHtml(p.n) : ''}</td>
-            <!-- 5 TECH COLUMNS (filled by updateTechCells) -->
-            <td class="tech-cell"></td>
-            <td class="tech-cell"></td>
-            <td class="tech-cell"></td>
-            <td class="tech-cell"></td>
-            <td class="tech-cell"></td>
-        </tr>`
-    ).join('');
-    
-    // Call updateTechCells after the DOM is ready
-    if (typeof updateTechCells === 'function') {
-        setTimeout(updateTechCells, 10);
-    }
+            <td class="tech-cell" style="color:${longColor}">${longTerm}</td>
+            <td class="tech-cell" style="color:${shortColor}">${shortTerm}</td>
+            <td class="tech-cell" style="color:${microColor}">${micro}</td>
+            <td class="tech-cell">${vol7d}</td>
+            <td class="tech-cell">${dollarVol}</td>
+        </tr>`;
+    }).join('');
 }
 
-// Function to render Sentiment column
+// Function to render Sentiment column (unchanged)
 function getSentimentCell(pair) {
     const s = window.sentimentData && window.sentimentData[pair];
     if (!s || s.bearish_pct == null || s.bullish_pct == null) {
