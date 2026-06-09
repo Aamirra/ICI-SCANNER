@@ -1,6 +1,6 @@
 const https = require('https');
 const config = require('../config');
-const firebasePut = require('./database');   // already uses admin SDK (no init here)
+const firebasePut = require('./database');
 const calcSMA = require('../utils/smaCalc');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
