@@ -99,20 +99,30 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   transition: transform 0.1s ease-out;
 }
 
-/* ── 3D Topbar ── */
+/* ── Topbar with animated gradient ── */
 .topbar {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px; background:var(--topbar-bg); border-radius:16px;
   margin-bottom:12px; border:1px solid var(--topbar-brd);
-  transform-style: preserve-3d;
-  transition: transform 0.15s ease, box-shadow 0.3s;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
 }
-.topbar:hover {
-  transform: translateZ(10px);
-  box-shadow: 0 10px 30px rgba(0,170,255,0.15);
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
-.brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color); }
+/* Glow animation on brand text */
+.brand {
+  font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color);
+  animation: textGlow 2s ease-in-out infinite alternate;
+}
+@keyframes textGlow {
+  0% { text-shadow: 0 0 5px var(--acc); }
+  100% { text-shadow: 0 0 15px var(--acc), 0 0 25px var(--acc); }
+}
+
 .scan-btn {
   background:rgba(0,170,255,0.15); color:var(--acc);
   border:1px solid var(--acc); padding:6px 12px;
@@ -121,7 +131,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   transition: all 0.2s;
 }
 .scan-btn:hover { background:rgba(0,170,255,0.25); transform: scale(1.05); }
-.scan-btn:active { transform: scale(0.95) rotate(-3deg); }
+.scan-btn:active { transform: scale(0.95); }
 .theme-btn, .desktop-btn {
   background:none; border:1px solid var(--brd); border-radius:8px;
   padding:5px 9px; cursor:pointer; font-size:14px; line-height:1;
@@ -129,22 +139,22 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 }
 .theme-btn:hover, .desktop-btn:hover { transform: scale(1.1); }
 
-/* ── 3D Cards (BULL, BEAR, ALL) ── */
+/* ── Summary Cards: Original size + subtle glow animation ── */
 .sc {
   flex:1; padding:12px; border-radius:14px;
   border:1px solid var(--sc-brd); text-align:center;
   cursor:pointer; background:var(--sf);
-  transform-style: preserve-3d;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: cardPulse 3s ease-in-out infinite;
+}
+@keyframes cardPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  50% { box-shadow: 0 0 15px rgba(0,170,255,0.15); }
 }
 .sc:hover {
-  transform: translateY(-5px) translateZ(15px);
-  box-shadow: 0 15px 25px rgba(0,0,0,0.4);
-}
-.sc:active {
-  transform: translateY(2px) translateZ(5px);
-  box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px rgba(0,170,255,0.25);
 }
 .sn { font-size:20px; display:block; font-weight:bold; }
 
@@ -163,7 +173,7 @@ tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
 .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
 
-/* ✅ EXPANDING RING DOTS */
+/* Expanding ring dots */
 .sig {
   display: inline-block;
   width: 12px;
