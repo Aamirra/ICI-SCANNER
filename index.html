@@ -8,17 +8,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 <style>
-/* ── 3D Base Setup ── */
-body {
+/* ── 3D Perspective wrapper ── */
+#app-container {
   perspective: 1200px;
   overflow-x: hidden;
-}
-.wrap {
-  transform-style: preserve-3d;
-  transition: transform 0.1s ease-out;
+  min-height: 100vh;
 }
 
-/* ── Dark & Light Mode (same as before) ── */
+/* ── Dark & Light Mode ── */
 [data-theme="dark"] {
   --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
   --brd:rgba(255,255,255,0.08); --acc:#00aaff;
@@ -55,13 +52,18 @@ body {
 }
 
 /* ── Animated Background ── */
+body {
+  background: var(--bg);
+  margin:0;
+  overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+}
 body::before {
   content: '';
   position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
   background: radial-gradient(circle at 50% 50%, var(--acc)22, transparent 70%);
   opacity: 0.05;
   z-index: -1;
@@ -75,8 +77,7 @@ body::before {
 /* Floating particles */
 .particle {
   position: fixed;
-  width: 2px;
-  height: 2px;
+  width: 2px; height: 2px;
   background: var(--acc);
   border-radius: 50%;
   opacity: 0.3;
@@ -91,8 +92,12 @@ body::before {
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; transition:background 0.3s, color 0.3s; }
-.wrap { max-width:480px; margin:0 auto; padding:12px; }
+body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
+.wrap {
+  max-width:480px; margin:0 auto; padding:12px;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+}
 
 /* ── 3D Topbar ── */
 .topbar {
@@ -115,13 +120,8 @@ body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',mono
   font-family:'JetBrains Mono',monospace; font-weight:bold;
   transition: all 0.2s;
 }
-.scan-btn:hover {
-  background:rgba(0,170,255,0.25);
-  transform: scale(1.05);
-}
-.scan-btn:active {
-  transform: scale(0.95) rotate(-3deg);
-}
+.scan-btn:hover { background:rgba(0,170,255,0.25); transform: scale(1.05); }
+.scan-btn:active { transform: scale(0.95) rotate(-3deg); }
 .theme-btn, .desktop-btn {
   background:none; border:1px solid var(--brd); border-radius:8px;
   padding:5px 9px; cursor:pointer; font-size:14px; line-height:1;
@@ -160,23 +160,21 @@ table { width:100%; border-collapse:collapse; }
 th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
 td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); transition: background 0.2s; }
 tr { transition: transform 0.2s; }
-tr:hover {
-  background: rgba(255,255,255,0.02);
-  transform: scale(1.01) translateZ(5px);
-}
+tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
 .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
 
-/* Signal dots with pulse */
+/* ✅ NEW: Signal dots with pop-pulse animation */
 .sig {
   display:inline-block; width:14px; height:14px; border-radius:4px;
-  border:none; animation: pulse 2s infinite;
+  border:none;
+  animation: popPulse 2s infinite;
 }
-.sig.bull { background:#00cc66; box-shadow: 0 0 8px #00cc66; }
-.sig.bear { background:#ff2244; box-shadow: 0 0 8px #ff2244; }
-@keyframes pulse {
-  0% { box-shadow: 0 0 4px; }
-  50% { box-shadow: 0 0 12px; }
-  100% { box-shadow: 0 0 4px; }
+.sig.bull { background:#00cc66; box-shadow: 0 0 6px #00cc66; }
+.sig.bear { background:#ff2244; box-shadow: 0 0 6px #ff2244; }
+@keyframes popPulse {
+  0% { transform: scale(1); box-shadow: 0 0 4px; }
+  50% { transform: scale(1.3); box-shadow: 0 0 12px, 0 0 18px; }
+  100% { transform: scale(1); box-shadow: 0 0 4px; }
 }
 
 /* Sentiment bar with shimmer */
@@ -189,20 +187,17 @@ tr:hover {
   display:flex; align-items:center; justify-content:center;
   color:#fff; font-size:7.5px; font-weight:bold;
   white-space:nowrap; overflow:hidden; flex-shrink:0;
-  transition: width 0.4s ease;
-  position: relative;
+  transition: width 0.4s ease; position: relative;
 }
 .s-bull {
   background:#00cc66; box-shadow:0 0 6px #00cc66;
   display:flex; align-items:center; justify-content:center;
   color:#fff; font-size:7.5px; font-weight:bold;
   white-space:nowrap; overflow:hidden; flex-shrink:0;
-  transition: width 0.4s ease;
-  position: relative;
+  transition: width 0.4s ease; position: relative;
 }
 .s-bear::after, .s-bull::after {
-  content: '';
-  position: absolute; top:0; left:-50%; width:50%; height:100%;
+  content: ''; position: absolute; top:0; left:-50%; width:50%; height:100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   animation: shimmer 2s infinite;
 }
@@ -221,15 +216,15 @@ tr:hover {
 .m-card {
   background:var(--sf2); border:1px solid var(--brd); border-radius:24px;
   width:100%; max-width:400px; padding:22px; color:var(--txt);
-  transform: translateZ(30px); box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   animation: cardPop 0.3s ease;
 }
 @keyframes cardPop {
-  0% { transform: translateZ(-30px) scale(0.9); opacity:0; }
-  100% { transform: translateZ(0) scale(1); opacity:1; }
+  0% { transform: scale(0.9); opacity:0; }
+  100% { transform: scale(1); opacity:1; }
 }
 
-/* Chart overlay with slide */
+/* Chart overlay */
 #chartOverlay {
   position:fixed; inset:0; background:var(--bg); z-index:4000;
   display:none; flex-direction:column;
@@ -240,7 +235,6 @@ tr:hover {
   to { transform: translateY(0); }
 }
 
-/* Nav buttons */
 .nav-btn {
   background:var(--nav-btn-bg); color:var(--nav-btn-color);
   border:none; padding:8px 15px; border-radius:8px;
@@ -248,9 +242,10 @@ tr:hover {
 }
 .nav-btn:hover { transform: scale(1.1); }
 
-/* Desktop mode adjustments (as before) */
+/* Desktop mode adjustments */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-body.desktop-mode .wrap { width:420px; min-width:320px; max-width:420px; height:100vh; overflow-y:auto; padding:10px; flex-shrink:0; margin:0; border-right:1px solid var(--brd); }
+body.desktop-mode #app-container { flex-shrink:0; width:420px; min-width:320px; max-width:420px; height:100vh; overflow-y:auto; border-right:1px solid var(--brd); perspective: none; }
+body.desktop-mode .wrap { margin:0; padding:10px; }
 body.desktop-mode #chartOverlay { position:relative !important; inset:auto !important; flex:1; height:100vh; display:flex !important; flex-direction:column; z-index:1 !important; }
 body.desktop-mode #tv_chart_container { min-height:0; }
 body.desktop-mode #chartCloseBtn { display:none !important; }
@@ -260,39 +255,41 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
 </style>
 </head>
 <body>
-<!-- Floating particles will be added by JS -->
-<div class="wrap" id="mainWrap">
-  <div class="topbar" id="topbar">
-    <div class="brand">ICI <span>SCREENER</span></div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
-      <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
-      <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-      <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
+<div id="app-container">
+  <div class="wrap" id="mainWrap">
+    <div class="topbar" id="topbar">
+      <div class="brand">ICI <span>SCREENER</span></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+        <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
+        <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+        <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
+      </div>
+    </div>
+    <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
+    <div class="sum">
+      <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
+      <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
+      <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
+    </div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:12px">Pair</th>
+            <th>1H</th>
+            <th>4H</th>
+            <th>1D</th>
+            <th>1W</th>
+            <th class="sent-th">Daily Sentiment</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
     </div>
   </div>
-  <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
-  <div class="sum">
-    <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
-    <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
-    <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
-  </div>
-  <div class="tw">
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left;padding-left:12px">Pair</th>
-          <th>1H</th>
-          <th>4H</th>
-          <th>1D</th>
-          <th>1W</th>
-          <th class="sent-th">Daily Sentiment</th>
-        </tr>
-      </thead>
-      <tbody id="tb"></tbody>
-    </table>
-  </div>
 </div>
+
 <div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
   <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
@@ -305,6 +302,7 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
   </div>
   <div id="tv_chart_container" style="flex:1"></div>
 </div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="js/firebase.js"></script>
 <script src="Alerts.js"></script>
@@ -355,7 +353,6 @@ function manualScan() {
             }, 3000);
         });
 }
-// Add rotate animation
 const styleSheet = document.createElement("style");
 styleSheet.textContent = "@keyframes rotate360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
 document.head.appendChild(styleSheet);
@@ -368,17 +365,16 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// ════════════════════════════════════════
-// 3D Mouse Parallax Effect
-// ════════════════════════════════════════
+// 3D Mouse Parallax
 const wrap = document.getElementById('mainWrap');
-document.addEventListener('mousemove', (e) => {
-  const xAxis = (window.innerWidth / 2 - e.clientX) / 25;
-  const yAxis = (window.innerHeight / 2 - e.clientY) / 25;
+const appContainer = document.getElementById('app-container');
+appContainer.addEventListener('mousemove', (e) => {
+  const rect = appContainer.getBoundingClientRect();
+  const xAxis = (rect.width / 2 - (e.clientX - rect.left)) / 25;
+  const yAxis = (rect.height / 2 - (e.clientY - rect.top)) / 25;
   wrap.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
 });
-// Reset on mouse leave
-wrap.addEventListener('mouseleave', () => {
+appContainer.addEventListener('mouseleave', () => {
   wrap.style.transform = 'rotateY(0deg) rotateX(0deg)';
 });
 
