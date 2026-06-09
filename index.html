@@ -300,9 +300,7 @@ tbody tr:hover .pn { color:var(--acc); }
 }
 tbody tr:hover .sig { transform:scale(1.07); }
 .sig.bull { background:var(--bullbg); color:var(--bull); }
-.sig.bull::after { content:'BUY'; }
 .sig.bear { background:var(--bearbg); color:var(--bear); }
-.sig.bear::after { content:'SELL'; }
 
 /* ── SENTIMENT (original classes from render.js) ── */
 .sentiment-bar {
@@ -447,9 +445,9 @@ body.desktop-mode #tv_chart_container:empty::after {
 
   <!-- ── FILTER TABS (replaces old sum cards, same setFilter calls) ── -->
   <div class="filter-tabs">
-    <button class="ftab active all"  onclick="setFilter('all')">All<span class="cnt" id="ac">36</span></button>
-    <button class="ftab bull"        onclick="setFilter('bull')">Bullish<span class="cnt" id="bc">0</span></button>
-    <button class="ftab bear"        onclick="setFilter('bear')">Bearish<span class="cnt" id="rc">0</span></button>
+    <button class="ftab active all"  onclick="filterTabClick(this,'all')">All<span class="cnt" id="ac">36</span></button>
+    <button class="ftab bull"        onclick="filterTabClick(this,'bull')">Bullish<span class="cnt" id="bc">0</span></button>
+    <button class="ftab bear"        onclick="filterTabClick(this,'bear')">Bearish<span class="cnt" id="rc">0</span></button>
   </div>
 
   <!-- ── TABLE ── -->
@@ -586,18 +584,13 @@ window.addEventListener('load', function() {
 });
 
 /* ══════════════════════════════════════
-   FILTER TABS
+   FILTER TABS — wrapper only updates tab
+   active state, then calls render.js setFilter
 ══════════════════════════════════════ */
-function setFilter(f) {
+function filterTabClick(el, type) {
   document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  const map = { all:0, bull:1, bear:2 };
-  document.querySelectorAll('.ftab')[map[f]].classList.add('active');
-  document.querySelectorAll('#tb tr').forEach(tr => {
-    if(f === 'all') { tr.style.display = ''; return; }
-    const hasBull = tr.querySelectorAll('.sig.bull').length > 0;
-    const hasBear = tr.querySelectorAll('.sig.bear').length > 0;
-    tr.style.display = (f==='bull' && hasBull)||(f==='bear' && hasBear) ? '' : 'none';
-  });
+  el.classList.add('active');
+  if(typeof setFilter === 'function') setFilter(type);
 }
 
 /* ══════════════════════════════════════
