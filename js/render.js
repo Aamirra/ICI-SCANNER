@@ -14,6 +14,7 @@ function render() {
                 `<td><div class="sig ${(MARKET_DATA[p.n]||{})[tf] || ''}"></div></td>`
             ).join('')}
             ${getSentimentCell(p.n)}
+            <td class="alert-cell">${typeof getBellHtml === 'function' ? getBellHtml(p.n) : ''}</td>
         </tr>`
     ).join('');
 }
