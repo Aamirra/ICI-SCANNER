@@ -403,6 +403,7 @@ function setFilter(f) {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     curF = f;
     render();
+    setTimeout(updateTechCells, 50); // ✅ ensure tech cells are filled after filter
 }
 
 // ── Target List open ──
@@ -428,6 +429,7 @@ function openM() {
             : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`
         );
     document.getElementById('mo').classList.add('open');
+    setTimeout(updateTechCells, 50); // ✅ in case table gets refreshed
 }
 
 // ── Scan button click ──
@@ -473,7 +475,7 @@ const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 function handleParallax(e) {
-  if (isTouchDevice) return;                     // mobile: no tilt
+  if (isTouchDevice) return;
   if (document.body.classList.contains('desktop-mode')) return;
   const rect = appContainer.getBoundingClientRect();
   const xAxis = (rect.width / 2 - (e.clientX - rect.left)) / 25;
@@ -561,13 +563,9 @@ function updateTechCells() {
         if (!pairCell) return;
         const pairName = pairCell.textContent.trim();
         const data = techMetrics[pairName];
-
-        // Get all td cells in this row
         const allCells = row.querySelectorAll('td');
-        // We expect at least 11 cells: Pair(1), 4 signals(4), Sentiment(1), Alert(1), 5 tech(5) = 12 with alert? Actually the order: pair, 1h,4h,1d,1w, sentiment, alert, 5 tech = 1+4+1+1+5=12. Wait, render.js adds 4 signal td, then sentiment td, then alert td, then 5 tech td → total 1 (pair) + 4 + 1 + 1 + 5 = 12 cells. So allCells.length >= 12. I'll use 12.
+        // Ensure row has enough cells (pair + 4 signals + sentiment + alert + 5 tech = 12)
         if (allCells.length < 12) return;
-
-        // Last 5 cells are the tech columns
         const startIdx = allCells.length - 5;
         const cells = [
             allCells[startIdx],
@@ -577,7 +575,6 @@ function updateTechCells() {
             allCells[startIdx + 4]
         ];
 
-        // Format values
         const longTerm = data?.longTermTrend != null ? (data.longTermTrend > 0 ? '+' : '') + data.longTermTrend.toFixed(2) + '%' : '—';
         const shortTerm = data?.shortTermMomentum != null ? (data.shortTermMomentum > 0 ? '+' : '') + data.shortTermMomentum.toFixed(2) + '%' : '—';
         const micro = data?.microMomentum != null ? (data.microMomentum > 0 ? '+' : '') + data.microMomentum.toFixed(2) + '%' : '—';
