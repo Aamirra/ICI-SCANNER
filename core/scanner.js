@@ -53,24 +53,8 @@ function maybeResetDaily() {
     }
 }
 
-function updateSentiment(pairName, data) {
-    const timeframes = ['1h', '4h', '1day', '1week'];
-    let bullCount = 0;
-    let bearCount = 0;
-    timeframes.forEach(tf => {
-        if (data[tf] === 'bull') bullCount++;
-        else if (data[tf] === 'bear') bearCount++;
-    });
-    const total = bullCount + bearCount;
-    if (total > 0) {
-        const bullish_pct = (bullCount / total) * 100;
-        const bearish_pct = (bearCount / total) * 100;
-        firebasePut(`sentiment/${pairName}`, {
-            bullish_pct: parseFloat(bullish_pct.toFixed(2)),
-            bearish_pct: parseFloat(bearish_pct.toFixed(2))
-        }).catch(err => console.log('Sentiment update error:', err));
-    }
-}
+// ⚠️ Scanner ab sentiment node ko update nahi karega — sirf MentFX scraper karega
+// function updateSentiment(pairName, data) { ... }   // ← ab use nahi hogi
 
 function fetchMentFXSentiment() {
     const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
@@ -264,22 +248,28 @@ async function fetchTF(p, tf, retryCount = 0) {
 async function masterScan() {
     if (isScanning) return;
     isScanning = true;
-    maybeResetDaily();
-    const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
-    let failed = await fetchBatch(jobs);
+    try {
+        maybeResetDaily();
+        const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
+        let failed = await fetchBatch(jobs);
 
-    fetchMentFXSentiment();
+        fetchMentFXSentiment();
 
-    for (const p of config.PAIRS) {
-        if (DATA_STORE[p.n]) {
-            await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-            updateSentiment(p.n, DATA_STORE[p.n]);
-            pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
+        for (const p of config.PAIRS) {
+            if (DATA_STORE[p.n]) {
+                await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
+                // ❌ Sentiment node ko scanner update nahi karega — sirf MentFX scraper karega
+                // updateSentiment(p.n, DATA_STORE[p.n]);
+                pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
+            }
         }
-    }
 
-    await refreshRealUsage();
-    isScanning = false;
+        await refreshRealUsage();
+    } catch (err) {
+        console.error('[masterScan] Fatal error:', err);
+    } finally {
+        isScanning = false;
+    }
     setTimeout(masterScan, msUntilNextHourClose());
 }
 
