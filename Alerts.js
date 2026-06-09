@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════
 //  ICI SCREENER — ALERTS SYSTEM
 //  Ye file khud CSS + HTML inject karti hai
-//  Main HTML mein sirf: <script src="alerts.js"></script>
+//  Main HTML mein sirf: <script src="Alerts.js"></script>
 // ═══════════════════════════════════════════════════
 
 // ── 1. CSS INJECT ──
@@ -213,7 +213,11 @@ function alLoadAlerts() {
 }
 function alSaveAlerts(arr) {
     try { localStorage.setItem('ici_alerts', JSON.stringify(arr)); } catch(e) {}
-    try { if (window.Android) window.Android.saveAlert(JSON.stringify(arr)); } catch(e) {}
+    try {
+        if (window.Android) {
+            arr.forEach(alert => window.Android.saveAlert(JSON.stringify(alert)));
+        }
+    } catch(e) {}
 }
 
 // Bell HTML — apni render() function mein call karo
@@ -314,7 +318,7 @@ function alSaveAlert() {
         sound:       _alSoundOn,
         soundType:   document.getElementById('fSoundType').value,
         active:      true,
-        createdAt:   new Date().toLocaleString(),
+        createdAt:   new Date().toISOString(),
     };
     const alerts = alLoadAlerts();
     if (_alEditingId) {
@@ -381,17 +385,49 @@ function alEditItem(id) {
     setTimeout(() => openAlertDialog(a.pair, a), 200);
 }
 
-// Alert Check Engine
+// ✅ Frequency-aware deduplication
+const AL_LAST_TRIGGER = {};
+
+function shouldFire(alert) {
+    const freq = alert.frequency || 'Only Once';
+    if (freq === 'Every Time') return true;
+
+    const nowHour = Math.floor(Date.now() / 3600000);
+    const dedupKey = alert.id + '_' + nowHour;
+
+    if (freq === 'Only Once') {
+        if (AL_LAST_TRIGGER[alert.id]) return false;
+        AL_LAST_TRIGGER[alert.id] = true;
+        return true;
+    }
+
+    if (freq === 'Once Per Bar' || freq === 'Once Per Bar Close') {
+        if (AL_LAST_TRIGGER[dedupKey]) return false;
+        AL_LAST_TRIGGER[dedupKey] = true;
+        const oldest = nowHour - 2;
+        Object.keys(AL_LAST_TRIGGER).forEach(k => {
+            const parts = k.split('_');
+            const hr = parseInt(parts[parts.length-1]);
+            if (!isNaN(hr) && hr < oldest) delete AL_LAST_TRIGGER[k];
+        });
+        return true;
+    }
+    return true;
+}
+
 function checkAllAlerts(pairsData) {
     if (pairsData) window._alPairs = pairsData;
     const alerts = alLoadAlerts().filter(a => a.active);
     if (!alerts.length || !window._alPairs) return;
     window._alPairs.forEach(pair => {
         alerts.filter(a => a.pair === pair.name).forEach(alert => {
-            if (_alConditionMet(alert, pair)) _alFireAlert(alert, pair);
+            if (_alConditionMet(alert, pair) && shouldFire(alert)) {
+                _alFireAlert(alert, pair);
+            }
         });
     });
 }
+
 function _alConditionMet(alert, pair) {
     switch (alert.condition) {
         case 'PRICE_ABOVE_EMA20': return pair.currentPrice && pair.ema20 && pair.currentPrice > pair.ema20;
@@ -405,6 +441,7 @@ function _alConditionMet(alert, pair) {
         default: return false;
     }
 }
+
 function _alFireAlert(alert, pair) {
     const time = new Date().toLocaleTimeString();
     const msg  = (alert.message || '{{ticker}} triggered!')
@@ -415,14 +452,8 @@ function _alFireAlert(alert, pair) {
     alShowToast(`🔔 ${pair.name}: ${msg}`, 'info');
     try { if (window.Android) window.Android.showNotification(alert.name, msg, pair.name); } catch(e) {}
     try { if (Notification?.permission === 'granted') new Notification(`🔔 ${alert.name}`, { body: msg }); } catch(e) {}
-    if (alert.frequency === 'Only Once') {
-        const alerts = alLoadAlerts();
-        const a = alerts.find(x => x.id === alert.id);
-        if (a) { a.active = false; alSaveAlerts(alerts); }
-    }
 }
 
-// Toast
 function alShowToast(msg, type = 'success') {
     const el = document.createElement('div');
     el.className   = `al-toast al-toast-${type}`;
@@ -431,7 +462,6 @@ function alShowToast(msg, type = 'success') {
     setTimeout(() => el.remove(), 3500);
 }
 
-// Notification permission
 if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
     Notification.requestPermission();
 }
