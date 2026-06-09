@@ -5,20 +5,26 @@ const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 
+// ✅ Firebase initialize sirf ek baar, guard ke saath
+if (!admin.apps.length) {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountJson) {
+        console.error('❌ FIREBASE_SERVICE_ACCOUNT env variable missing!');
+        process.exit(1);
+    }
+    admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
+        databaseURL: config.FIREBASE_URL
+    });
+}
+
 // Services
 const sendTG = require('./services/telegram');
 const updateApiStatus = require('./services/apiTracker');
 const checkBroadcasts = require('./services/broadcast');
 const masterScan = require('./core/scanner');
 
-// Pullback state restore
 const { restoreState } = require('./pullback/setupScanner');
-
-// Firebase init
-admin.initializeApp({
-    credential: admin.credential.cert(require('/etc/secrets/serviceAccount.json')),
-    databaseURL: config.FIREBASE_URL
-});
 
 // Firebase helper
 function firebaseGet(p) {
@@ -33,7 +39,6 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // ✅ FIX: /scan endpoint pe duplicate scan blocked
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan.isBusy()) {
@@ -103,7 +108,6 @@ http.createServer((req, res) => {
 
     await restoreState(firebaseGet);
 
-    // Server start hote hi real API usage fetch karo (force)
     if (typeof masterScan.refreshRealUsage === 'function') {
         await masterScan.refreshRealUsage(true);
     }
