@@ -163,18 +163,51 @@ tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
 .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
 
-/* ✅ NEW: Signal dots with pop-pulse animation */
+/* ✅ NEW: Signal dots with expanding ring pulse */
 .sig {
-  display:inline-block; width:14px; height:14px; border-radius:4px;
-  border:none;
-  animation: popPulse 2s infinite;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  border: none;
+  background: #555; /* fallback, overridden */
 }
-.sig.bull { background:#00cc66; box-shadow: 0 0 6px #00cc66; }
-.sig.bear { background:#ff2244; box-shadow: 0 0 6px #ff2244; }
-@keyframes popPulse {
-  0% { transform: scale(1); box-shadow: 0 0 4px; }
-  50% { transform: scale(1.3); box-shadow: 0 0 12px, 0 0 18px; }
-  100% { transform: scale(1); box-shadow: 0 0 4px; }
+.sig.bull { background: #00cc66; }
+.sig.bear { background: #ff2244; }
+
+.sig::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid transparent;
+  opacity: 0;
+  animation: ringPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.sig.bull::after {
+  border-color: #00cc66;
+  box-shadow: 0 0 6px #00cc66;
+}
+.sig.bear::after {
+  border-color: #ff2244;
+  box-shadow: 0 0 6px #ff2244;
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
 }
 
 /* Sentiment bar with shimmer */
