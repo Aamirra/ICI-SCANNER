@@ -10,6 +10,9 @@ const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 
+// ✅ NEW: Technical metrics (200D trend, momentum, volume)
+const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
+
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
 const RATE_PER_MIN   = 8;
@@ -254,6 +257,11 @@ async function masterScan() {
         let failed = await fetchBatch(jobs);
 
         fetchMentFXSentiment();
+
+        // ✅ NEW: Technical metrics calculate karo aur Firebase mein save karo
+        // (200‑din trend, 10‑din momentum, 10‑ghante ka momentum, volume 7d average, dollar volume)
+        // Note: yeh apna API key management use karta hai, thoda extra quota lagega – agar zaroorat ho to scanner ke saath share kar sakte hain
+        await calculateAndUpdateTechnicalMetrics();
 
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
