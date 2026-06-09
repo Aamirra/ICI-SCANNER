@@ -9,9 +9,7 @@ const sendReport = require('../services/report');
 const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
-
-// ✅ NEW: Technical metrics (200D trend, momentum, volume)
-const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
+const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics'); // ✅ NEW
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -56,61 +54,45 @@ function maybeResetDaily() {
     }
 }
 
-// ⚠️ Scanner ab sentiment node ko update nahi karega — sirf MentFX scraper karega
-// function updateSentiment(pairName, data) { ... }   // ← ab use nahi hogi
-
 function fetchMentFXSentiment() {
     const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
-
     const options = {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
         },
         agent
     };
-
     const req = https.get(MENTFX_URL, options, (res) => {
         let raw = '';
         res.on('data', chunk => raw += chunk);
         res.on('end', () => {
             try {
                 const rowRegex = />\s*([A-Z]{6})\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*Daily\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>/gi;
-
                 let match;
                 let savedCount = 0;
-
                 while ((match = rowRegex.exec(raw)) !== null) {
                     const pairName      = match[1].toUpperCase();
                     const daily_bullish = match[2];
                     const daily_bearish = match[3];
-
                     const knownPair = config.PAIRS.find(p => p.n === pairName);
                     if (!knownPair) continue;
-
                     firebasePut(`sentiment/${pairName}`, {
                         bullish_pct: parseFloat(daily_bullish),
                         bearish_pct: parseFloat(daily_bearish)
                     }).catch(err => console.log(`MentFX save error (${pairName}):`, err));
-
                     savedCount++;
                 }
-
                 if (savedCount === 0) {
                     console.log('[MentFX] WARNING: Koi bhi DAILY row match nahi hui. HTML snippet:', raw.substring(0, 500));
                 } else {
                     console.log(`[MentFX] ${savedCount} pairs ka DAILY sentiment Firebase mein save kiya.`);
                 }
-
             } catch (e) {
                 console.log('[MentFX] Parse error:', e.message);
             }
         });
     });
-
-    req.setTimeout(15000, () => {
-        req.destroy();
-        console.log('[MentFX] Request timeout.');
-    });
+    req.setTimeout(15000, () => { req.destroy(); console.log('[MentFX] Request timeout.'); });
     req.on('error', (err) => console.log('[MentFX] Network error:', err.message));
 }
 
@@ -216,18 +198,13 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const cls = sorted.map(v => parseFloat(v.close));
                         const ema20 = calcEMA(cls, 20);
                         const currentPrice = cls[cls.length - 1];
-
                         if (ema20) {
                             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
-
-                            // ✅ Alert ke liye currentPrice aur ema20 save karo (1h se)
                             if (tf === '1h') {
                                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
                                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
                             }
                         }
-
-                        // ✅ FIX — highs aur lows bhi add kiye
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -258,16 +235,12 @@ async function masterScan() {
 
         fetchMentFXSentiment();
 
-        // ✅ NEW: Technical metrics calculate karo aur Firebase mein save karo
-        // (200‑din trend, 10‑din momentum, 10‑ghante ka momentum, volume 7d average, dollar volume)
-        // Note: yeh apna API key management use karta hai, thoda extra quota lagega – agar zaroorat ho to scanner ke saath share kar sakte hain
+        // ✅ NEW – Technical Metrics (200D trend, momentum, volume)
         await calculateAndUpdateTechnicalMetrics();
 
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
                 await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                // ❌ Sentiment node ko scanner update nahi karega — sirf MentFX scraper karega
-                // updateSentiment(p.n, DATA_STORE[p.n]);
                 pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut);
             }
         }
@@ -281,7 +254,6 @@ async function masterScan() {
     setTimeout(masterScan, msUntilNextHourClose());
 }
 
-// ✅ FIX: isBusy attach kiya taake ici-server.js ka error na aaye
 masterScan.isBusy = () => isScanning;
 
 module.exports = masterScan;
