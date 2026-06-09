@@ -2,11 +2,8 @@ name: ICI Sentiment Scraper
 
 on:
   schedule:
-    # Har 2.5 ghante chalega (UTC time)
-    - cron: '0 */2 * * *'    # har 2 ghante
-    - cron: '30 1/2 * * *'   # +30 min offset
-
-  # Manual trigger bhi kar sako
+    - cron: '0 */2 * * *'
+    - cron: '30 1/2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -15,86 +12,20 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      # â”€â”€ Step 1: Code checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # â”€â”€ Step 2: Python setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # â”€â”€ Step 3: Dependencies install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 firebase-admin lxml
+          pip install -r requirements.txt
 
-      # â”€â”€ Step 4: Run scraper + Firebase save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      - name: Run sentiment scraper
+      - name: Run sentiment scraper & save to Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          python -c "
-          import json
-          import os
-          import sys
-          import datetime
-
-          # Firebase setup
-          import firebase_admin
-          from firebase_admin import credentials, db
-
-          print('=== ICI Sentiment Scraper â€” GitHub Actions ===')
-
-          # Firebase connect karo
-          service_account_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
-          if not service_account_json:
-              print('ERROR: FIREBASE_SERVICE_ACCOUNT secret nahi mila!')
-              sys.exit(1)
-
-          cred_dict = json.loads(service_account_json)
-          cred = credentials.Certificate(cred_dict)
-
-          # Firebase DB URL apne project ka dalo
-          firebase_admin.initialize_app(cred, {
-              'databaseURL': 'https://fatima-16b38-default-rtdb.firebaseio.com'
-          })
-
-          # Scraper chalao
-          sys.path.insert(0, 'sentiment')
-          from sentiment_scraper import fetch_sentiment_data
-
-          print('Scraping start...')
-          data = fetch_sentiment_data()
-
-          if not data:
-              print('ERROR: Koi data nahi mila!')
-              sys.exit(1)
-
-          print(f'Data mila: {len(data)} pairs')
-          print(json.dumps(data, indent=2))
-
-          # Firebase mein save karo
-          ref = db.reference('sentimentData')
-          
-          # Har pair ko update karo
-          updates = {}
-          for pair, sentiment in data.items():
-              updates[pair] = {
-                  'bearish_pct': sentiment['bearish_pct'],
-                  'bullish_pct': sentiment['bullish_pct'],
-                  'last_updated': datetime.datetime.utcnow().isoformat() + 'Z'
-              }
-          
-          ref.update(updates)
-          
-          # Last update time save karo
-          db.reference('lastSentimentUpdate').set(
-              datetime.datetime.utcnow().isoformat() + 'Z'
-          )
-          
-          print(f'âœ… Firebase updated: {len(updates)} pairs saved!')
-          print('=== DONE ===')
-          "
+        run: python sentiment/sentiment_scraper.py
