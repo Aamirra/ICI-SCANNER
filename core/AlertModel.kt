@@ -1,34 +1,32 @@
-// ─────────────────────────────────────────────────────────
-// FILE: core/AlertModel.kt
-// Alert ka data structure
-// ─────────────────────────────────────────────────────────
-package com.yourapp.core
+package com.aamir.iciscreener.core
 
 data class Alert(
     val id: Long,
-    val pair: String,           // "EURUSD"
-    val condition: String,      // "BULL_SIGNAL", "BEAR_SIGNAL", etc.
-    val timeframe: String,      // "Any", "1H", "4H", "1D", "1W"
-    val name: String,           // User ka naam
-    val message: String,        // "{{ticker}} signal changed!"
-    val frequency: String,      // "Only Once", "Once Per Bar", "Every Time"
-    val notify: List<String>,   // ["push", "popup"]
+    val pair: String,
+    val condition: String,
+    val timeframe: String,
+    val targetPrice: Double? = null,    // ✅ price alerts ke liye
+    val name: String,
+    val message: String,
+    val frequency: String,
+    val notify: List<String>,
     val sound: Boolean,
     val soundType: String,
-    val expiry: String,         // "open", "1d", "1w", "custom"
+    val expiry: String,
     val expiryDate: String,
     var active: Boolean = true,
     val createdAt: String = ""
 )
 
-// Pair ki current market data
 data class PairData(
-    val name: String,   // "EURUSD"
-    val h1: String,     // "BULL" ya "BEAR"
+    val name: String,
+    val h1: String,
     val h4: String,
     val d1: String,
     val w1: String,
-    val sentiment: Int  // 0-100
+    val sentiment: Int,
+    val currentPrice: Double? = null,   // ✅ for price conditions
+    val ema20: Double? = null           // ✅ for EMA conditions
 ) {
     fun getSignal(timeframe: String): String = when (timeframe) {
         "1H" -> h1
