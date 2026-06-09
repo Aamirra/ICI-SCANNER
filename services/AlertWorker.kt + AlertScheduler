@@ -1,9 +1,4 @@
-// ─────────────────────────────────────────────────────────
-// FILE: services/AlertWorker.kt
-// WorkManager ka worker — background mein chalta hai
-// App band ho tab bhi, har 15 min mein check karta hai
-// ─────────────────────────────────────────────────────────
-package com.yourapp.services
+package com.aamir.iciscreener.services
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,10 +11,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.yourapp.MainActivity
-import com.yourapp.core.Alert
-import com.yourapp.core.PairData
-import com.yourapp.utils.AlertManager
+import com.aamir.iciscreener.MainActivity
+import com.aamir.iciscreener.core.Alert
+import com.aamir.iciscreener.core.PairData
+import com.aamir.iciscreener.utils.AlertManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -33,7 +28,6 @@ class AlertWorker(
         const val CHANNEL_ID   = "ICI_ALERTS"
         const val CHANNEL_NAME = "ICI Scanner Alerts"
 
-        // ── Notification channel banao (app start pe call karo) ──
         fun createChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val ch = NotificationChannel(
@@ -53,76 +47,60 @@ class AlertWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            // 1. Active alerts check karo — koi nahi toh skip
             val activeAlerts = AlertManager.getActive(context)
             if (activeAlerts.isEmpty()) return@withContext Result.success()
 
-            // 2. ─── FRESH DATA FETCH ───────────────────────────────────
-            // TODO: Ye apne existing data fetch se replace karo
-            // Example:
-            //   val freshData = ApiService.fetchPairs()
-            // Ya agar JS se data aata hai toh SharedPreferences mein
-            // save karo aur yahan se read karo:
             val freshData = getLastKnownData()
             if (freshData.isEmpty()) return@withContext Result.retry()
-            // ──────────────────────────────────────────────────────────
 
-            // 3. Har pair ke alerts check karo
             freshData.forEach { pair ->
                 activeAlerts
                     .filter { it.pair == pair.name }
                     .forEach { alert ->
                         if (conditionMet(alert, pair)) {
                             sendNotification(alert, pair)
-
-                            // Only Once → deactivate
                             if (alert.frequency == "Only Once") {
                                 AlertManager.deactivate(context, alert.id)
                             }
-
-                            // WebView ko bhi batao (agar app open ho)
                             broadcastToApp(alert, pair)
                         }
                     }
             }
-
             Result.success()
-
         } catch (e: Exception) {
             e.printStackTrace()
             Result.retry()
         }
     }
 
-    // ─── Condition check logic ────────────────────────────
     private fun conditionMet(alert: Alert, pair: PairData): Boolean {
         return when (alert.condition) {
             "BULL_SIGNAL" ->
                 if (alert.timeframe == "Any")
-                    listOf(pair.h1,pair.h4,pair.d1,pair.w1).any { it == "BULL" }
+                    listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bull", ignoreCase = true) }
                 else
-                    pair.getSignal(alert.timeframe) == "BULL"
+                    pair.getSignal(alert.timeframe).equals("bull", ignoreCase = true)
 
             "BEAR_SIGNAL" ->
                 if (alert.timeframe == "Any")
-                    listOf(pair.h1,pair.h4,pair.d1,pair.w1).any { it == "BEAR" }
+                    listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bear", ignoreCase = true) }
                 else
-                    pair.getSignal(alert.timeframe) == "BEAR"
+                    pair.getSignal(alert.timeframe).equals("bear", ignoreCase = true)
 
             "ALL_BULL" ->
-                pair.h1=="BULL" && pair.h4=="BULL" && pair.d1=="BULL" && pair.w1=="BULL"
+                pair.h1.equals("bull", true) && pair.h4.equals("bull", true) &&
+                pair.d1.equals("bull", true) && pair.w1.equals("bull", true)
 
             "ALL_BEAR" ->
-                pair.h1=="BEAR" && pair.h4=="BEAR" && pair.d1=="BEAR" && pair.w1=="BEAR"
+                pair.h1.equals("bear", true) && pair.h4.equals("bear", true) &&
+                pair.d1.equals("bear", true) && pair.w1.equals("bear", true)
 
             "SENTIMENT_75" -> pair.sentiment >= 75
             "SENTIMENT_50" -> pair.sentiment >= 50
-
             else -> false
         }
     }
 
-    // ─── Native notification bhejo ───────────────────────
     private fun sendNotification(alert: Alert, pair: PairData) {
         val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
             .format(java.util.Date())
@@ -130,7 +108,6 @@ class AlertWorker(
             .replace("{{ticker}}", pair.name)
             .replace("{{time}}", time)
 
-        // App kholne ka intent
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("from_alert", true)
@@ -142,7 +119,7 @@ class AlertWorker(
         )
 
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // apna icon lagao: R.drawable.ic_bell
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("🔔 ${alert.name}")
             .setContentText("${pair.name}: $message")
             .setStyle(NotificationCompat.BigTextStyle().bigText("${pair.name}: $message"))
@@ -163,12 +140,9 @@ class AlertWorker(
                 "${pair.name}_${alert.id}".hashCode(),
                 notif
             )
-        } catch (e: SecurityException) {
-            // POST_NOTIFICATIONS permission nahi hai
-        }
+        } catch (e: SecurityException) { }
     }
 
-    // ─── App open ho toh WebView ko update karo ──────────
     private fun broadcastToApp(alert: Alert, pair: PairData) {
         val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
             .format(java.util.Date())
@@ -185,9 +159,6 @@ class AlertWorker(
         }
     }
 
-    // ─── Last known data read karo ───────────────────────
-    // Jab JS scan kare tab Android.saveLatestData(json) call se
-    // SharedPreferences mein save hota hai
     private fun getLastKnownData(): List<PairData> {
         val prefs = context.getSharedPreferences("ici_market_data", Context.MODE_PRIVATE)
         val json = prefs.getString("latest_pairs", null) ?: return emptyList()
@@ -200,26 +171,18 @@ class AlertWorker(
     }
 }
 
-
-// ─────────────────────────────────────────────────────────
-// FILE: services/AlertScheduler.kt
-// WorkManager ko schedule karta hai
-// ─────────────────────────────────────────────────────────
-
 object AlertScheduler {
 
     private const val WORK_NAME = "ICI_BG_ALERT_CHECK"
 
-    // ── App start pe call karo — sirf ek baar ──
     fun start(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Har 15 minute mein (minimum allowed hai Android mein)
         val periodicWork = PeriodicWorkRequestBuilder<AlertWorker>(
             15, TimeUnit.MINUTES,
-             5, TimeUnit.MINUTES   // flex window
+            5, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.LINEAR, 5, TimeUnit.MINUTES)
@@ -232,7 +195,6 @@ object AlertScheduler {
         )
     }
 
-    // ── Scan complete hone ke baad foran check karo ──
     fun checkNow(context: Context) {
         val oneTime = OneTimeWorkRequestBuilder<AlertWorker>()
             .setConstraints(
