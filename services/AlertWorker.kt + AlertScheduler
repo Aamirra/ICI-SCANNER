@@ -73,30 +73,43 @@ class AlertWorker(
         }
     }
 
+    // ✅ Updated: ab sabhi conditions handle karta hai
     private fun conditionMet(alert: Alert, pair: PairData): Boolean {
         return when (alert.condition) {
-            "BULL_SIGNAL" ->
-                if (alert.timeframe == "Any")
-                    listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bull", ignoreCase = true) }
-                else
-                    pair.getSignal(alert.timeframe).equals("bull", ignoreCase = true)
+            // ── Price / EMA conditions ──
+            "PRICE_ABOVE_EMA20" -> {
+                pair.currentPrice != null && pair.ema20 != null && pair.currentPrice > pair.ema20
+            }
+            "PRICE_BELOW_EMA20" -> {
+                pair.currentPrice != null && pair.ema20 != null && pair.currentPrice < pair.ema20
+            }
+            "PRICE_ABOVE_VAL" -> {
+                pair.currentPrice != null && alert.targetPrice != null && pair.currentPrice >= alert.targetPrice
+            }
+            "PRICE_BELOW_VAL" -> {
+                pair.currentPrice != null && alert.targetPrice != null && pair.currentPrice <= alert.targetPrice
+            }
 
-            "BEAR_SIGNAL" ->
-                if (alert.timeframe == "Any")
-                    listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bear", ignoreCase = true) }
-                else
-                    pair.getSignal(alert.timeframe).equals("bear", ignoreCase = true)
+            // ── Sentiment conditions ──
+            "SENT_ABOVE_60" -> pair.sentiment > 60
+            "SENT_BELOW_60" -> pair.sentiment < 60
+            "SENT_ABOVE_75" -> pair.sentiment > 75
+            "SENT_BELOW_25" -> pair.sentiment < 25
 
-            "ALL_BULL" ->
-                pair.h1.equals("bull", true) && pair.h4.equals("bull", true) &&
-                pair.d1.equals("bull", true) && pair.w1.equals("bull", true)
+            // (optional) agar kabhi signal-based alerts use karo
+            "BULL_SIGNAL" -> if (alert.timeframe == "Any")
+                listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bull", true) }
+            else pair.getSignal(alert.timeframe).equals("bull", true)
 
-            "ALL_BEAR" ->
-                pair.h1.equals("bear", true) && pair.h4.equals("bear", true) &&
-                pair.d1.equals("bear", true) && pair.w1.equals("bear", true)
+            "BEAR_SIGNAL" -> if (alert.timeframe == "Any")
+                listOf(pair.h1, pair.h4, pair.d1, pair.w1).any { it.equals("bear", true) }
+            else pair.getSignal(alert.timeframe).equals("bear", true)
 
-            "SENTIMENT_75" -> pair.sentiment >= 75
-            "SENTIMENT_50" -> pair.sentiment >= 50
+            "ALL_BULL" -> pair.h1.equals("bull", true) && pair.h4.equals("bull", true) &&
+                          pair.d1.equals("bull", true) && pair.w1.equals("bull", true)
+            "ALL_BEAR" -> pair.h1.equals("bear", true) && pair.h4.equals("bear", true) &&
+                          pair.d1.equals("bear", true) && pair.w1.equals("bear", true)
+
             else -> false
         }
     }
@@ -106,6 +119,8 @@ class AlertWorker(
             .format(java.util.Date())
         val message = alert.message
             .replace("{{ticker}}", pair.name)
+            .replace("{{price}}", pair.currentPrice?.toString() ?: "")
+            .replace("{{ema20}}", pair.ema20?.toString() ?: "")
             .replace("{{time}}", time)
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -119,7 +134,7 @@ class AlertWorker(
         )
 
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // apna icon laga sakte ho
             .setContentTitle("🔔 ${alert.name}")
             .setContentText("${pair.name}: $message")
             .setStyle(NotificationCompat.BigTextStyle().bigText("${pair.name}: $message"))
@@ -171,6 +186,7 @@ class AlertWorker(
     }
 }
 
+// AlertScheduler (koi change nahi)
 object AlertScheduler {
 
     private const val WORK_NAME = "ICI_BG_ALERT_CHECK"
