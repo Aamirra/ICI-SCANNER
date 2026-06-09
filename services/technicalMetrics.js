@@ -1,16 +1,7 @@
 const https = require('https');
-const admin = require('firebase-admin');
 const config = require('../config');
-const firebasePut = require('./database');
+const firebasePut = require('./database');   // already uses admin SDK (no init here)
 const calcSMA = require('../utils/smaCalc');
-
-// ✅ Self‑initialize Firebase Admin if not already (for standalone runs)
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(require('/etc/secrets/serviceAccount.json')),
-        databaseURL: config.FIREBASE_URL
-    });
-}
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
