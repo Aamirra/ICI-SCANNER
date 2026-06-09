@@ -306,7 +306,7 @@ body.desktop-mode #tv_chart_container:empty { display:flex !important; flex-dire
 body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
 body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--txt); opacity:0.3; }
 
-/* Tech metrics columns (compact, right‑aligned numbers) */
+/* Tech metrics columns */
 .tech-cell {
   font-size: 10px;
   color: var(--txt);
@@ -343,7 +343,7 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
             <th>1D</th>
             <th>1W</th>
             <th class="sent-th">Daily Sentiment</th>
-            <!-- ✅ NEW TECHNICAL METRICS COLUMNS -->
+            <!-- Technical metrics columns -->
             <th>200D Trend</th>
             <th>10D Mom</th>
             <th>1H Mom</th>
@@ -377,7 +377,7 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
-// ── Theme Toggle (tilt reset on theme switch) ──
+// ── Theme Toggle ──
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
@@ -467,11 +467,13 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// 3D Mouse Parallax (disabled in desktop mode)
+// ── 3D Mouse Parallax (disabled on touch devices & desktop mode) ──
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 function handleParallax(e) {
+  if (isTouchDevice) return;                     // mobile: no tilt
   if (document.body.classList.contains('desktop-mode')) return;
   const rect = appContainer.getBoundingClientRect();
   const xAxis = (rect.width / 2 - (e.clientX - rect.left)) / 25;
@@ -480,6 +482,7 @@ function handleParallax(e) {
 }
 
 function resetParallax() {
+  if (isTouchDevice) return;
   if (document.body.classList.contains('desktop-mode')) return;
   wrap.style.transform = 'rotateY(0deg) rotateX(0deg)';
 }
@@ -509,7 +512,7 @@ function createParticles() {
 }
 createParticles();
 
-// Desktop Mode Logic (tilt reset on toggle)
+// Desktop Mode Logic
 function toggleDesktopMode() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const isDesktop = document.body.classList.toggle('desktop-mode');
@@ -543,7 +546,7 @@ window.addEventListener('load', function() {
 });
 
 // ──────────────────────────────────────────────────
-// ✅ TECHNICAL METRICS – Firebase listener + cell updater
+// TECHNICAL METRICS – Firebase listener + cell updater
 // ──────────────────────────────────────────────────
 let techMetrics = {};
 db.ref('technicalMetrics').on('value', (snap) => {
@@ -552,25 +555,29 @@ db.ref('technicalMetrics').on('value', (snap) => {
 });
 
 function updateTechCells() {
-    // Har row ke pair name ke hisaab se extra cells fill karo
     const rows = document.querySelectorAll('#tb tr');
     rows.forEach(row => {
         const pairCell = row.querySelector('.pn');
         if (!pairCell) return;
         const pairName = pairCell.textContent.trim();
         const data = techMetrics[pairName];
-        // Tech cells are the last 5 <td> in the row (after alert cell)
+
+        // Get all td cells in this row
         const allCells = row.querySelectorAll('td');
-        if (allCells.length < 11) return; // minimum columns: name + 4 sig + sent + alert + 5 tech = 11
-        const techStartIndex = allCells.length - 5; // last 5 cells
+        // We expect at least 11 cells: Pair(1), 4 signals(4), Sentiment(1), Alert(1), 5 tech(5) = 12 with alert? Actually the order: pair, 1h,4h,1d,1w, sentiment, alert, 5 tech = 1+4+1+1+5=12. Wait, render.js adds 4 signal td, then sentiment td, then alert td, then 5 tech td → total 1 (pair) + 4 + 1 + 1 + 5 = 12 cells. So allCells.length >= 12. I'll use 12.
+        if (allCells.length < 12) return;
+
+        // Last 5 cells are the tech columns
+        const startIdx = allCells.length - 5;
         const cells = [
-            allCells[techStartIndex],
-            allCells[techStartIndex + 1],
-            allCells[techStartIndex + 2],
-            allCells[techStartIndex + 3],
-            allCells[techStartIndex + 4]
+            allCells[startIdx],
+            allCells[startIdx + 1],
+            allCells[startIdx + 2],
+            allCells[startIdx + 3],
+            allCells[startIdx + 4]
         ];
-        // Values
+
+        // Format values
         const longTerm = data?.longTermTrend != null ? (data.longTermTrend > 0 ? '+' : '') + data.longTermTrend.toFixed(2) + '%' : '—';
         const shortTerm = data?.shortTermMomentum != null ? (data.shortTermMomentum > 0 ? '+' : '') + data.shortTermMomentum.toFixed(2) + '%' : '—';
         const micro = data?.microMomentum != null ? (data.microMomentum > 0 ? '+' : '') + data.microMomentum.toFixed(2) + '%' : '—';
