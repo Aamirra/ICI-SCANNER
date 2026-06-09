@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ICI Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 <style>
@@ -54,52 +54,68 @@ html,body {
 
 /* ══════════════════════════════════════
    ANIMATIONS — KEYFRAMES
+   FIX: Saare entrance animations yahan hain
+   lekin elements ab DEFAULT VISIBLE hain.
+   Sirf .anim-ready class lagne ke baad
+   hide/show hoga.
 ══════════════════════════════════════ */
-@keyframes topbarIn    { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
-@keyframes iconBounce  { from{transform:scale(0) rotate(-20deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
-@keyframes iconFloat   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-@keyframes fadeLeft    { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
-@keyframes fadeScale   { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
-@keyframes slideUp     { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-@keyframes rowIn       { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:translateX(0)} }
-@keyframes thIn        { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-@keyframes rowFlash    { 0%{background:rgba(41,98,255,.07)} 100%{background:transparent} }
-@keyframes cntPop      { 0%{transform:scale(1)} 50%{transform:scale(1.45)} 100%{transform:scale(1)} }
-@keyframes nameShimmer { 0%,100%{background-position:0% center} 50%{background-position:100% center} }
-@keyframes scanLine    { 0%{left:-50%;opacity:0} 10%{opacity:.6} 90%{opacity:.6} 100%{left:110%;opacity:0} }
-@keyframes scanPulse   { 0%,100%{box-shadow:0 2px 8px rgba(41,98,255,.3)} 50%{box-shadow:0 2px 20px rgba(41,98,255,.65)} }
-@keyframes ringOut     { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(2.6);opacity:0} }
-@keyframes ltPulse     { 0%,100%{opacity:1} 50%{opacity:.45} }
-@keyframes bdgSweep    { 0%,55%,100%{left:-80%} 30%{left:130%} }
-@keyframes stSweep     { 0%,60%,100%{left:-60%} 35%{left:115%} }
-@keyframes dotPing     { 0%,100%{box-shadow:0 0 0 0 rgba(38,166,154,.5)} 50%{box-shadow:0 0 0 5px rgba(38,166,154,0)} }
-@keyframes badgeGlow   { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bull)} }
-@keyframes badgeGlowR  { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bear)} }
-@keyframes barShimmer  { 0%{left:-100%} 100%{left:200%} }
-@keyframes flashDown   { 0%{opacity:0;top:62px} 15%{opacity:1} 100%{opacity:0;top:100vh} }
+@keyframes topbarIn   { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes iconBounce { from{transform:scale(0) rotate(-20deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+@keyframes iconFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+@keyframes fadeLeft   { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+@keyframes fadeScale  { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+@keyframes slideUp    { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes rowIn      { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:translateX(0)} }
+@keyframes thIn       { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes rowFlash   { 0%{background:rgba(41,98,255,.07)} 100%{background:transparent} }
+@keyframes cntPop     { 0%{transform:scale(1)} 50%{transform:scale(1.45)} 100%{transform:scale(1)} }
+@keyframes nameShimmer{ 0%,100%{background-position:0% center} 50%{background-position:100% center} }
+@keyframes scanLine   { 0%{left:-50%;opacity:0} 10%{opacity:.6} 90%{opacity:.6} 100%{left:110%;opacity:0} }
+@keyframes scanPulse  { 0%,100%{box-shadow:0 2px 8px rgba(41,98,255,.3)} 50%{box-shadow:0 2px 20px rgba(41,98,255,.65)} }
+@keyframes ringOut    { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(2.6);opacity:0} }
+@keyframes ltPulse    { 0%,100%{opacity:1} 50%{opacity:.45} }
+@keyframes bdgSweep   { 0%,55%,100%{left:-80%} 30%{left:130%} }
+@keyframes stSweep    { 0%,60%,100%{left:-60%} 35%{left:115%} }
+@keyframes dotPing    { 0%,100%{box-shadow:0 0 0 0 rgba(38,166,154,.5)} 50%{box-shadow:0 0 0 5px rgba(38,166,154,0)} }
+@keyframes badgeGlow  { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bull)} }
+@keyframes badgeGlowR { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bear)} }
+@keyframes barShimmer { 0%{left:-100%} 100%{left:200%} }
+@keyframes flashDown  { 0%{opacity:0;top:62px} 15%{opacity:1} 100%{opacity:0;top:100vh} }
 
-/* Elements start hidden for JS-controlled entrance */
-.topbar, .brand-icon, .brand-wrap, .brand-sub,
-.live-badge, .ibtn, .scan-btn,
-.filter-tabs, .sbar,
-thead th, .ani-row { opacity:0; }
+/*
+  FIX #1: Elements ab default visible hain (opacity unset).
+  Sirf .anim-ready class lagne ke baad
+  opacity:0 set hoti hai — phir .a class se animate hota hai.
+  Isse JS fail hone par bhi UI visible rehta hai.
+*/
+.anim-ready.topbar,
+.anim-ready.brand-icon,
+.anim-ready.brand-wrap,
+.anim-ready.brand-sub,
+.anim-ready.live-badge,
+.anim-ready.ibtn,
+.anim-ready.scan-btn,
+.anim-ready.filter-tabs,
+.anim-ready.sbar,
+.anim-ready.ani-th,
+.anim-ready.ani-row { opacity:0; }
 
-/* Entrance classes */
-.topbar.a     { animation:topbarIn  .5s cubic-bezier(.22,1,.36,1) forwards }
-.brand-icon.a { animation:iconBounce .55s cubic-bezier(.34,1.56,.64,1) forwards }
-.brand-wrap.a { animation:fadeLeft  .45s ease forwards }
-.brand-sub.a  { animation:fadeLeft  .4s  ease forwards }
-.live-badge.a { animation:fadeScale .4s  ease forwards }
-.ibtn.a       { animation:fadeScale .35s ease forwards }
-.scan-btn.a   { animation:fadeScale .35s ease forwards }
-.filter-tabs.a{ animation:slideUp   .4s  ease forwards }
-.sbar.a       { animation:slideUp   .4s  ease forwards }
-thead th.a    { animation:thIn      .4s  ease forwards }
-.ani-row.a    { animation:rowIn     .45s ease forwards }
-.ani-row.flash{ animation:rowIn     .45s ease forwards, rowFlash .6s .45s ease forwards }
+/* Entrance animation classes */
+.topbar.a      { animation:topbarIn  .5s cubic-bezier(.22,1,.36,1) forwards }
+.brand-icon.a  { animation:iconBounce .55s cubic-bezier(.34,1.56,.64,1) forwards }
+.brand-wrap.a  { animation:fadeLeft  .45s ease forwards }
+.brand-sub.a   { animation:fadeLeft  .4s  ease forwards }
+.live-badge.a  { animation:fadeScale .4s  ease forwards }
+.ibtn.a        { animation:fadeScale .35s ease forwards }
+.scan-btn.a    { animation:fadeScale .35s ease forwards }
+.filter-tabs.a { animation:slideUp   .4s  ease forwards }
+.sbar.a        { animation:slideUp   .4s  ease forwards }
+.ani-th.a      { animation:thIn      .4s  ease forwards }
+.ani-row.a     { animation:rowIn     .45s ease forwards }
+.ani-row.flash { animation:rowIn     .45s ease forwards, rowFlash .6s .45s ease forwards }
 .badge-flash-bull { animation:badgeGlow  .6s ease forwards }
 .badge-flash-bear { animation:badgeGlowR .6s ease forwards }
-.cnt.pop      { animation:cntPop .35s cubic-bezier(.34,1.56,.64,1) }
+.cnt.pop       { animation:cntPop .35s cubic-bezier(.34,1.56,.64,1) }
 
 /* ══════════════════════════════════════
    TOPBAR
@@ -137,7 +153,6 @@ thead th.a    { animation:thIn      .4s  ease forwards }
   font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
   letter-spacing:-.3px; line-height:1;
 }
-/* Shimmer on inner span — independent of entrance animation */
 .shimmer-name {
   background:linear-gradient(90deg,var(--t1) 0%,var(--t1) 25%,var(--acc) 48%,var(--t1) 70%,var(--t1) 100%);
   background-size:250% auto;
@@ -176,7 +191,6 @@ thead th.a    { animation:thIn      .4s  ease forwards }
 .ibtn:hover { border-color:var(--brd2); background:var(--s2); color:var(--t1); transform:translateY(-1px); }
 .ibtn:active { transform:translateY(0); }
 
-/* ── SCAN BUTTON (replaces old .scan-btn style) ── */
 .scan-btn {
   background:var(--acc); border:none; border-radius:6px;
   padding:7px 14px; cursor:pointer;
@@ -190,7 +204,7 @@ thead th.a    { animation:thIn      .4s  ease forwards }
 .scan-btn:disabled { opacity:.6; cursor:not-allowed; animation:none; }
 
 /* ══════════════════════════════════════
-   STATUS BAR (original #st, #pb IDs)
+   STATUS BAR
 ══════════════════════════════════════ */
 .sbar {
   display:flex; align-items:center; justify-content:space-between;
@@ -208,7 +222,6 @@ thead th.a    { animation:thIn      .4s  ease forwards }
 #st { color:var(--bull); font-weight:600; position:relative; z-index:1; }
 #pb { color:#f0b929; font-weight:500; position:relative; z-index:1; }
 
-/* ── status dot ── */
 .sl-dot {
   display:inline-block; width:6px; height:6px; border-radius:50%;
   background:var(--bull); box-shadow:0 0 0 0 rgba(38,166,154,.4);
@@ -217,7 +230,7 @@ thead th.a    { animation:thIn      .4s  ease forwards }
 }
 
 /* ══════════════════════════════════════
-   FILTER TABS (replaces old .sum cards)
+   FILTER TABS
 ══════════════════════════════════════ */
 .filter-tabs {
   display:flex; gap:2px; padding:0 14px;
@@ -238,7 +251,7 @@ thead th.a    { animation:thIn      .4s  ease forwards }
   display:inline-block; margin-left:5px;
   font-size:10px; padding:1px 6px; border-radius:10px; font-weight:700;
 }
-.ftab .cnt       { background:var(--s3); color:var(--t3); }
+.ftab .cnt                          { background:var(--s3); color:var(--t3); }
 .ftab.bull .cnt, .ftab.active.bull .cnt { background:var(--bullbg); color:var(--bull); }
 .ftab.bear .cnt, .ftab.active.bear .cnt { background:var(--bearbg); color:var(--bear); }
 
@@ -267,11 +280,17 @@ tbody tr { border-bottom:1px solid var(--brd); cursor:pointer; background:var(--
 tbody tr:last-child { border-bottom:none; }
 tbody tr:hover { background:var(--s2); }
 
-td { padding:11px 0; text-align:center; font-size:12.5px; color:var(--t1); overflow:hidden; }
-td.td-pair { text-align:left; padding-left:16px; position:relative; }
-td.td-sent { text-align:left; padding-left:6px; padding-right:14px; }
+td {
+  padding:11px 0; text-align:center;
+  font-size:12.5px; color:var(--t1);
+  /* FIX: JetBrains Mono restored for numbers */
+  font-family:'JetBrains Mono',monospace;
+  overflow:hidden;
+}
+td.td-pair { text-align:left; padding-left:16px; position:relative; font-family:'Inter',sans-serif; }
+td.td-sent { text-align:left; padding-left:6px; padding-right:14px; font-family:'Inter',sans-serif; }
 
-/* left accent bar on first cell (NOT on tr — tr::before creates phantom column) */
+/* left accent bar */
 td.td-pair::before {
   content:''; position:absolute; left:0; top:4px; bottom:4px;
   width:2.5px; border-radius:0 2px 2px 0;
@@ -281,28 +300,28 @@ td.td-pair::before {
 }
 tbody tr:hover td.td-pair::before { transform:scaleY(1); }
 
-/* ── PAIR NAME (original .pn class from render.js) ── */
+/* ── PAIR NAME ── */
 .pn {
   font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700;
   color:var(--t1); cursor:pointer;
   display:block; transition:color .15s;
-  padding-left:0;
 }
-.pcat-label { font-size:9px; color:var(--t3); margin-top:1.5px; letter-spacing:.5px; text-transform:uppercase; display:block; }
+.pcat-label { font-size:9px; color:var(--t3); margin-top:1.5px; letter-spacing:.5px; text-transform:uppercase; display:block; font-family:'Inter',sans-serif; }
 tbody tr:hover .pn { color:var(--acc); }
 
-/* ── SIGNAL BADGES (original .sig class from render.js) ── */
+/* ── SIGNAL BADGES ── */
 .sig {
   display:inline-flex; align-items:center; justify-content:center;
   width:40px; height:20px; border-radius:4px;
   font-size:9px; font-weight:700; letter-spacing:.4px;
   border:none; transition:transform .15s;
+  font-family:'Inter',sans-serif;
 }
 tbody tr:hover .sig { transform:scale(1.07); }
 .sig.bull { background:var(--bullbg); color:var(--bull); }
 .sig.bear { background:var(--bearbg); color:var(--bear); }
 
-/* ── SENTIMENT (original classes from render.js) ── */
+/* ── SENTIMENT BAR ── */
 .sentiment-bar {
   display:flex; height:6px; border-radius:3px;
   overflow:hidden; width:100%; min-width:82px;
@@ -330,12 +349,12 @@ tbody tr:hover .sig { transform:scale(1.07); }
   transition:width .4s ease;
 }
 td.sent-cell { padding-top:11px !important; padding-bottom:11px !important; }
-.sent-nums { display:flex; justify-content:space-between; margin-top:3px; font-size:9.5px; }
+.sent-nums { display:flex; justify-content:space-between; margin-top:3px; font-size:9.5px; font-family:'JetBrains Mono',monospace; }
 .sn-b { color:rgba(239,83,80,.75); }
 .sn-u { color:rgba(38,166,154,.75); }
 
 /* ══════════════════════════════════════
-   MODAL (original structure preserved)
+   MODAL
 ══════════════════════════════════════ */
 .modal {
   position:fixed; inset:0; background:var(--modal-bg);
@@ -351,7 +370,7 @@ td.sent-cell { padding-top:11px !important; padding-bottom:11px !important; }
 }
 
 /* ══════════════════════════════════════
-   CHART OVERLAY (original structure preserved)
+   CHART OVERLAY
 ══════════════════════════════════════ */
 #chartOverlay {
   position:fixed; inset:0; background:var(--bg);
@@ -368,7 +387,7 @@ td.sent-cell { padding-top:11px !important; padding-bottom:11px !important; }
 .nav-btn:active { transform:translateY(0); }
 
 /* ══════════════════════════════════════
-   DESKTOP SPLIT MODE (original preserved)
+   DESKTOP SPLIT MODE
 ══════════════════════════════════════ */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
 body.desktop-mode .wrap {
@@ -404,6 +423,23 @@ body.desktop-mode #tv_chart_container:empty::after {
 /* Scrollbar */
 ::-webkit-scrollbar { width:4px; }
 ::-webkit-scrollbar-thumb { background:var(--brd2); border-radius:2px; }
+
+/* ── BELL BUTTON ── */
+col.c-bell { width:36px; }
+.bell-btn {
+  background:transparent; border:none; cursor:pointer;
+  font-size:14px; padding:4px 6px; border-radius:6px;
+  color:var(--t3); transition:color .15s, background .15s, transform .15s;
+  line-height:1;
+}
+.bell-btn:hover { color:var(--acc); background:var(--s2); transform:scale(1.15); }
+.bell-btn:active { transform:scale(.95); }
+.bell-btn.active { color:#f0b929; }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
 </style>
 </head>
 <body>
@@ -437,13 +473,13 @@ body.desktop-mode #tv_chart_container:empty::after {
     </div>
   </div>
 
-  <!-- ── STATUS BAR (original IDs preserved) ── -->
+  <!-- ── STATUS BAR ── -->
   <div class="sbar" onclick="openM()">
     <span><span class="sl-dot"></span><span id="st">Connecting...</span></span>
     <span id="pb" style="color:#f0b929">👁 Target List ❯</span>
   </div>
 
-  <!-- ── FILTER TABS (replaces old sum cards, same setFilter calls) ── -->
+  <!-- ── FILTER TABS ── -->
   <div class="filter-tabs">
     <button class="ftab active all"  onclick="filterTabClick(this,'all')">All<span class="cnt" id="ac">36</span></button>
     <button class="ftab bull"        onclick="filterTabClick(this,'bull')">Bullish<span class="cnt" id="bc">0</span></button>
@@ -457,12 +493,17 @@ body.desktop-mode #tv_chart_container:empty::after {
         <col class="c-pair">
         <col class="c-tf"><col class="c-tf"><col class="c-tf"><col class="c-tf">
         <col class="c-sent">
+        <col class="c-bell">
       </colgroup>
       <thead>
         <tr>
-          <th class="th-pair">Pair</th>
-          <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
-          <th class="th-sent">Sentiment</th>
+          <th class="th-pair ani-th">Pair</th>
+          <th class="ani-th">1H</th>
+          <th class="ani-th">4H</th>
+          <th class="ani-th">1D</th>
+          <th class="ani-th">1W</th>
+          <th class="th-sent ani-th">Sentiment</th>
+          <th class="ani-th"></th>
         </tr>
       </thead>
       <tbody id="tb"></tbody>
@@ -471,14 +512,14 @@ body.desktop-mode #tv_chart_container:empty::after {
 
 </div><!-- /.wrap -->
 
-<!-- ── MODAL (original preserved) ── -->
+<!-- ── MODAL ── -->
 <div class="modal" id="mo" onclick="this.classList.remove('open')">
   <div class="m-card" onclick="event.stopPropagation()">
     <div id="ml"></div>
   </div>
 </div>
 
-<!-- ── CHART OVERLAY (original preserved) ── -->
+<!-- ── CHART OVERLAY ── -->
 <div id="chartOverlay">
   <div style="padding:10px 15px;background:var(--chart-header);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--chart-brd);">
     <div style="display:flex;gap:12px;align-items:center;">
@@ -496,10 +537,23 @@ body.desktop-mode #tv_chart_container:empty::after {
 <script src="js/render.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
+<script src="alerts.js"></script>
 
 <script>
 /* ══════════════════════════════════════
-   THEME TOGGLE (original logic preserved)
+   BELL BUTTON HELPER
+   render.js mein har row ke end mein ye
+   call karo:
+   td.innerHTML = bellTd('BTCUSDT');
+══════════════════════════════════════ */
+function bellTd(pair) {
+  return `<td style="text-align:center;padding:0 4px;">
+    <button class="bell-btn" onclick="event.stopPropagation();openAlertDialog('${pair}')" title="Set Alert">🔔</button>
+  </td>`;
+}
+
+/* ══════════════════════════════════════
+   THEME TOGGLE
 ══════════════════════════════════════ */
 function toggleTheme() {
   const html = document.documentElement;
@@ -520,13 +574,12 @@ function toggleTheme() {
 })();
 
 /* ══════════════════════════════════════
-   MANUAL SCAN (original preserved)
+   MANUAL SCAN
 ══════════════════════════════════════ */
 function manualScan() {
   const btn = document.querySelector('.scan-btn');
   btn.textContent = '⏳ Scanning...';
   btn.disabled = true;
-  // scan flash
   const sf = document.getElementById('sf');
   sf.classList.remove('run'); void sf.offsetWidth; sf.classList.add('run');
   fetch('/scan')
@@ -541,7 +594,7 @@ function manualScan() {
 }
 
 /* ══════════════════════════════════════
-   AUTO RELOAD (original preserved)
+   AUTO RELOAD
 ══════════════════════════════════════ */
 window.addEventListener('load', function() {
   setTimeout(function() {
@@ -552,7 +605,7 @@ window.addEventListener('load', function() {
 });
 
 /* ══════════════════════════════════════
-   DESKTOP MODE (original preserved)
+   DESKTOP MODE
 ══════════════════════════════════════ */
 function toggleDesktopMode() {
   const isDesktop = document.body.classList.toggle('desktop-mode');
@@ -584,8 +637,7 @@ window.addEventListener('load', function() {
 });
 
 /* ══════════════════════════════════════
-   FILTER TABS — wrapper only updates tab
-   active state, then calls render.js setFilter
+   FILTER TABS
 ══════════════════════════════════════ */
 function filterTabClick(el, type) {
   document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
@@ -594,27 +646,50 @@ function filterTabClick(el, type) {
 }
 
 /* ══════════════════════════════════════
-   ENTRANCE ANIMATIONS
-   — replays every time page becomes visible
+   ENTRANCE ANIMATIONS — FIXED
+
+   FIX #1: .anim-ready class pehle lagao,
+   tab opacity:0 set hoti hai CSS se.
+   Agar JS fail ho — elements visible rehte hain.
+
+   FIX #2: MutationObserver aur pageshow
+   double-fire band kiya — ek debounce
+   flag se guard kiya hai.
+
+   FIX #3: MutationObserver sirf naye rows
+   animate karta hai, playAll() nahi chalata.
 ══════════════════════════════════════ */
+let _animLock = false;
+
 function playAll() {
-  const entranceEls = [
+  // Debounce: agar already chal rahi hai toh skip
+  if(_animLock) return;
+  _animLock = true;
+  setTimeout(() => { _animLock = false; }, 800);
+
+  const staticEls = [
     '.topbar','.brand-icon','.brand-wrap','.brand-sub',
     '.live-badge','.ibtn','.scan-btn',
-    '.filter-tabs','.sbar','thead th','.ani-row'
+    '.filter-tabs','.sbar','.ani-th'
   ];
-  entranceEls.forEach(sel => {
+
+  // Step 1: .anim-ready lagao (CSS opacity:0 activate hogi)
+  staticEls.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {
-      el.classList.remove('a','flash','floating');
-      el.style.opacity = '0';
+      el.classList.remove('a','floating');
+      el.classList.add('anim-ready');
     });
   });
+
+  // Step 2: force reflow
   void document.body.offsetHeight;
 
+  // Step 3: animate karo
   function a(sel, delay) {
     setTimeout(() => {
       document.querySelectorAll(sel).forEach(el => {
-        el.style.opacity = ''; el.classList.add('a');
+        el.classList.remove('anim-ready');
+        el.classList.add('a');
       });
     }, delay);
   }
@@ -622,46 +697,111 @@ function playAll() {
   a('.topbar', 0);
   setTimeout(() => {
     const icon = document.querySelector('.brand-icon');
-    icon.style.opacity = ''; icon.classList.add('a');
+    if(!icon) return;
+    icon.classList.remove('anim-ready');
+    icon.classList.add('a');
     setTimeout(() => icon.classList.add('floating'), 600);
   }, 140);
-  a('.brand-wrap', 200); a('.brand-sub', 270);
+  a('.brand-wrap', 200);
+  a('.brand-sub', 270);
   a('.live-badge', 320);
-  document.querySelectorAll('.ibtn').forEach((btn,i) =>
-    setTimeout(() => { btn.style.opacity=''; btn.classList.add('a'); }, 370+i*65)
+  document.querySelectorAll('.ibtn').forEach((btn, i) =>
+    setTimeout(() => { btn.classList.remove('anim-ready'); btn.classList.add('a'); }, 370 + i * 65)
   );
   a('.scan-btn', 500);
-  a('.filter-tabs', 180); a('.sbar', 260);
-  document.querySelectorAll('thead th').forEach((th,i) =>
-    setTimeout(() => { th.style.opacity=''; th.classList.add('a'); }, 300+i*45)
+  a('.filter-tabs', 180);
+  a('.sbar', 260);
+  document.querySelectorAll('.ani-th').forEach((th, i) =>
+    setTimeout(() => { th.classList.remove('anim-ready'); th.classList.add('a'); }, 300 + i * 45)
   );
-  document.querySelectorAll('.ani-row').forEach((row,i) =>
-    setTimeout(() => { row.style.opacity=''; row.classList.add('flash'); }, 360+i*65)
-  );
-  // badge glow
+
+  // Badge glow (sirf visible rows pe)
   setTimeout(() => {
-    document.querySelectorAll('.sig.bull').forEach((el,i) =>
-      setTimeout(() => { el.classList.add('badge-flash-bull'); setTimeout(()=>el.classList.remove('badge-flash-bull'),700); }, i*30)
+    document.querySelectorAll('.sig.bull').forEach((el, i) =>
+      setTimeout(() => {
+        el.classList.add('badge-flash-bull');
+        setTimeout(() => el.classList.remove('badge-flash-bull'), 700);
+      }, i * 30)
     );
-    document.querySelectorAll('.sig.bear').forEach((el,i) =>
-      setTimeout(() => { el.classList.add('badge-flash-bear'); setTimeout(()=>el.classList.remove('badge-flash-bear'),700); }, i*30)
+    document.querySelectorAll('.sig.bear').forEach((el, i) =>
+      setTimeout(() => {
+        el.classList.add('badge-flash-bear');
+        setTimeout(() => el.classList.remove('badge-flash-bear'), 700);
+      }, i * 30)
     );
   }, 900);
 }
 
-// Re-run every time page becomes visible
-document.addEventListener('visibilitychange', () => { if(!document.hidden) playAll(); });
+// Page visibility — replay on tab focus
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) playAll();
+});
+
+// First load
 window.addEventListener('pageshow', playAll);
 
 /* ══════════════════════════════════════
-   OBSERVE #tb — play animations when
-   render.js fills the table rows
+   FIX #3: MutationObserver — sirf naye
+   rows animate karo, playAll() mat chalao.
+   Counter bhi update karo.
 ══════════════════════════════════════ */
-const tbObserver = new MutationObserver(() => {
-  document.querySelectorAll('#tb tr').forEach(tr => tr.classList.add('ani-row'));
-  playAll();
+const tbObserver = new MutationObserver((mutations) => {
+  mutations.forEach(mutation => {
+    mutation.addedNodes.forEach(node => {
+      if(node.nodeType !== 1) return; // sirf elements
+
+      // Row ko hidden karke animate karo
+      node.classList.add('anim-ready','ani-row');
+      void node.offsetHeight;
+
+      // Delay for stagger effect
+      const rows = document.querySelectorAll('#tb tr');
+      const idx = Array.from(rows).indexOf(node);
+      const delay = Math.min(idx * 55, 600); // max 600ms tak stagger
+
+      setTimeout(() => {
+        node.classList.remove('anim-ready');
+        node.classList.add('flash');
+      }, delay);
+    });
+  });
+
+  // FIX: counts update karo after render
+  updateCounts();
 });
+
 tbObserver.observe(document.getElementById('tb'), { childList:true });
+
+/* ══════════════════════════════════════
+   COUNT UPDATER
+   render.js ke baad #bc, #rc, #ac update
+   karta hai — agar render.js ye khud
+   nahi karta toh ye fallback hai.
+══════════════════════════════════════ */
+function updateCounts() {
+  const rows = document.querySelectorAll('#tb tr:not([style*="display: none"])');
+  let bull = 0, bear = 0;
+  rows.forEach(tr => {
+    const sigs = tr.querySelectorAll('.sig');
+    // 1D signal (index 2, 0-based) se overall direction check
+    sigs.forEach(s => {
+      if(s.classList.contains('bull')) bull++;
+      else if(s.classList.contains('bear')) bear++;
+    });
+  });
+  // Only update if render.js hasn't set these
+  const bc = document.getElementById('bc');
+  const rc = document.getElementById('rc');
+  const ac = document.getElementById('ac');
+  if(bc && rc && ac) {
+    // Pop animation on change
+    [bc, rc, ac].forEach(el => {
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    });
+  }
+}
 </script>
 </body>
 </html>
