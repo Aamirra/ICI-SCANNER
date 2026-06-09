@@ -99,7 +99,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   transition: transform 0.1s ease-out;
 }
 
-/* ── Topbar with animated gradient ── */
+/* ── Topbar with animated gradient + text glow ── */
 .topbar {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px; background:var(--topbar-bg); border-radius:16px;
@@ -113,7 +113,6 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-/* Glow animation on brand text */
 .brand {
   font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color);
   animation: textGlow 2s ease-in-out infinite alternate;
@@ -139,22 +138,45 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 }
 .theme-btn:hover, .desktop-btn:hover { transform: scale(1.1); }
 
-/* ── Summary Cards: Original size + subtle glow animation ── */
+/* ── Summary Cards: Compact + Glowing Border Animation ── */
 .sc {
-  flex:1; padding:12px; border-radius:14px;
-  border:1px solid var(--sc-brd); text-align:center;
-  cursor:pointer; background:var(--sf);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  animation: cardPulse 3s ease-in-out infinite;
+  flex:1;
+  padding: 8px 6px;   /* reduced padding for less space */
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-align:center;
+  cursor:pointer;
+  background: var(--sf);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
 }
-@keyframes cardPulse {
-  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  50% { box-shadow: 0 0 15px rgba(0,170,255,0.15); }
+/* Glowing border animation */
+.sc::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--angle), var(--acc), transparent 40%, transparent 60%, var(--acc));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rotateBorder 4s linear infinite;
 }
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes rotateBorder {
+  to { --angle: 360deg; }
+}
+
 .sc:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 15px rgba(0,170,255,0.25);
+  background: var(--sf2);
 }
 .sn { font-size:20px; display:block; font-weight:bold; }
 
