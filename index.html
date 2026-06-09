@@ -4,804 +4,332 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ICI Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 <style>
-/* ══════════════════════════════════════
-   THEME TOKENS
-══════════════════════════════════════ */
+/* ── Dark Mode (default) ── */
 [data-theme="dark"] {
-  --bg:#131722; --s1:#1e222d; --s2:#2a2e39; --s3:#363a45;
-  --brd:#2a2e39; --brd2:#363a45;
-  --t1:#d1d4dc; --t2:#787b86; --t3:#4c525e;
-  --bull:#26a69a; --bear:#ef5350; --acc:#2962ff;
-  --bullbg:rgba(38,166,154,0.13); --bearbg:rgba(239,83,80,0.13);
-  --topsh:none;
-  --modal-bg:rgba(0,0,0,0.85);
-  --chart-header:#1e222d; --chart-brd:#2a2e39;
-  --nav-btn-bg:rgba(255,255,255,0.08); --nav-btn-color:#d1d4dc;
-  --close-color:#ef5350;
-  --cloud-color:#26a69a;
+  --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
+  --brd:rgba(255,255,255,0.08); --acc:#00aaff;
+  --gold:#ffcc00; --txt:#dce8f5;
+  --topbar-bg:linear-gradient(135deg,#0d1f42,#071228);
+  --topbar-brd:rgba(0,170,255,0.2);
+  --sc-brd:#333; --th-brd:rgba(255,255,255,0.08);
+  --modal-bg:rgba(0,0,0,0.9);
+  --brand-color:#fff;
+  --cloud-color:#00ff88;
+  --all-color:#fff;
+  --nav-btn-bg:rgba(255,255,255,0.1); --nav-btn-color:#fff;
+  --close-color:#ff4466;
+  --chart-header:#0d1828; --chart-brd:#333;
+  --toggle-icon:"☀️";
+  --sent-nodata:#555;
 }
+/* ── Light Mode ── */
 [data-theme="light"] {
-  --bg:#f0f3fa; --s1:#ffffff; --s2:#f0f3fa; --s3:#e4e7f0;
-  --brd:#e0e3eb; --brd2:#c8ccd8;
-  --t1:#131722; --t2:#787b86; --t3:#9598a1;
-  --bull:#26a69a; --bear:#ef5350; --acc:#2962ff;
-  --bullbg:rgba(38,166,154,0.1); --bearbg:rgba(239,83,80,0.1);
-  --topsh:0 1px 4px rgba(0,0,0,.07);
-  --modal-bg:rgba(0,0,0,0.5);
-  --chart-header:#ffffff; --chart-brd:#e0e3eb;
-  --nav-btn-bg:rgba(0,0,0,0.06); --nav-btn-color:#131722;
-  --close-color:#ef5350;
-  --cloud-color:#26a69a;
+  --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
+  --brd:rgba(0,0,0,0.1); --acc:#0077cc;
+  --gold:#cc9900; --txt:#1a2a3a;
+  --topbar-bg:linear-gradient(135deg,#c8dff5,#a0c4e8);
+  --topbar-brd:rgba(0,119,204,0.3);
+  --sc-brd:#ccd6e0; --th-brd:rgba(0,0,0,0.08);
+  --modal-bg:rgba(0,0,0,0.6);
+  --brand-color:#0a1a2e;
+  --cloud-color:#00aa55;
+  --all-color:#1a2a3a;
+  --nav-btn-bg:rgba(0,0,0,0.1); --nav-btn-color:#1a2a3a;
+  --close-color:#cc2233;
+  --chart-header:#c8dff5; --chart-brd:#aac4dc;
+  --toggle-icon:"🌙";
+  --sent-nodata:#aaa;
 }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--txt); font-family:'JetBrains Mono',monospace; min-height:100vh; overflow-x:hidden; transition:background 0.3s, color 0.3s; }
+.wrap { max-width:480px; margin:0 auto; padding:12px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; background:var(--topbar-bg); border-radius:16px; margin-bottom:12px; border:1px solid var(--topbar-brd); }
+.brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--brand-color); }
+.scan-btn { background:rgba(0,170,255,0.15); color:var(--acc); border:1px solid var(--acc); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; }
+.scan-btn:active { background:rgba(0,170,255,0.35); }
+.theme-btn { background:none; border:1px solid var(--brd); border-radius:8px; padding:5px 9px; cursor:pointer; font-size:14px; line-height:1; }
+.sbar { display:flex; align-items:center; justify-content:space-between; background:var(--sf); border:1px solid var(--brd); padding:10px 14px; border-radius:12px; margin-bottom:10px; font-size:10px; cursor:pointer; color:var(--txt); }
+.sum { display:flex; gap:8px; margin-bottom:12px; }
+.sc { flex:1; padding:12px; border-radius:14px; border:1px solid var(--sc-brd); text-align:center; cursor:pointer; background:var(--sf); }
+.sn { font-size:20px; display:block; font-weight:bold; }
+.tw { background:var(--sf); border-radius:16px; border:1px solid var(--brd); overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
+td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); }
+.pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
+.sig { display:inline-block; width:34px; height:20px; border-radius:4px; border:none; }
+.sig.bull { background:#00cc66; }
+.sig.bear { background:#ff2244; }
+.modal { position:fixed; inset:0; background:var(--modal-bg); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal.open { display:flex; }
+.m-card { background:var(--sf2); border:1px solid var(--brd); border-radius:24px; width:100%; max-width:400px; padding:22px; color:var(--txt); }
+#chartOverlay { position:fixed; inset:0; background:var(--bg); z-index:4000; display:none; flex-direction:column; }
+.nav-btn { background:var(--nav-btn-bg); color:var(--nav-btn-color); border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:bold; }
 
-/* ══════════════════════════════════════
-   BASE
-══════════════════════════════════════ */
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
-html,body {
-  background:var(--bg); color:var(--t1);
-  font-family:'Inter',sans-serif; font-size:13px;
-  line-height:1.5; min-height:100vh;
-  -webkit-font-smoothing:antialiased;
-  overflow-x:hidden;
-  transition:background .25s, color .25s;
-}
-.wrap { max-width:520px; margin:0 auto; padding:0 0 40px; }
-
-/* ══════════════════════════════════════
-   ANIMATIONS — KEYFRAMES
-   FIX: Saare entrance animations yahan hain
-   lekin elements ab DEFAULT VISIBLE hain.
-   Sirf .anim-ready class lagne ke baad
-   hide/show hoga.
-══════════════════════════════════════ */
-@keyframes topbarIn   { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
-@keyframes iconBounce { from{transform:scale(0) rotate(-20deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
-@keyframes iconFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-@keyframes fadeLeft   { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
-@keyframes fadeScale  { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
-@keyframes slideUp    { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-@keyframes rowIn      { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:translateX(0)} }
-@keyframes thIn       { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-@keyframes rowFlash   { 0%{background:rgba(41,98,255,.07)} 100%{background:transparent} }
-@keyframes cntPop     { 0%{transform:scale(1)} 50%{transform:scale(1.45)} 100%{transform:scale(1)} }
-@keyframes nameShimmer{ 0%,100%{background-position:0% center} 50%{background-position:100% center} }
-@keyframes scanLine   { 0%{left:-50%;opacity:0} 10%{opacity:.6} 90%{opacity:.6} 100%{left:110%;opacity:0} }
-@keyframes scanPulse  { 0%,100%{box-shadow:0 2px 8px rgba(41,98,255,.3)} 50%{box-shadow:0 2px 20px rgba(41,98,255,.65)} }
-@keyframes ringOut    { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(2.6);opacity:0} }
-@keyframes ltPulse    { 0%,100%{opacity:1} 50%{opacity:.45} }
-@keyframes bdgSweep   { 0%,55%,100%{left:-80%} 30%{left:130%} }
-@keyframes stSweep    { 0%,60%,100%{left:-60%} 35%{left:115%} }
-@keyframes dotPing    { 0%,100%{box-shadow:0 0 0 0 rgba(38,166,154,.5)} 50%{box-shadow:0 0 0 5px rgba(38,166,154,0)} }
-@keyframes badgeGlow  { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bull)} }
-@keyframes badgeGlowR { 0%,100%{opacity:1} 40%{opacity:.3;box-shadow:0 0 10px var(--bear)} }
-@keyframes barShimmer { 0%{left:-100%} 100%{left:200%} }
-@keyframes flashDown  { 0%{opacity:0;top:62px} 15%{opacity:1} 100%{opacity:0;top:100vh} }
-
-/*
-  FIX #1: Elements ab default visible hain (opacity unset).
-  Sirf .anim-ready class lagne ke baad
-  opacity:0 set hoti hai — phir .a class se animate hota hai.
-  Isse JS fail hone par bhi UI visible rehta hai.
-*/
-.anim-ready.topbar,
-.anim-ready.brand-icon,
-.anim-ready.brand-wrap,
-.anim-ready.brand-sub,
-.anim-ready.live-badge,
-.anim-ready.ibtn,
-.anim-ready.scan-btn,
-.anim-ready.filter-tabs,
-.anim-ready.sbar,
-.anim-ready.ani-th,
-.anim-ready.ani-row { opacity:0; }
-
-/* Entrance animation classes */
-.topbar.a      { animation:topbarIn  .5s cubic-bezier(.22,1,.36,1) forwards }
-.brand-icon.a  { animation:iconBounce .55s cubic-bezier(.34,1.56,.64,1) forwards }
-.brand-wrap.a  { animation:fadeLeft  .45s ease forwards }
-.brand-sub.a   { animation:fadeLeft  .4s  ease forwards }
-.live-badge.a  { animation:fadeScale .4s  ease forwards }
-.ibtn.a        { animation:fadeScale .35s ease forwards }
-.scan-btn.a    { animation:fadeScale .35s ease forwards }
-.filter-tabs.a { animation:slideUp   .4s  ease forwards }
-.sbar.a        { animation:slideUp   .4s  ease forwards }
-.ani-th.a      { animation:thIn      .4s  ease forwards }
-.ani-row.a     { animation:rowIn     .45s ease forwards }
-.ani-row.flash { animation:rowIn     .45s ease forwards, rowFlash .6s .45s ease forwards }
-.badge-flash-bull { animation:badgeGlow  .6s ease forwards }
-.badge-flash-bear { animation:badgeGlowR .6s ease forwards }
-.cnt.pop       { animation:cntPop .35s cubic-bezier(.34,1.56,.64,1) }
-
-/* ══════════════════════════════════════
-   TOPBAR
-══════════════════════════════════════ */
-.topbar {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 16px; height:62px;
-  background:var(--s1); border-bottom:1px solid var(--brd);
-  position:sticky; top:0; z-index:10;
-  box-shadow:var(--topsh);
-  overflow:hidden;
-}
-.topbar::after {
-  content:''; position:absolute;
-  top:0; bottom:0; left:-50%; width:40%;
-  background:linear-gradient(90deg,transparent,rgba(41,98,255,.05),transparent);
-  animation:scanLine 4s 2s ease-in-out infinite;
-  pointer-events:none;
-}
-
-.brand { display:flex; align-items:center; gap:11px; }
-.brand-icon {
-  width:38px; height:38px; border-radius:9px;
-  background:var(--acc); flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:#fff;
-  box-shadow:0 2px 12px rgba(41,98,255,.35);
-  transition:transform .2s, box-shadow .2s;
-  cursor:default;
-}
-.brand-icon.floating { animation:iconFloat 3s ease-in-out infinite; }
-.brand-icon:hover { transform:scale(1.1) rotate(-6deg) !important; box-shadow:0 5px 22px rgba(41,98,255,.55); }
-
-.brand-wrap {
-  font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
-  letter-spacing:-.3px; line-height:1;
-}
-.shimmer-name {
-  background:linear-gradient(90deg,var(--t1) 0%,var(--t1) 25%,var(--acc) 48%,var(--t1) 70%,var(--t1) 100%);
-  background-size:250% auto;
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-  animation:nameShimmer 3.5s ease-in-out infinite;
-  display:inline-block;
-}
-.brand-sub { font-size:9px; font-weight:600; letter-spacing:2px; color:var(--t3); text-transform:uppercase; margin-top:2px; }
-
-/* ── LIVE BADGE ── */
-.live-badge {
-  display:flex; align-items:center; gap:7px;
-  background:var(--s2); border:1px solid var(--brd);
-  border-radius:6px; padding:5px 11px; font-size:10px; font-weight:600;
-  position:relative; overflow:hidden; cursor:default;
-}
-.live-badge::after {
-  content:''; position:absolute; top:0; bottom:0; left:-80%; width:60%;
-  background:linear-gradient(90deg,transparent,rgba(38,166,154,.15),transparent);
-  animation:bdgSweep 2.8s 1.5s ease-in-out infinite;
-}
-.dot-ring { position:relative; width:10px; height:10px; flex-shrink:0; }
-.dot-ring .core { position:absolute; inset:2px; border-radius:50%; background:var(--bull); box-shadow:0 0 5px var(--bull); }
-.dot-ring .ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--bull); opacity:0; animation:ringOut 2s ease-out infinite; }
-.dot-ring .ring:nth-child(2) { animation-delay:0s; }
-.dot-ring .ring:nth-child(3) { animation-delay:.65s; }
-.dot-ring .ring:nth-child(4) { animation-delay:1.3s; }
-.live-text { color:var(--bull); font-weight:700; letter-spacing:.5px; position:relative; z-index:1; animation:ltPulse 2s ease-in-out infinite; }
-
-/* ── BUTTONS ── */
-.ibtn {
-  background:transparent; border:1px solid var(--brd); border-radius:6px;
-  padding:6px 9px; cursor:pointer; font-size:14px; line-height:1; color:var(--t2);
-  transition:border-color .15s, background .15s, transform .1s;
-}
-.ibtn:hover { border-color:var(--brd2); background:var(--s2); color:var(--t1); transform:translateY(-1px); }
-.ibtn:active { transform:translateY(0); }
-
-.scan-btn {
-  background:var(--acc); border:none; border-radius:6px;
-  padding:7px 14px; cursor:pointer;
-  font-size:11px; font-weight:600; color:#fff;
-  font-family:'Inter',sans-serif; letter-spacing:.3px;
-  animation:scanPulse 2.5s ease-in-out infinite;
-  transition:opacity .15s, transform .15s;
-}
-.scan-btn:hover { opacity:.9; transform:translateY(-1px); }
-.scan-btn:active { transform:translateY(0); }
-.scan-btn:disabled { opacity:.6; cursor:not-allowed; animation:none; }
-
-/* ══════════════════════════════════════
-   STATUS BAR
-══════════════════════════════════════ */
-.sbar {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 16px;
-  background:var(--s2); border-bottom:1px solid var(--brd);
-  font-size:10.5px; color:var(--t3);
-  cursor:pointer; position:relative; overflow:hidden;
-}
-.sbar::after {
-  content:''; position:absolute; top:0; bottom:0; left:-60%; width:45%;
-  background:linear-gradient(90deg,transparent,rgba(41,98,255,.05),transparent);
-  animation:stSweep 5s 3s ease-in-out infinite;
-}
-.sbar:hover { background:var(--s3); }
-#st { color:var(--bull); font-weight:600; position:relative; z-index:1; }
-#pb { color:#f0b929; font-weight:500; position:relative; z-index:1; }
-
-.sl-dot {
-  display:inline-block; width:6px; height:6px; border-radius:50%;
-  background:var(--bull); box-shadow:0 0 0 0 rgba(38,166,154,.4);
-  animation:dotPing 2s ease-in-out infinite;
-  margin-right:4px; vertical-align:middle;
-}
-
-/* ══════════════════════════════════════
-   FILTER TABS
-══════════════════════════════════════ */
-.filter-tabs {
-  display:flex; gap:2px; padding:0 14px;
-  background:var(--s1); border-bottom:1px solid var(--brd);
-}
-.ftab {
-  padding:10px 12px 9px; font-size:11.5px; font-weight:500; cursor:pointer;
-  color:var(--t2); background:transparent; border:none;
-  border-bottom:2px solid transparent; margin-bottom:-1px;
-  font-family:'Inter',sans-serif; transition:color .18s, border-color .18s;
-}
-.ftab:hover { color:var(--t1); }
-.ftab.active { color:var(--t1); font-weight:600; }
-.ftab.active.all  { border-bottom-color:var(--acc); }
-.ftab.active.bull { border-bottom-color:var(--bull); color:var(--bull); }
-.ftab.active.bear { border-bottom-color:var(--bear); color:var(--bear); }
-.cnt {
-  display:inline-block; margin-left:5px;
-  font-size:10px; padding:1px 6px; border-radius:10px; font-weight:700;
-}
-.ftab .cnt                          { background:var(--s3); color:var(--t3); }
-.ftab.bull .cnt, .ftab.active.bull .cnt { background:var(--bullbg); color:var(--bull); }
-.ftab.bear .cnt, .ftab.active.bear .cnt { background:var(--bearbg); color:var(--bear); }
-
-/* ══════════════════════════════════════
-   TABLE
-══════════════════════════════════════ */
-.tw { background:var(--s1); }
-
-table { width:100%; border-collapse:collapse; table-layout:fixed; }
-col.c-pair { width:110px; }
-col.c-tf   { width:46px; }
-col.c-sent { width:auto; }
-
-thead { position:sticky; top:62px; background:var(--s1); z-index:5; box-shadow:var(--topsh); }
-thead tr { border-bottom:2px solid var(--brd); }
-th {
-  padding:9px 0;
-  font-size:10px; font-weight:600; letter-spacing:.7px;
-  color:var(--t3); text-transform:uppercase;
-  text-align:center; white-space:nowrap; overflow:hidden;
-}
-th.th-pair { text-align:left; padding-left:16px; }
-th.th-sent { text-align:left; padding-left:6px; }
-
-tbody tr { border-bottom:1px solid var(--brd); cursor:pointer; background:var(--s1); transition:background .15s; }
-tbody tr:last-child { border-bottom:none; }
-tbody tr:hover { background:var(--s2); }
-
-td {
-  padding:11px 0; text-align:center;
-  font-size:12.5px; color:var(--t1);
-  /* FIX: JetBrains Mono restored for numbers */
-  font-family:'JetBrains Mono',monospace;
-  overflow:hidden;
-}
-td.td-pair { text-align:left; padding-left:16px; position:relative; font-family:'Inter',sans-serif; }
-td.td-sent { text-align:left; padding-left:6px; padding-right:14px; font-family:'Inter',sans-serif; }
-
-/* left accent bar */
-td.td-pair::before {
-  content:''; position:absolute; left:0; top:4px; bottom:4px;
-  width:2.5px; border-radius:0 2px 2px 0;
-  background:linear-gradient(180deg,var(--acc),var(--bull));
-  transform:scaleY(0); transform-origin:center;
-  transition:transform .22s cubic-bezier(.4,0,.2,1);
-}
-tbody tr:hover td.td-pair::before { transform:scaleY(1); }
-
-/* ── PAIR NAME ── */
-.pn {
-  font-family:'Syne',sans-serif; font-size:13.5px; font-weight:700;
-  color:var(--t1); cursor:pointer;
-  display:block; transition:color .15s;
-}
-.pcat-label { font-size:9px; color:var(--t3); margin-top:1.5px; letter-spacing:.5px; text-transform:uppercase; display:block; font-family:'Inter',sans-serif; }
-tbody tr:hover .pn { color:var(--acc); }
-
-/* ── SIGNAL BADGES ── */
-.sig {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:40px; height:20px; border-radius:4px;
-  font-size:9px; font-weight:700; letter-spacing:.4px;
-  border:none; transition:transform .15s;
-  font-family:'Inter',sans-serif;
-}
-tbody tr:hover .sig { transform:scale(1.07); }
-.sig.bull { background:var(--bullbg); color:var(--bull); }
-.sig.bear { background:var(--bearbg); color:var(--bear); }
-
-/* ── SENTIMENT BAR ── */
+/* ── Sentiment Bar Styles ── */
 .sentiment-bar {
-  display:flex; height:6px; border-radius:3px;
-  overflow:hidden; width:100%; min-width:82px;
-  background:var(--s3); position:relative;
-}
-.sentiment-bar::after {
-  content:''; position:absolute; top:0; bottom:0; left:-100%; width:60%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
-  animation:barShimmer 2.5s 1.5s ease-in-out infinite;
+  display:flex;
+  height:22px;
+  border-radius:5px;
+  overflow:hidden;
+  width:100%;
+  min-width:80px;
 }
 .s-bear {
-  background:var(--bear); opacity:.65;
-  border-radius:3px 0 0 3px;
-  display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:7.5px; font-weight:700;
-  white-space:nowrap; overflow:hidden; flex-shrink:0;
-  transition:width .4s ease;
+  background:#ff2244;
+  box-shadow:0 0 6px #ff2244;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:7.5px;
+  font-weight:bold;
+  white-space:nowrap;
+  overflow:hidden;
+  flex-shrink:0;
+  transition:width 0.4s ease;
 }
 .s-bull {
-  background:var(--bull); opacity:.65;
-  border-radius:0 3px 3px 0;
-  display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:7.5px; font-weight:700;
-  white-space:nowrap; overflow:hidden; flex-shrink:0;
-  transition:width .4s ease;
+  background:#00cc66;
+  box-shadow:0 0 6px #00cc66;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:7.5px;
+  font-weight:bold;
+  white-space:nowrap;
+  overflow:hidden;
+  flex-shrink:0;
+  transition:width 0.4s ease;
 }
-td.sent-cell { padding-top:11px !important; padding-bottom:11px !important; }
-.sent-nums { display:flex; justify-content:space-between; margin-top:3px; font-size:9.5px; font-family:'JetBrains Mono',monospace; }
-.sn-b { color:rgba(239,83,80,.75); }
-.sn-u { color:rgba(38,166,154,.75); }
+td.sent-cell { padding:6px 8px; }
+th.sent-th { min-width:90px; font-size:8px; }
 
-/* ══════════════════════════════════════
-   MODAL
-══════════════════════════════════════ */
-.modal {
-  position:fixed; inset:0; background:var(--modal-bg);
-  z-index:3000; display:none; align-items:center; justify-content:center;
-  padding:20px; backdrop-filter:blur(6px);
-}
-.modal.open { display:flex; animation:fadeScale .25s ease; }
-.m-card {
-  background:var(--s2); border:1px solid var(--brd);
-  border-radius:18px; width:100%; max-width:400px;
-  padding:22px; color:var(--t1);
-  box-shadow:0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
-}
+/* ════════════════════════════════════════
+   ✅ NEW: Desktop Split-View Mode
+════════════════════════════════════════ */
 
-/* ══════════════════════════════════════
-   CHART OVERLAY
-══════════════════════════════════════ */
-#chartOverlay {
-  position:fixed; inset:0; background:var(--bg);
-  z-index:4000; display:none; flex-direction:column;
-}
-.nav-btn {
-  background:var(--nav-btn-bg); color:var(--nav-btn-color);
-  border:1px solid var(--brd); padding:8px 15px;
-  border-radius:8px; cursor:pointer; font-weight:bold;
-  transition:background .15s, transform .1s;
-  font-family:'Inter',sans-serif;
-}
-.nav-btn:hover { background:var(--s3); transform:translateY(-1px); }
-.nav-btn:active { transform:translateY(0); }
-
-/* ══════════════════════════════════════
-   DESKTOP SPLIT MODE
-══════════════════════════════════════ */
-body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-body.desktop-mode .wrap {
-  width:420px; min-width:320px; max-width:420px;
-  height:100vh; overflow-y:auto; padding-bottom:20px;
-  flex-shrink:0; margin:0; border-right:1px solid var(--brd);
-}
-body.desktop-mode #chartOverlay {
-  position:relative !important; inset:auto !important;
-  flex:1; height:100vh; display:flex !important;
-  flex-direction:column; z-index:1 !important;
-}
-body.desktop-mode #tv_chart_container { min-height:0; }
-body.desktop-mode #chartCloseBtn { display:none !important; }
-body.desktop-mode #tv_chart_container:empty {
-  display:flex !important; flex-direction:column;
-  align-items:center; justify-content:center; gap:12px;
-}
-body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:.2; }
-body.desktop-mode #tv_chart_container:empty::after {
-  content:'Select a pair to view chart';
-  font-family:'Inter',sans-serif; font-size:12px; color:var(--t2);
-}
-
-/* Scan flash line */
-.scan-flash {
-  position:fixed; top:62px; left:0; right:0; height:1.5px;
-  background:linear-gradient(90deg,transparent,var(--acc),var(--bull),transparent);
-  z-index:20; opacity:0; pointer-events:none;
-}
-.scan-flash.run { animation:flashDown .9s ease forwards; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-thumb { background:var(--brd2); border-radius:2px; }
-
-/* ── BELL BUTTON ── */
-col.c-bell { width:36px; }
-.bell-btn {
-  background:transparent; border:none; cursor:pointer;
-  font-size:14px; padding:4px 6px; border-radius:6px;
-  color:var(--t3); transition:color .15s, background .15s, transform .15s;
+/* Desktop Mode button styling (same look as theme-btn) */
+.desktop-btn {
+  background:none;
+  border:1px solid var(--brd);
+  border-radius:8px;
+  padding:5px 9px;
+  cursor:pointer;
+  font-size:14px;
   line-height:1;
 }
-.bell-btn:hover { color:var(--acc); background:var(--s2); transform:scale(1.15); }
-.bell-btn:active { transform:scale(.95); }
-.bell-btn.active { color:#f0b929; }
 
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+/* Body becomes a flex row */
+body.desktop-mode {
+  display:flex;
+  height:100vh;
+  overflow:hidden;
+}
+
+/* LEFT PANEL — screener list */
+body.desktop-mode .wrap {
+  width:420px;
+  min-width:320px;
+  max-width:420px;
+  height:100vh;
+  overflow-y:auto;
+  padding:10px;
+  flex-shrink:0;
+  margin:0;
+  border-right:1px solid var(--brd);
+}
+
+/* RIGHT PANEL — chart (overrides fixed positioning) */
+body.desktop-mode #chartOverlay {
+  position:relative !important;
+  inset:auto !important;
+  flex:1;
+  height:100vh;
+  display:flex !important;
+  flex-direction:column;
+  z-index:1 !important;
+}
+
+/* Needed so chart iframe fills correctly in flex column */
+body.desktop-mode #tv_chart_container {
+  min-height:0;
+}
+
+/* Hide "✕ CLOSE" — not needed in desktop mode */
+body.desktop-mode #chartCloseBtn {
+  display:none !important;
+}
+
+/* Placeholder shown when no pair selected yet */
+body.desktop-mode #tv_chart_container:empty {
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+}
+body.desktop-mode #tv_chart_container:empty::before {
+  content:'📊';
+  font-size:44px;
+  opacity:0.2;
+}
+body.desktop-mode #tv_chart_container:empty::after {
+  content:'Select a pair to view chart';
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  color:var(--txt);
+  opacity:0.3;
 }
 </style>
 </head>
 <body>
-
-<div class="scan-flash" id="sf"></div>
-
 <div class="wrap">
-
-  <!-- ── TOPBAR ── -->
   <div class="topbar">
-    <div class="brand">
-      <div class="brand-icon">I</div>
-      <div>
-        <div class="brand-wrap"><span class="shimmer-name">ICI SCREENER</span></div>
-        <div class="brand-sub">Multi-pair scanner</div>
-      </div>
-    </div>
-
-    <div class="live-badge">
-      <div class="dot-ring">
-        <div class="core"></div>
-        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
-      </div>
-      <span class="live-text">LIVE</span>
-    </div>
-
-    <div style="display:flex;align-items:center;gap:7px;">
-      <button class="ibtn" onclick="toggleTheme()" id="themeBtn">☀️</button>
-      <button class="ibtn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
+    <div class="brand">ICI <span>SCREENER</span></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+      <!-- ✅ NEW: Desktop Mode Toggle Button -->
+      <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
       <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+      <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
     </div>
   </div>
-
-  <!-- ── STATUS BAR ── -->
-  <div class="sbar" onclick="openM()">
-    <span><span class="sl-dot"></span><span id="st">Connecting...</span></span>
-    <span id="pb" style="color:#f0b929">👁 Target List ❯</span>
+  <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
+  <div class="sum">
+    <div class="sc" style="color:#00cc66" onclick="setFilter('bull')"><span class="sn" id="bc">0</span>BULL</div>
+    <div class="sc" style="color:#ff2244" onclick="setFilter('bear')"><span class="sn" id="rc">0</span>BEAR</div>
+    <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
   </div>
-
-  <!-- ── FILTER TABS ── -->
-  <div class="filter-tabs">
-    <button class="ftab active all"  onclick="filterTabClick(this,'all')">All<span class="cnt" id="ac">36</span></button>
-    <button class="ftab bull"        onclick="filterTabClick(this,'bull')">Bullish<span class="cnt" id="bc">0</span></button>
-    <button class="ftab bear"        onclick="filterTabClick(this,'bear')">Bearish<span class="cnt" id="rc">0</span></button>
-  </div>
-
-  <!-- ── TABLE ── -->
   <div class="tw">
     <table>
-      <colgroup>
-        <col class="c-pair">
-        <col class="c-tf"><col class="c-tf"><col class="c-tf"><col class="c-tf">
-        <col class="c-sent">
-        <col class="c-bell">
-      </colgroup>
       <thead>
         <tr>
-          <th class="th-pair ani-th">Pair</th>
-          <th class="ani-th">1H</th>
-          <th class="ani-th">4H</th>
-          <th class="ani-th">1D</th>
-          <th class="ani-th">1W</th>
-          <th class="th-sent ani-th">Sentiment</th>
-          <th class="ani-th"></th>
+          <th style="text-align:left;padding-left:12px">Pair</th>
+          <th>1H</th>
+          <th>4H</th>
+          <th>1D</th>
+          <th>1W</th>
+          <!-- ✅ FIX: "SENT" → "Daily Sentiment" -->
+          <th class="sent-th">Daily Sentiment</th>
         </tr>
       </thead>
       <tbody id="tb"></tbody>
     </table>
   </div>
-
-</div><!-- /.wrap -->
-
-<!-- ── MODAL ── -->
-<div class="modal" id="mo" onclick="this.classList.remove('open')">
-  <div class="m-card" onclick="event.stopPropagation()">
-    <div id="ml"></div>
-  </div>
 </div>
-
-<!-- ── CHART OVERLAY ── -->
+<div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
-  <div style="padding:10px 15px;background:var(--chart-header);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--chart-brd);">
-    <div style="display:flex;gap:12px;align-items:center;">
+  <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
+    <div style="display:flex; gap:12px; align-items:center">
       <button class="nav-btn" onclick="movePair(-1)">❮</button>
-      <span id="cp" style="color:var(--t1);font-weight:800;font-family:'Syne',sans-serif;font-size:18px;min-width:80px;text-align:center;">Pair</span>
+      <span id="cp" style="color:var(--brand-color); font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Pair</span>
       <button class="nav-btn" onclick="movePair(1)">❯</button>
     </div>
-    <span id="chartCloseBtn" onclick="closeC()" style="color:var(--close-color);font-size:14px;font-weight:800;cursor:pointer;padding:10px;">✕ CLOSE</span>
+    <!-- ✅ id="chartCloseBtn" added — hidden in desktop mode via CSS -->
+    <span id="chartCloseBtn" onclick="closeC()" style="color:var(--close-color); font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
   </div>
-  <div id="tv_chart_container" style="flex:1;"></div>
+  <div id="tv_chart_container" style="flex:1"></div>
 </div>
-
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="js/firebase.js"></script>
 <script src="js/render.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
-<script src="alerts.js"></script>
-
 <script>
-/* ══════════════════════════════════════
-   BELL BUTTON HELPER
-   render.js mein har row ke end mein ye
-   call karo:
-   td.innerHTML = bellTd('BTCUSDT');
-══════════════════════════════════════ */
-function bellTd(pair) {
-  return `<td style="text-align:center;padding:0 4px;">
-    <button class="bell-btn" onclick="event.stopPropagation();openAlertDialog('${pair}')" title="Set Alert">🔔</button>
-  </td>`;
-}
-
-/* ══════════════════════════════════════
-   THEME TOGGLE
-══════════════════════════════════════ */
+// ── Theme Toggle ──
 function toggleTheme() {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
-  localStorage.setItem('ici-theme', isDark ? 'light' : 'dark');
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('ici-theme', newTheme);
 }
-(function(){
-  const saved = localStorage.getItem('ici-theme');
-  if(saved){
-    document.documentElement.setAttribute('data-theme', saved);
-    document.addEventListener('DOMContentLoaded', function(){
-      const btn = document.getElementById('themeBtn');
-      if(btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
-    });
-  }
+(function() {
+    const saved = localStorage.getItem('ici-theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('themeBtn');
+            if (btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
+        });
+    }
 })();
 
-/* ══════════════════════════════════════
-   MANUAL SCAN
-══════════════════════════════════════ */
 function manualScan() {
-  const btn = document.querySelector('.scan-btn');
-  btn.textContent = '⏳ Scanning...';
-  btn.disabled = true;
-  const sf = document.getElementById('sf');
-  sf.classList.remove('run'); void sf.offsetWidth; sf.classList.add('run');
-  fetch('/scan')
-    .then(() => {
-      btn.textContent = '✅ Started!';
-      setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
-    })
-    .catch(() => {
-      btn.textContent = '❌ Error';
-      setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
-    });
+    const btn = document.querySelector('.scan-btn');
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+    fetch('/scan')
+        .then(() => {
+            btn.textContent = '✅ Started!';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        })
+        .catch(() => {
+            btn.textContent = '❌ Error';
+            setTimeout(() => {
+                btn.textContent = '🔄 SCAN';
+                btn.disabled = false;
+            }, 3000);
+        });
 }
 
-/* ══════════════════════════════════════
-   AUTO RELOAD
-══════════════════════════════════════ */
 window.addEventListener('load', function() {
-  setTimeout(function() {
-    if(document.getElementById('st').textContent === 'Connecting...') {
-      location.reload();
-    }
-  }, 5000);
+    setTimeout(function() {
+        if (document.getElementById('st').textContent === 'Connecting...') {
+            location.reload();
+        }
+    }, 5000);
 });
 
-/* ══════════════════════════════════════
-   DESKTOP MODE
-══════════════════════════════════════ */
+// ════════════════════════════════════════
+// ✅ NEW: Desktop Mode Logic
+// ════════════════════════════════════════
 function toggleDesktopMode() {
-  const isDesktop = document.body.classList.toggle('desktop-mode');
-  const overlay = document.getElementById('chartOverlay');
-  const btn = document.getElementById('desktopBtn');
-  if(isDesktop) {
-    overlay.style.display = 'flex';
-    btn.textContent = '📱'; btn.title = 'Switch to Mobile';
-  } else {
-    overlay.style.display = 'none';
-    btn.textContent = '🖥️'; btn.title = 'Switch to Desktop';
-  }
-  localStorage.setItem('ici-mode', isDesktop ? 'desktop' : 'mobile');
+    const isDesktop = document.body.classList.toggle('desktop-mode');
+    const overlay  = document.getElementById('chartOverlay');
+    const btn      = document.getElementById('desktopBtn');
+    if (isDesktop) {
+        overlay.style.display = 'flex';   // force-show right panel
+        btn.textContent = '📱';
+        btn.title = 'Switch to Mobile';
+    } else {
+        overlay.style.display = 'none';   // hide chart panel
+        btn.textContent = '🖥️';
+        btn.title = 'Switch to Desktop';
+    }
+    localStorage.setItem('ici-mode', isDesktop ? 'desktop' : 'mobile');
 }
+
+// Run after all JS files (chart.js etc.) are loaded
 window.addEventListener('load', function() {
-  if(typeof window.closeC === 'function') {
-    const _orig = window.closeC;
-    window.closeC = function() {
-      if(document.body.classList.contains('desktop-mode')) return;
-      _orig.apply(this, arguments);
-    };
-  }
-  if(localStorage.getItem('ici-mode') === 'desktop') {
-    document.body.classList.add('desktop-mode');
-    document.getElementById('desktopBtn').textContent = '📱';
-    document.getElementById('desktopBtn').title = 'Switch to Mobile';
-    document.getElementById('chartOverlay').style.display = 'flex';
-  }
+
+    // Prevent closeC() from hiding the chart panel in desktop mode
+    if (typeof window.closeC === 'function') {
+        const _origClose = window.closeC;
+        window.closeC = function() {
+            if (document.body.classList.contains('desktop-mode')) return;
+            _origClose.apply(this, arguments);
+        };
+    }
+
+    // Restore saved mode across page reloads
+    if (localStorage.getItem('ici-mode') === 'desktop') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('desktopBtn').textContent = '📱';
+        document.getElementById('desktopBtn').title = 'Switch to Mobile';
+        document.getElementById('chartOverlay').style.display = 'flex';
+    }
 });
-
-/* ══════════════════════════════════════
-   FILTER TABS
-══════════════════════════════════════ */
-function filterTabClick(el, type) {
-  document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  if(typeof setFilter === 'function') setFilter(type);
-}
-
-/* ══════════════════════════════════════
-   ENTRANCE ANIMATIONS — FIXED
-
-   FIX #1: .anim-ready class pehle lagao,
-   tab opacity:0 set hoti hai CSS se.
-   Agar JS fail ho — elements visible rehte hain.
-
-   FIX #2: MutationObserver aur pageshow
-   double-fire band kiya — ek debounce
-   flag se guard kiya hai.
-
-   FIX #3: MutationObserver sirf naye rows
-   animate karta hai, playAll() nahi chalata.
-══════════════════════════════════════ */
-let _animLock = false;
-
-function playAll() {
-  // Debounce: agar already chal rahi hai toh skip
-  if(_animLock) return;
-  _animLock = true;
-  setTimeout(() => { _animLock = false; }, 800);
-
-  const staticEls = [
-    '.topbar','.brand-icon','.brand-wrap','.brand-sub',
-    '.live-badge','.ibtn','.scan-btn',
-    '.filter-tabs','.sbar','.ani-th'
-  ];
-
-  // Step 1: .anim-ready lagao (CSS opacity:0 activate hogi)
-  staticEls.forEach(sel => {
-    document.querySelectorAll(sel).forEach(el => {
-      el.classList.remove('a','floating');
-      el.classList.add('anim-ready');
-    });
-  });
-
-  // Step 2: force reflow
-  void document.body.offsetHeight;
-
-  // Step 3: animate karo
-  function a(sel, delay) {
-    setTimeout(() => {
-      document.querySelectorAll(sel).forEach(el => {
-        el.classList.remove('anim-ready');
-        el.classList.add('a');
-      });
-    }, delay);
-  }
-
-  a('.topbar', 0);
-  setTimeout(() => {
-    const icon = document.querySelector('.brand-icon');
-    if(!icon) return;
-    icon.classList.remove('anim-ready');
-    icon.classList.add('a');
-    setTimeout(() => icon.classList.add('floating'), 600);
-  }, 140);
-  a('.brand-wrap', 200);
-  a('.brand-sub', 270);
-  a('.live-badge', 320);
-  document.querySelectorAll('.ibtn').forEach((btn, i) =>
-    setTimeout(() => { btn.classList.remove('anim-ready'); btn.classList.add('a'); }, 370 + i * 65)
-  );
-  a('.scan-btn', 500);
-  a('.filter-tabs', 180);
-  a('.sbar', 260);
-  document.querySelectorAll('.ani-th').forEach((th, i) =>
-    setTimeout(() => { th.classList.remove('anim-ready'); th.classList.add('a'); }, 300 + i * 45)
-  );
-
-  // Badge glow (sirf visible rows pe)
-  setTimeout(() => {
-    document.querySelectorAll('.sig.bull').forEach((el, i) =>
-      setTimeout(() => {
-        el.classList.add('badge-flash-bull');
-        setTimeout(() => el.classList.remove('badge-flash-bull'), 700);
-      }, i * 30)
-    );
-    document.querySelectorAll('.sig.bear').forEach((el, i) =>
-      setTimeout(() => {
-        el.classList.add('badge-flash-bear');
-        setTimeout(() => el.classList.remove('badge-flash-bear'), 700);
-      }, i * 30)
-    );
-  }, 900);
-}
-
-// Page visibility — replay on tab focus
-document.addEventListener('visibilitychange', () => {
-  if(!document.hidden) playAll();
-});
-
-// First load
-window.addEventListener('pageshow', playAll);
-
-/* ══════════════════════════════════════
-   FIX #3: MutationObserver — sirf naye
-   rows animate karo, playAll() mat chalao.
-   Counter bhi update karo.
-══════════════════════════════════════ */
-const tbObserver = new MutationObserver((mutations) => {
-  mutations.forEach(mutation => {
-    mutation.addedNodes.forEach(node => {
-      if(node.nodeType !== 1) return; // sirf elements
-
-      // Row ko hidden karke animate karo
-      node.classList.add('anim-ready','ani-row');
-      void node.offsetHeight;
-
-      // Delay for stagger effect
-      const rows = document.querySelectorAll('#tb tr');
-      const idx = Array.from(rows).indexOf(node);
-      const delay = Math.min(idx * 55, 600); // max 600ms tak stagger
-
-      setTimeout(() => {
-        node.classList.remove('anim-ready');
-        node.classList.add('flash');
-      }, delay);
-    });
-  });
-
-  // FIX: counts update karo after render
-  updateCounts();
-});
-
-tbObserver.observe(document.getElementById('tb'), { childList:true });
-
-/* ══════════════════════════════════════
-   COUNT UPDATER
-   render.js ke baad #bc, #rc, #ac update
-   karta hai — agar render.js ye khud
-   nahi karta toh ye fallback hai.
-══════════════════════════════════════ */
-function updateCounts() {
-  const rows = document.querySelectorAll('#tb tr:not([style*="display: none"])');
-  let bull = 0, bear = 0;
-  rows.forEach(tr => {
-    const sigs = tr.querySelectorAll('.sig');
-    // 1D signal (index 2, 0-based) se overall direction check
-    sigs.forEach(s => {
-      if(s.classList.contains('bull')) bull++;
-      else if(s.classList.contains('bear')) bear++;
-    });
-  });
-  // Only update if render.js hasn't set these
-  const bc = document.getElementById('bc');
-  const rc = document.getElementById('rc');
-  const ac = document.getElementById('ac');
-  if(bc && rc && ac) {
-    // Pop animation on change
-    [bc, rc, ac].forEach(el => {
-      el.classList.remove('pop');
-      void el.offsetWidth;
-      el.classList.add('pop');
-    });
-  }
-}
 </script>
 </body>
 </html>
