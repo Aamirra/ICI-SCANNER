@@ -237,6 +237,26 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   text-align:left; padding-left:6px; color:var(--acc); cursor:pointer;
 }
 
+/* ✅ Blinking strong trend pair name */
+.pn.blink-pair-bull {
+    animation: blinkBull 1.5s infinite;
+    background: rgba(0,204,102,0.15);
+}
+.pn.blink-pair-bear {
+    animation: blinkBear 1.5s infinite;
+    background: rgba(255,34,68,0.15);
+}
+
+@keyframes blinkBull {
+    0%, 100% { color: #00cc66; text-shadow: 0 0 10px #00cc66; }
+    50% { color: #004d1a; text-shadow: 0 0 5px #00cc66; }
+}
+
+@keyframes blinkBear {
+    0%, 100% { color: #ff2244; text-shadow: 0 0 10px #ff2244; }
+    50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
+}
+
 /* Minimal padding between sentiment & bell */
 th:nth-child(6), td:nth-child(6) { padding-right: 2px; }
 th:nth-child(7), td:nth-child(7) { padding-left: 2px; }
@@ -400,7 +420,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
               <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
               <th>Sentiment</th>
               <th></th>  <!-- alert bell column -->
-              <!-- ✅ Updated column names -->
               <th>200 Candle Change</th>
               <th>10 Candle Change (1D)</th>
               <th>10 Candle Change (1H)</th>
@@ -435,17 +454,13 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
-// ════════════════════════════════════════════
-// 1. COLUMN RESIZE ENGINE (Neighbor Shrink)
-// ════════════════════════════════════════════
+// Column resize engine (unchanged)
 (function() {
   const STORAGE_KEY = 'ici_table_col_widths';
   const COLUMN_COUNT = 12;
   const MIN_WIDTH_PCT = 3;
   const MAX_WIDTH_PCT = 40;
-
   const defaultWidths = [11, 6, 6, 6, 6, 11, 8, 9, 9, 8, 8, 12];
-
   let colWidths = loadColWidths();
 
   function loadColWidths() {
@@ -453,23 +468,17 @@ body.desktop-mode .tech-cell { font-size: 9px; }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === COLUMN_COUNT) {
-          return parsed;
-        }
+        if (Array.isArray(parsed) && parsed.length === COLUMN_COUNT) return parsed;
       }
     } catch (e) {}
     return [...defaultWidths];
   }
 
-  function saveColWidths() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(colWidths));
-  }
+  function saveColWidths() { localStorage.setItem(STORAGE_KEY, JSON.stringify(colWidths)); }
 
   function applyWidths() {
     const root = document.documentElement;
-    for (let i = 0; i < COLUMN_COUNT; i++) {
-      root.style.setProperty(`--col${i}-width`, colWidths[i] + '%');
-    }
+    for (let i = 0; i < COLUMN_COUNT; i++) root.style.setProperty(`--col${i}-width`, colWidths[i] + '%');
   }
 
   applyWidths();
@@ -482,18 +491,8 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     if (!table) return;
     const startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const startWidth = table.offsetWidth * (colWidths[columnIndex] / 100);
-
     let neighborIndex = columnIndex < (COLUMN_COUNT - 1) ? columnIndex + 1 : columnIndex - 1;
-
-    dragState = {
-      columnIndex,
-      neighborIndex,
-      startX,
-      startWidth,
-      startNeighborWidth: table.offsetWidth * (colWidths[neighborIndex] / 100),
-      tableWidth: table.offsetWidth
-    };
-
+    dragState = { columnIndex, neighborIndex, startX, startWidth, startNeighborWidth: table.offsetWidth * (colWidths[neighborIndex] / 100), tableWidth: table.offsetWidth };
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchmove', onDrag, { passive: false });
@@ -506,12 +505,9 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     e.preventDefault();
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const deltaX = clientX - dragState.startX;
-
     let newWidthPx = dragState.startWidth + deltaX;
     let newWidthPct = (newWidthPx / dragState.tableWidth) * 100;
-
     newWidthPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newWidthPct));
-    
     let oldTotalPct = colWidths[dragState.columnIndex] + colWidths[dragState.neighborIndex];
     let newNeighborPct = oldTotalPct - newWidthPct;
     newNeighborPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newNeighborPct));
@@ -519,7 +515,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
       newWidthPct = oldTotalPct - newNeighborPct;
       newWidthPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newWidthPct));
     }
-
     colWidths[dragState.columnIndex] = newWidthPct;
     colWidths[dragState.neighborIndex] = newNeighborPct;
     applyWidths();
@@ -551,13 +546,9 @@ body.desktop-mode .tech-cell { font-size: 9px; }
   const observer = new MutationObserver(() => attachResizeHandles());
   observer.observe(document.getElementById('tb'), { childList: true });
   attachResizeHandles();
-
-  window.applyTableWidths = applyWidths;
 })();
 
-// ════════════════════════════════════════════
-// 2. EXISTING APP CODE (unchanged)
-// ════════════════════════════════════════════
+// Theme Toggle
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
