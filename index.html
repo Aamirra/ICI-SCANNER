@@ -257,6 +257,12 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
     50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
 }
 
+/* ✅ Golden highlight for Blink + Pullback combo */
+tr.golden-highlight {
+    border: 2px solid #FFD700 !important;
+    box-shadow: 0 0 12px #FFD700, inset 0 0 10px rgba(255,215,0,0.2);
+}
+
 /* Minimal padding between sentiment & bell */
 th:nth-child(6), td:nth-child(6) { padding-right: 2px; }
 th:nth-child(7), td:nth-child(7) { padding-left: 2px; }
@@ -674,6 +680,64 @@ let techMetrics = {};
 db.ref('technicalMetrics').on('value', (snap) => {
     techMetrics = snap.val() || {};
     if (typeof render === 'function') render();
+});
+
+// ═══════════════════════════════════════════
+// ✅ MINI CHART POPUP
+// ═══════════════════════════════════════════
+let miniChartPopup = document.createElement('div');
+miniChartPopup.id = 'miniChartPopup';
+miniChartPopup.style.cssText = 'position:absolute;display:none;background:#111;border:1px solid var(--acc);border-radius:8px;padding:8px;z-index:5000;';
+document.body.appendChild(miniChartPopup);
+
+function showMiniChart(pairName, event) {
+    const data = window.miniChartData && window.miniChartData[pairName];
+    if (!data || !data.closes) return;
+
+    const closes = data.closes;
+    if (closes.length < 2) return;
+
+    miniChartPopup.innerHTML = `<canvas id="miniChartCanvas" width="180" height="100"></canvas>`;
+    const canvas = document.getElementById('miniChartCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = 10;
+    const maxVal = Math.max(...closes);
+    const minVal = Math.min(...closes);
+    const range = maxVal - minVal || 1;
+    const stepX = (width - 2 * padding) / (closes.length - 1);
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.beginPath();
+    ctx.strokeStyle = '#00aaff';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < closes.length; i++) {
+        const x = padding + i * stepX;
+        const y = padding + (height - 2 * padding) * (1 - (closes[i] - minVal) / range);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Position popup near the clicked cell
+    const rect = event.target.getBoundingClientRect();
+    miniChartPopup.style.left = (rect.left + window.scrollX) + 'px';
+    miniChartPopup.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+    miniChartPopup.style.display = 'block';
+}
+
+// Hide popup when clicking elsewhere
+document.addEventListener('click', (e) => {
+    if (!miniChartPopup.contains(e.target) && !e.target.classList.contains('pn')) {
+        miniChartPopup.style.display = 'none';
+    }
+});
+
+// Firebase listener for mini chart data
+db.ref('miniChart').on('value', snap => {
+    window.miniChartData = snap.val() || {};
 });
 </script>
 </body>
