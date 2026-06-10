@@ -179,8 +179,8 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   --col2-width: 6%;
   --col3-width: 6%;
   --col4-width: 6%;
-  --col5-width: 12%;
-  --col6-width: 7%;   /* Bell column */
+  --col5-width: 9%;   /* ✅ Sentiment column (slightly smaller) */
+  --col6-width: 10%;  /* ✅ Bell column (wider) */
   --col7-width: 9%;
   --col8-width: 9%;
   --col9-width: 8%;
@@ -238,16 +238,12 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   text-align:left; padding-left:6px; color:var(--acc); cursor:pointer;
 }
 
-/* ✅ Strong gap between sentiment & bell */
+/* Sentiment & Bell gap */
 th:nth-child(6), td:nth-child(6) {
-  padding-right: 10px;
-  border-right: 2px solid transparent;   /* invisible separator */
-  background-clip: padding-box;          /* prevent background color leakage */
+  padding-right: 4px;
 }
 th:nth-child(7), td:nth-child(7) {
-  padding-left: 10px;
-  border-left: 2px solid transparent;
-  background-clip: padding-box;
+  padding-left: 4px;
 }
 
 /* Resize handle */
@@ -449,7 +445,8 @@ body.desktop-mode .tech-cell { font-size: 9px; }
   const MIN_WIDTH_PCT = 3;
   const MAX_WIDTH_PCT = 40;
 
-  const defaultWidths = [11, 6, 6, 6, 6, 12, 7, 9, 9, 8, 8, 12];
+  // ✅ Updated default widths: sentiment 9%, bell 10%
+  const defaultWidths = [11, 6, 6, 6, 6, 9, 10, 9, 9, 8, 8, 12];
 
   let colWidths = loadColWidths();
 
