@@ -40,14 +40,23 @@
         .nav-btn:hover { background:rgba(0,170,255,0.25); transform: scale(1.05); }
         .tw {
             background:var(--sf); border-radius:16px;
-            border:1px solid var(--brd); overflow:hidden;
+            border:1px solid var(--brd); overflow:auto;
         }
-        table { width:100%; border-collapse:collapse; min-width:600px; table-layout:fixed; }
-        th { padding:8px 4px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
-        td { padding:5px 2px; text-align:center; border-bottom:1px solid var(--brd); font-size:9px; }
+        table { width:100%; border-collapse:collapse; min-width:700px; table-layout:fixed; }
+        th { padding:6px 2px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
+        td { padding:4px 2px; text-align:center; border-bottom:1px solid var(--brd); font-size:9px; }
         .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; color:var(--acc); }
         .green { color:#00cc66; }
         .red { color:#ff2244; }
+
+        /* Signal dots (same as main dashboard) */
+        .sig {
+            display: inline-block; width: 10px; height: 10px;
+            border-radius: 50%; position: relative; border: none;
+            background: #555;
+        }
+        .sig.bull { background: #00cc66; }
+        .sig.bear { background: #ff2244; }
     </style>
 </head>
 <body>
@@ -61,6 +70,10 @@
             <thead>
                 <tr>
                     <th style="text-align:left;padding-left:8px">Symbol</th>
+                    <th>1H</th>
+                    <th>4H</th>
+                    <th>1D</th>
+                    <th>1W</th>
                     <th>Price</th>
                     <th>200 Candle Change</th>
                     <th>10 Candle Change (1D)</th>
@@ -101,8 +114,18 @@
             const vol7d = data.volume7dAvg != null && data.volume7dAvg !== 0 ? data.volume7dAvg.toLocaleString() : '—';
             const dollarVol = data.dollarVolume1d && data.dollarVolume1d !== '0.00' ? data.dollarVolume1d : '—';
 
+            // Timeframe signals
+            const sig1h = data.signal1h || '';
+            const sig4h = data.signal4h || '';
+            const sig1d = data.signal1d || '';
+            const sig1w = data.signal1w || '';
+
             return `<tr>
                 <td class="pn">${symbol}</td>
+                <td><div class="sig ${sig1h}"></div></td>
+                <td><div class="sig ${sig4h}"></div></td>
+                <td><div class="sig ${sig1d}"></div></td>
+                <td><div class="sig ${sig1w}"></div></td>
                 <td>${price}</td>
                 <td class="${longColor}">${long}</td>
                 <td class="${shortColor}">${short}</td>
