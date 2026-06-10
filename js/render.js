@@ -17,6 +17,10 @@ function render() {
         const isStrongBear = checkStrongTrend(p.n, 'bear', m, t, s);
         const blinkClass = isStrongBull ? 'blink-pair-bull' : (isStrongBear ? 'blink-pair-bear' : '');
 
+        // ✅ Golden highlight for Blink + Pullback combo
+        const inTargetList = isPairInTargetList(p.n);
+        const goldenClass = (blinkClass && inTargetList) ? 'golden-highlight' : '';
+
         // 200D trend
         const longTerm = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '—';
         const longColor = t.longTermTrend >= 0 ? '#00cc66' : '#ff2244';
@@ -31,8 +35,8 @@ function render() {
         // Dollar volume – show "—" if null or zero
         const dollarVol = (t.dollarVolume1d != null && t.dollarVolume1d !== '0.00' && t.dollarVolume1d !== 0) ? t.dollarVolume1d : '—';
 
-        return `<tr>
-            <td class="pn ${blinkClass}" onclick="openCFromTable(${idx})">${p.n}</td>
+        return `<tr class="${goldenClass}">
+            <td class="pn ${blinkClass}" onclick="showMiniChart('${p.n}', event)" ondblclick="openCFromTable(${idx})">${p.n}</td>
             ${['1h','4h','1day','1week'].map(tf =>
                 `<td><div class="sig ${(m[tf] || '')}"></div></td>`
             ).join('')}
@@ -45,6 +49,19 @@ function render() {
             <td class="tech-cell">${dollarVol}</td>
         </tr>`;
     }).join('');
+}
+
+// Helper: check if pair is currently in active pullback target list
+function isPairInTargetList(pairName) {
+    const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
+    for (const key in PB_STATE) {
+        const s = PB_STATE[key];
+        if (s && TARGET_PHASES.includes(s.phase)) {
+            const name = key.replace(/_1h_(bull|bear)$/, '');
+            if (name === pairName) return true;
+        }
+    }
+    return false;
 }
 
 // ✅ Updated: Dollar volume condition removed
