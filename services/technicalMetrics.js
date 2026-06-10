@@ -7,29 +7,43 @@ const calcSMA = require('../utils/smaCalc');
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-const AV_KEY = process.env.ALPHA_VANTAGE_KEY;
-const AV_DAILY_LIMIT = 25;
+// ── Load multiple Alpha Vantage keys ──
+const AV_KEYS = (process.env.ALPHA_VANTAGE_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
+const AV_DAILY_LIMIT_PER_KEY = 25;   // free tier limit
 
-// ── Firebase‑based daily counter (survives server restarts) ──
-async function getDailyAvCounter() {
+if (AV_KEYS.length === 0) {
+    console.warn('[Alpha Vantage] No keys provided – set ALPHA_VANTAGE_KEYS env variable');
+}
+
+// ── Firebase‑based daily counter (per key, per date) ──
+async function getKeyUsage(keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     try {
-        const snap = await admin.database().ref(`av_counter/${today}`).once('value');
+        const snap = await admin.database().ref(`av_counter/${today}/${keyIndex}`).once('value');
         return snap.val() || 0;
     } catch (e) { return 0; }
 }
 
-async function incrementDailyAvCounter() {
+async function incrementKeyUsage(keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
-    const ref = admin.database().ref(`av_counter/${today}`);
+    const ref = admin.database().ref(`av_counter/${today}/${keyIndex}`);
     const snap = await ref.once('value');
     const current = snap.val() || 0;
-    if (current >= AV_DAILY_LIMIT) return false;
+    if (current >= AV_DAILY_LIMIT_PER_KEY) return false;
     await ref.set(current + 1);
     return true;
 }
 
-// ── Cache helpers ──
+// ── Get next available key index (returns -1 if all exhausted) ──
+async function getAvailableKeyIndex() {
+    for (let i = 0; i < AV_KEYS.length; i++) {
+        const used = await getKeyUsage(i);
+        if (used < AV_DAILY_LIMIT_PER_KEY) return i;
+    }
+    return -1;
+}
+
+// ── Firebase volume cache helpers ──
 async function getCachedVolume(pairName) {
     try {
         const snap = await admin.database().ref(`volumeCache/${pairName}`).once('value');
@@ -41,33 +55,38 @@ async function setCachedVolume(pairName, data) {
     await admin.database().ref(`volumeCache/${pairName}`).set(data);
 }
 
-// ── Alpha Vantage daily FX volume fetcher ──
+// ── Alpha Vantage daily FX volume fetcher (multi‑key) ──
 async function fetchAlphaVantageVolume(pairName) {
-    if (!AV_KEY) {
-        console.warn('[Alpha Vantage] API key not set');
+    if (AV_KEYS.length === 0) return null;
+
+    // Find an available key index
+    const keyIndex = await getAvailableKeyIndex();
+    if (keyIndex === -1) {
+        console.warn(`[Alpha Vantage] All keys exhausted for today`);
         return null;
     }
 
-    // Check persistent counter
-    const canCall = await incrementDailyAvCounter();
-    if (!canCall) {
-        console.warn(`[Alpha Vantage] Daily limit (${AV_DAILY_LIMIT}) reached`);
-        return null;
-    }
-
+    const apiKey = AV_KEYS[keyIndex];
     const from = pairName.substring(0, 3);
     const to = pairName.substring(3);
-    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${from}&to_symbol=${to}&outputsize=full&apikey=${AV_KEY}`;
+    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${from}&to_symbol=${to}&outputsize=full&apikey=${apiKey}`;
 
-    console.log(`[Alpha Vantage] Fetching ${pairName} ...`);
+    console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
+
     return new Promise((resolve) => {
         const req = https.get(url, { agent }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
-            res.on('end', () => {
+            res.on('end', async () => {
                 try {
                     const json = JSON.parse(data);
                     if (json['Time Series FX (Daily)']) {
+                        // Increment usage for this key only on success
+                        const incremented = await incrementKeyUsage(keyIndex);
+                        if (!incremented) {
+                            console.warn(`[Alpha Vantage] Could not increment usage for key ${keyIndex}, but data received — may exceed limit`);
+                            // still proceed, but cautious
+                        }
                         const ts = json['Time Series FX (Daily)'];
                         const entries = Object.entries(ts)
                             .sort(([a], [b]) => new Date(a) - new Date(b))
@@ -79,6 +98,7 @@ async function fetchAlphaVantageVolume(pairName) {
                         }
                         const closes = entries.map(([_, v]) => parseFloat(v['4. close']));
                         const volumes = entries.map(([_, v]) => parseInt(v['5. volume'] || '0'));
+                        console.log(`[Alpha Vantage] Success for ${pairName}: ${entries.length} candles`);
                         resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'AlphaVantage' });
                     } else {
                         console.warn(`[Alpha Vantage] No daily data for ${pairName}: ${JSON.stringify(json).slice(0, 200)}`);
@@ -109,7 +129,7 @@ function hasValidVolume(volumes) {
 }
 
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (smart AV + cache)...');
+    console.log('[Metrics] Starting technical metrics (multi‑key AV)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -140,7 +160,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                     daily = { closes: avData.closes, volumes: avData.volumes, time: new Date().toISOString() };
                     needVolume = false;
                 } else {
-                    console.warn(`[Metrics] ${pair.n}: volume not obtained (cache miss + AV unavailable/limit)`);
+                    console.warn(`[Metrics] ${pair.n}: volume not obtained`);
                 }
             }
         }
