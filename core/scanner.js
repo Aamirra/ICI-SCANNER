@@ -1,4 +1,5 @@
 const https = require('https');
+const cheerio = require('cheerio'); // ✅ naya parser
 const config = require('../config');
 const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
@@ -24,7 +25,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
-let RAW_DAILY = {};           // ✅ daily candles store
+let RAW_DAILY = {};
 let keyUsage = {};
 let keyCallTimes = {};
 let keyCooldown = {};
@@ -55,36 +56,53 @@ function maybeResetDaily() {
     }
 }
 
+// ✅ FIXED: MentFX sentiment scraper using cheerio
 function fetchMentFXSentiment() {
     const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
     const options = {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        },
-        agent
+        }
     };
-    const req = https.get(MENTFX_URL, options, (res) => {
+
+    https.get(MENTFX_URL, options, (res) => {
         let raw = '';
         res.on('data', chunk => raw += chunk);
         res.on('end', () => {
             try {
-                const rowRegex = />\s*([A-Z]{6})\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*Daily\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>(?:(?!<\/tr>)[\s\S])*?>\s*([\d.]+)\s*%?\s*<\/(?:td|th)[^>]*>/gi;
-                let match;
+                const $ = cheerio.load(raw);
                 let savedCount = 0;
-                while ((match = rowRegex.exec(raw)) !== null) {
-                    const pairName      = match[1].toUpperCase();
-                    const daily_bullish = match[2];
-                    const daily_bearish = match[3];
-                    const knownPair = config.PAIRS.find(p => p.n === pairName);
-                    if (!knownPair) continue;
-                    firebasePut(`sentiment/${pairName}`, {
-                        bullish_pct: parseFloat(daily_bullish),
-                        bearish_pct: parseFloat(daily_bearish)
-                    }).catch(err => console.log(`MentFX save error (${pairName}):`, err));
-                    savedCount++;
-                }
+
+                // Har table row check karo jisme 3 columns ho
+                $('table tr').each((i, row) => {
+                    const cells = $(row).find('td');
+                    if (cells.length >= 3) {
+                        const symbolText = $(cells[0]).text().trim();
+                        const dailyCellText = $(cells[2]).text().trim(); // Daily column
+
+                        const pairName = symbolText.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                        const knownPair = config.PAIRS.find(p => p.n === pairName || p.s === pairName);
+                        if (!knownPair) return;
+
+                        // e.g., "45% 55%"
+                        const numbers = dailyCellText.match(/(\d+(?:\.\d+)?)/g);
+                        if (numbers && numbers.length >= 2) {
+                            const bear = parseFloat(numbers[0]);
+                            const bull = parseFloat(numbers[1]);
+                            const total = bear + bull;
+                            if (total === 0) return;
+
+                            firebasePut(`sentiment/${knownPair.n}`, {
+                                bullish_pct: Math.round((bull / total) * 100),
+                                bearish_pct: Math.round((bear / total) * 100)
+                            }).catch(err => console.log(`MentFX save error (${knownPair.n}):`, err));
+                            savedCount++;
+                        }
+                    }
+                });
+
                 if (savedCount === 0) {
-                    console.log('[MentFX] WARNING: Koi bhi DAILY row match nahi hui. HTML snippet:', raw.substring(0, 500));
+                    console.log('[MentFX] WARNING: Koi bhi pair match nahi hua — table structure badal gaya. Snippet: ' + raw.substring(0, 500));
                 } else {
                     console.log(`[MentFX] ${savedCount} pairs ka DAILY sentiment Firebase mein save kiya.`);
                 }
@@ -92,9 +110,7 @@ function fetchMentFXSentiment() {
                 console.log('[MentFX] Parse error:', e.message);
             }
         });
-    });
-    req.setTimeout(15000, () => { req.destroy(); console.log('[MentFX] Request timeout.'); });
-    req.on('error', (err) => console.log('[MentFX] Network error:', err.message));
+    }).on('error', (err) => console.log('[MentFX] Network error:', err.message));
 }
 
 async function fetchKeyUsage(key) {
@@ -208,7 +224,6 @@ async function fetchTF(p, tf, retryCount = 0) {
                             }
                         }
 
-                        // hourly OHLC
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -220,14 +235,13 @@ async function fetchTF(p, tf, retryCount = 0) {
                             };
                         }
 
-                        // ✅ daily OHLC + volume → RAW_DAILY
                         if (tf === '1day') {
                             const dailyCls = sorted.map(v => parseFloat(v.close));
                             const dailyVols = sorted.map(v => parseFloat(v.volume || '0'));
                             RAW_DAILY[p.n] = {
                                 closes: dailyCls,
                                 volumes: dailyVols,
-                                time:   sorted[sorted.length - 1]?.datetime
+                                time: sorted[sorted.length - 1]?.datetime
                             };
                         }
                         resolve(true);
@@ -249,8 +263,6 @@ async function masterScan() {
         let failed = await fetchBatch(jobs);
 
         fetchMentFXSentiment();
-
-        // ✅ metrics using RAW_DAILY
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
         for (const p of config.PAIRS) {
