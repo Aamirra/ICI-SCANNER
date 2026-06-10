@@ -4,7 +4,7 @@
 //  Main HTML mein sirf: <script src="Alerts.js"></script>
 // ═══════════════════════════════════════════════════
 
-// ── 1. CSS INJECT ──
+// ── 1. CSS INJECT (unchanged) ──
 (function injectCSS() {
     const style = document.createElement('style');
     style.textContent = `
@@ -95,10 +95,25 @@
                 <option value="SENT_ABOVE_75">📊 Sentiment Above 75%</option>
                 <option value="SENT_BELOW_25">📊 Sentiment Below 25%</option>
               </optgroup>
+              <!-- ✅ NEW: Technical Metrics -->
+              <optgroup label="── Technical Metrics ──">
+                <option value="TECH_200D_ABOVE">📈 200 Candle Change Above X%</option>
+                <option value="TECH_200D_BELOW">📉 200 Candle Change Below X%</option>
+                <option value="TECH_10D_ABOVE">📈 10 Candle Change (1D) Above X%</option>
+                <option value="TECH_10D_BELOW">📉 10 Candle Change (1D) Below X%</option>
+                <option value="TECH_1H_ABOVE">📈 10 Candle Change (1H) Above X%</option>
+                <option value="TECH_1H_BELOW">📉 10 Candle Change (1H) Below X%</option>
+              </optgroup>
             </select>
             <div id="alPriceWrap" style="display:none;margin-bottom:10px">
               <div class="al-lbl" style="color:#f7931a;font-weight:700">🎯 Target Price</div>
               <input type="number" id="fTargetPrice" placeholder=""
+                style="background:#131722;border:2px solid #f7931a;color:#f7931a;font-size:16px;font-weight:700;border-radius:7px;padding:10px 12px;outline:none">
+            </div>
+            <!-- ✅ NEW: Threshold % for tech metrics -->
+            <div id="alTechPercentWrap" style="display:none;margin-bottom:10px">
+              <div class="al-lbl" style="color:#f7931a;font-weight:700">🎯 Threshold %</div>
+              <input type="number" id="fTargetPercent" placeholder="e.g. 2.5" step="0.1"
                 style="background:#131722;border:2px solid #f7931a;color:#f7931a;font-size:16px;font-weight:700;border-radius:7px;padding:10px 12px;outline:none">
             </div>
             <div id="alTfWrap">
@@ -200,9 +215,17 @@ const AL_COND_LABELS = {
     SENT_BELOW_60:     "📊 Sentiment Below 60%",
     SENT_ABOVE_75:     "📊 Sentiment Above 75%",
     SENT_BELOW_25:     "📊 Sentiment Below 25%",
+    TECH_200D_ABOVE:   "📈 200 Candle Change Above",
+    TECH_200D_BELOW:   "📉 200 Candle Change Below",
+    TECH_10D_ABOVE:    "📈 10 Candle Change (1D) Above",
+    TECH_10D_BELOW:    "📉 10 Candle Change (1D) Below",
+    TECH_1H_ABOVE:     "📈 10 Candle Change (1H) Above",
+    TECH_1H_BELOW:     "📉 10 Candle Change (1H) Below",
 };
+
 const AL_EMA_CONDS   = ['PRICE_ABOVE_EMA20','PRICE_BELOW_EMA20'];
 const AL_VALUE_CONDS = ['PRICE_ABOVE_VAL','PRICE_BELOW_VAL'];
+const TECH_CONDS = ['TECH_200D_ABOVE','TECH_200D_BELOW','TECH_10D_ABOVE','TECH_10D_BELOW','TECH_1H_ABOVE','TECH_1H_BELOW'];
 
 let _alCurrentPair = null, _alEditingId = null, _alSoundOn = true;
 
@@ -242,6 +265,7 @@ function openAlertDialog(pairName, alertToEdit = null) {
         document.getElementById('fCondition').value         = alertToEdit.condition;
         document.getElementById('fTimeframe').value         = alertToEdit.timeframe || '1H';
         document.getElementById('fTargetPrice').value       = alertToEdit.targetPrice || '';
+        document.getElementById('fTargetPercent').value     = alertToEdit.targetPercent || '';
         document.getElementById('fName').value              = alertToEdit.name;
         document.getElementById('fMessage').value           = alertToEdit.message;
         document.getElementById('fFrequency').value         = alertToEdit.frequency;
@@ -256,6 +280,7 @@ function openAlertDialog(pairName, alertToEdit = null) {
         document.getElementById('fCondition').value         = 'PRICE_ABOVE_EMA20';
         document.getElementById('fTimeframe').value         = '1H';
         document.getElementById('fTargetPrice').value       = '';
+        document.getElementById('fTargetPercent').value     = '';
         document.getElementById('fName').value              = `${pairName} Alert`;
         document.getElementById('fMessage').value           = `{{ticker}} - Alert triggered! Price: {{price}}`;
         document.getElementById('fFrequency').value         = 'Only Once';
@@ -273,7 +298,8 @@ function closeAlertDialog() { document.getElementById('alertOverlay').classList.
 function alOnConditionChange() {
     const cond = document.getElementById('fCondition').value;
     document.getElementById('alPriceWrap').style.display = AL_VALUE_CONDS.includes(cond) ? 'block' : 'none';
-    document.getElementById('alTfWrap').style.display    = AL_EMA_CONDS.includes(cond)   ? 'block' : 'none';
+    document.getElementById('alTechPercentWrap').style.display = TECH_CONDS.includes(cond) ? 'block' : 'none';
+    document.getElementById('alTfWrap').style.display    = AL_EMA_CONDS.includes(cond) ? 'block' : 'none';
     if (AL_VALUE_CONDS.includes(cond) && window.MARKET_DATA && _alCurrentPair) {
         const d = MARKET_DATA[_alCurrentPair] || {};
         if (d.currentPrice) document.getElementById('fTargetPrice').placeholder = String(d.currentPrice);
@@ -284,12 +310,14 @@ function alUpdatePreview() {
     const cond  = document.getElementById('fCondition').value;
     const tf    = document.getElementById('fTimeframe').value;
     const price = document.getElementById('fTargetPrice').value;
+    const percent = document.getElementById('fTargetPercent').value;
     let text    = AL_COND_LABELS[cond] || cond;
     if (AL_VALUE_CONDS.includes(cond) && price) text += ` ${price}`;
+    if (TECH_CONDS.includes(cond) && percent) text += ` ${percent}%`;
     document.getElementById('alPrevCond').textContent    = text;
     const tfEl = document.getElementById('alPrevTf');
-    tfEl.textContent   = AL_EMA_CONDS.includes(cond) ? `[${tf}]` : '';
-    tfEl.style.display = AL_EMA_CONDS.includes(cond) ? 'inline' : 'none';
+    tfEl.textContent   = (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? `[${tf}]` : '';
+    tfEl.style.display = (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? 'inline' : 'none';
 }
 function alToggleSound() { _alSoundOn = !_alSoundOn; _alUpdateSoundUI(); }
 function _alUpdateSoundUI() {
@@ -303,12 +331,17 @@ function alSaveAlert() {
         const p = document.getElementById('fTargetPrice').value;
         if (!p || isNaN(p)) { alShowToast('⚠️ Please enter a target price!', 'error'); return; }
     }
+    if (TECH_CONDS.includes(cond)) {
+        const p = document.getElementById('fTargetPercent').value;
+        if (!p || isNaN(p)) { alShowToast('⚠️ Please enter a threshold percentage!', 'error'); return; }
+    }
     const alert = {
         id:          _alEditingId || Date.now(),
         pair:        _alCurrentPair,
         condition:   cond,
-        timeframe:   AL_EMA_CONDS.includes(cond) ? document.getElementById('fTimeframe').value : 'Any',
+        timeframe:   (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? document.getElementById('fTimeframe').value : 'Any',
         targetPrice: AL_VALUE_CONDS.includes(cond) ? parseFloat(document.getElementById('fTargetPrice').value) : null,
+        targetPercent: TECH_CONDS.includes(cond) ? parseFloat(document.getElementById('fTargetPercent').value) : null,
         name:        document.getElementById('fName').value    || `${_alCurrentPair} Alert`,
         message:     document.getElementById('fMessage').value || `{{ticker}} - Alert triggered!`,
         frequency:   document.getElementById('fFrequency').value,
@@ -332,7 +365,7 @@ function alSaveAlert() {
     alShowToast(_alEditingId ? `✅ Updated: ${alert.name}` : `🔔 Alert set: ${alert.name}`, 'success');
 }
 
-// Alerts List
+// Alerts List (unchanged except labels will now include tech metrics)
 function openAlertsList() {
     _alRenderList();
     document.getElementById('alListOverlay').classList.add('show');
@@ -353,7 +386,8 @@ function _alRenderList() {
                 <div class="al-i-cond">
                     ${AL_COND_LABELS[a.condition] || a.condition}
                     ${a.targetPrice ? `<strong style="color:#f7931a"> @ ${a.targetPrice}</strong>` : ''}
-                    ${AL_EMA_CONDS.includes(a.condition) ? ` [${a.timeframe}]` : ''}
+                    ${a.targetPercent ? `<strong style="color:#f7931a"> @ ${a.targetPercent}%</strong>` : ''}
+                    ${(AL_EMA_CONDS.includes(a.condition) || TECH_CONDS.includes(a.condition)) ? ` [${a.timeframe}]` : ''}
                 </div>
                 <div class="al-i-meta">${(a.notify || []).join(', ')} · ${a.frequency}</div>
             </div>
@@ -385,7 +419,7 @@ function alEditItem(id) {
     setTimeout(() => openAlertDialog(a.pair, a), 200);
 }
 
-// ✅ Frequency-aware deduplication
+// Frequency-aware deduplication (unchanged)
 const AL_LAST_TRIGGER = {};
 
 function shouldFire(alert) {
@@ -428,6 +462,7 @@ function checkAllAlerts(pairsData) {
     });
 }
 
+// ✅ Updated condition check to include tech metrics
 function _alConditionMet(alert, pair) {
     switch (alert.condition) {
         case 'PRICE_ABOVE_EMA20': return pair.currentPrice && pair.ema20 && pair.currentPrice > pair.ema20;
@@ -438,6 +473,33 @@ function _alConditionMet(alert, pair) {
         case 'SENT_BELOW_60': return pair.sentiment < 60;
         case 'SENT_ABOVE_75': return pair.sentiment > 75;
         case 'SENT_BELOW_25': return pair.sentiment < 25;
+
+        // Technical Metrics (from window.techMetrics)
+        case 'TECH_200D_ABOVE': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.longTermTrend > (alert.targetPercent || 0);
+        }
+        case 'TECH_200D_BELOW': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.longTermTrend < (alert.targetPercent || 0);
+        }
+        case 'TECH_10D_ABOVE': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.shortTermMomentum > (alert.targetPercent || 0);
+        }
+        case 'TECH_10D_BELOW': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.shortTermMomentum < (alert.targetPercent || 0);
+        }
+        case 'TECH_1H_ABOVE': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.microMomentum > (alert.targetPercent || 0);
+        }
+        case 'TECH_1H_BELOW': {
+            const t = window.techMetrics?.[alert.pair];
+            return t?.microMomentum < (alert.targetPercent || 0);
+        }
+
         default: return false;
     }
 }
