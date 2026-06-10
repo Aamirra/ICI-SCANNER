@@ -284,9 +284,10 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   100% { left: 150%; }
 }
 
-/* Tech cells styling */
+/* Tech cells styling – thoda bada */
 .tech-cell {
-  font-size: 9px;
+  font-size: 10px;
+  font-weight: 500;
   color: var(--txt);
   padding: 4px 2px;
   text-align: right;
@@ -338,14 +339,14 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   .sig { width: 8px; height: 8px; }
   .sentiment-bar { height: 14px; min-width: 50px; }
   .s-bear, .s-bull { font-size: 6px; }
-  .tech-cell { font-size: 7px; }
+  .tech-cell { font-size: 8px; }
 }
 
-/* ── DESKTOP MODE (no scroll, all columns visible) ── */
+/* ── DESKTOP MODE (no scroll, all columns visible, wider sidebar) ── */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
 body.desktop-mode #app-container { 
   flex-shrink:0; 
-  width: 520px; max-width: 520px;   /* wider sidebar to fit all columns */
+  width: 580px; max-width: 580px;   /* wider sidebar to fit all columns comfortably */
   height:100vh; overflow-y:auto; 
   border-right:1px solid var(--brd); 
   perspective: none; 
@@ -373,16 +374,16 @@ body.desktop-mode .table-wrap {
 body.desktop-mode table {
   min-width: auto;
   table-layout: fixed;
-  font-size: 8px;
+  font-size: 9px;
 }
 body.desktop-mode th, body.desktop-mode td {
-  padding: 2px 1px;
+  padding: 3px 2px;
 }
-body.desktop-mode .pn { font-size: 9px; }
-body.desktop-mode .sig { width: 7px; height: 7px; }
-body.desktop-mode .sentiment-bar { height: 12px; min-width: 40px; }
-body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 5px; }
-body.desktop-mode .tech-cell { font-size: 7px; }
+body.desktop-mode .pn { font-size: 10px; }
+body.desktop-mode .sig { width: 8px; height: 8px; }
+body.desktop-mode .sentiment-bar { height: 14px; min-width: 50px; }
+body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 6px; }
+body.desktop-mode .tech-cell { font-size: 9px; }
 </style>
 </head>
 <body>
@@ -601,7 +602,6 @@ function toggleDesktopMode() {
         btn.title = 'Switch to Desktop';
     }
     localStorage.setItem('ici-mode', isDesktop ? 'desktop' : 'mobile');
-    // ensure parallax reset after toggling
     resetParallax();
 }
 window.addEventListener('load', function() {
