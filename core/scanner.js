@@ -1,6 +1,6 @@
 const https = require('https');
 const cheerio = require('cheerio');
-const admin = require('firebase-admin');                          // ✅ for push notifications
+const admin = require('firebase-admin');
 const config = require('../config');
 const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
@@ -13,7 +13,8 @@ const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 const { PB_STATE } = require('../pullback/tradeStateManager');
-// const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics'); // ✅ TEMPORARILY COMMENTED OUT
+// ✅ STOCKS LINE ACTIVE – safe to uncomment after improved stockMetrics.js is in place
+const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -326,8 +327,8 @@ async function masterScan() {
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
-        // ✅ NEW – stock metrics update (temporarily disabled to avoid crash)
-        // await calculateAndUpdateStockMetrics();
+        // ✅ STOCK METRICS — ENABLED
+        await calculateAndUpdateStockMetrics();
 
         await sendStrongPullbackNotifications();
 
