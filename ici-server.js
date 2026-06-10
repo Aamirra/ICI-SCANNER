@@ -1,11 +1,9 @@
-const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 const { spawn } = require('child_process');
-const sendTG = require('./services/telegram'); // ✅ Added back
 
 // ═══════════════════════════════════════════
 // FIREBASE INIT (only once)
@@ -25,14 +23,14 @@ if (!admin.apps.length) {
 // ═══════════════════════════════════════════
 // BACKGROUND PROCESSES
 // ═══════════════════════════════════════════
-// 1. Python sentiment job
+// Python sentiment job
 const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], {
     stdio: 'inherit',
     detached: true
 });
 sentimentJob.unref();
 
-// 2. Scanner
+// Scanner
 const masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 
@@ -47,13 +45,14 @@ function firebaseGet(p) {
 })();
 
 // ═══════════════════════════════════════════
-// HTTP SERVER — Dashboard + /scan
+// HTTP SERVER — Dashboard + /scan + /stocks
 // ═══════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
+    // ✅ /scan endpoint
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan.isBusy()) {
@@ -66,9 +65,26 @@ http.createServer((req, res) => {
         return;
     }
 
+    // ✅ /stocks route → serve stocks.html
+    if (safePath === '/stocks' || safePath === '/stocks.html') {
+        const filePath = path.join(__dirname, 'stocks.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('Stocks page not found');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+        return;
+    }
+
+    // Serve static files (dashboard, js, css)
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
 
+    // Prevent directory traversal
     if (!filePath.startsWith(path.join(__dirname))) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -94,7 +110,7 @@ http.createServer((req, res) => {
         res.end(data);
     });
 }).listen(PORT, () => {
-    console.log(`🚀 Dashboard server listening on port ${PORT}`);
-    // ✅ Telegram notification restored
-    sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
+    console.log(`🚀 Server ready on port ${PORT}`);
+    console.log(`Dashboard: http://localhost:${PORT}/`);
+    console.log(`Stocks: http://localhost:${PORT}/stocks`);
 });
