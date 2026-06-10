@@ -8,19 +8,33 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        :root {
+        /* ── Dark & Light Mode ── */
+        [data-theme="dark"] {
             --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
             --brd:rgba(255,255,255,0.08); --acc:#00aaff;
             --gold:#ffcc00; --txt:#dce8f5;
             --topbar-bg:linear-gradient(135deg,#0d1f42,#071228);
             --topbar-brd:rgba(0,170,255,0.2);
+            --cloud-color:#00ff88;
+            --toggle-icon:"☀️";
         }
+        [data-theme="light"] {
+            --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
+            --brd:rgba(0,0,0,0.1); --acc:#0077cc;
+            --gold:#cc9900; --txt:#1a2a3a;
+            --topbar-bg:linear-gradient(135deg,#c8dff5,#a0c4e8);
+            --topbar-brd:rgba(0,119,204,0.3);
+            --cloud-color:#00aa55;
+            --toggle-icon:"🌙";
+        }
+
         body {
             background: var(--bg);
             margin:0;
             font-family:'JetBrains Mono',monospace;
             color:var(--txt);
             min-height:100vh;
+            transition: background 0.3s, color 0.3s;
         }
         .wrap { max-width:580px; margin:0 auto; padding:12px; }
         .topbar {
@@ -30,6 +44,16 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
+        .scan-btn, .theme-btn, .desktop-btn {
+            background:rgba(0,170,255,0.15); color:var(--acc);
+            border:1px solid var(--acc); padding:6px 12px;
+            border-radius:8px; cursor:pointer; font-size:10px;
+            font-family:'JetBrains Mono',monospace; font-weight:bold;
+            transition: all 0.2s; text-decoration:none;
+        }
+        .scan-btn:hover, .theme-btn:hover, .desktop-btn:hover {
+            background:rgba(0,170,255,0.25); transform: scale(1.05);
+        }
         .nav-btn {
             background:rgba(0,170,255,0.15); color:var(--acc);
             border:1px solid var(--acc); padding:6px 12px;
@@ -49,7 +73,7 @@
         .green { color:#00cc66; }
         .red { color:#ff2244; }
 
-        /* Signal dots (same as main dashboard) */
+        /* Signal dots */
         .sig {
             display: inline-block; width: 10px; height: 10px;
             border-radius: 50%; position: relative; border: none;
@@ -57,23 +81,31 @@
         }
         .sig.bull { background: #00cc66; }
         .sig.bear { background: #ff2244; }
+
+        /* Desktop mode adjustments */
+        body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
+        body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:580px; overflow-y:auto; border-right:1px solid var(--brd); }
+        body.desktop-mode .tw { overflow:visible; }
+        body.desktop-mode table { min-width:0; }
     </style>
 </head>
 <body>
 <div class="wrap">
     <div class="topbar">
         <div class="brand">ICI STOCKS</div>
-        <a href="/" class="nav-btn">🔙 Main</a>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+            <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
+            <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+            <a href="/" class="nav-btn">🔙 Main</a>
+        </div>
     </div>
     <div class="tw">
         <table>
             <thead>
                 <tr>
                     <th style="text-align:left;padding-left:8px">Symbol</th>
-                    <th>1H</th>
-                    <th>4H</th>
-                    <th>1D</th>
-                    <th>1W</th>
+                    <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
                     <th>Price</th>
                     <th>200 Candle Change</th>
                     <th>10 Candle Change (1D)</th>
@@ -114,7 +146,6 @@
             const vol7d = data.volume7dAvg != null && data.volume7dAvg !== 0 ? data.volume7dAvg.toLocaleString() : '—';
             const dollarVol = data.dollarVolume1d && data.dollarVolume1d !== '0.00' ? data.dollarVolume1d : '—';
 
-            // Timeframe signals
             const sig1h = data.signal1h || '';
             const sig4h = data.signal4h || '';
             const sig1d = data.signal1d || '';
@@ -135,6 +166,63 @@
             </tr>`;
         }).join('');
     }
+
+    // ── Theme Toggle ──
+    function toggleTheme() {
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+        localStorage.setItem('ici-stocks-theme', newTheme);
+    }
+    (function() {
+        const saved = localStorage.getItem('ici-stocks-theme');
+        if (saved) {
+            document.documentElement.setAttribute('data-theme', saved);
+            document.addEventListener('DOMContentLoaded', () => {
+                const btn = document.getElementById('themeBtn');
+                if (btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
+            });
+        }
+    })();
+
+    // ── Scan Button ──
+    function manualScan() {
+        const btn = document.querySelector('.scan-btn');
+        btn.textContent = '⏳ Scanning...';
+        btn.disabled = true;
+        fetch('/scan')
+            .then(() => {
+                btn.textContent = '✅ Started!';
+                setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+            })
+            .catch(() => {
+                btn.textContent = '❌ Error';
+                setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+            });
+    }
+
+    // ── Desktop Mode Toggle ──
+    function toggleDesktopMode() {
+        const isDesktop = document.body.classList.toggle('desktop-mode');
+        const btn = document.getElementById('desktopBtn');
+        if (isDesktop) {
+            btn.textContent = '📱';
+            btn.title = 'Switch to Mobile';
+        } else {
+            btn.textContent = '🖥️';
+            btn.title = 'Switch to Desktop';
+        }
+        localStorage.setItem('ici-stocks-desktop', isDesktop ? 'desktop' : 'mobile');
+    }
+    (function() {
+        if (localStorage.getItem('ici-stocks-desktop') === 'desktop') {
+            document.body.classList.add('desktop-mode');
+            document.getElementById('desktopBtn').textContent = '📱';
+            document.getElementById('desktopBtn').title = 'Switch to Mobile';
+        }
+    })();
 </script>
 </body>
 </html>
