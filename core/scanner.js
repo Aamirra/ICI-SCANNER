@@ -13,7 +13,7 @@ const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 const { PB_STATE } = require('../pullback/tradeStateManager');
-const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics'); // ✅ NEW – stocks scanner
+// const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics'); // ✅ TEMPORARILY COMMENTED OUT
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -326,8 +326,8 @@ async function masterScan() {
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
-        // ✅ NEW – stock metrics update (no Twelve Data calls)
-        await calculateAndUpdateStockMetrics();
+        // ✅ NEW – stock metrics update (temporarily disabled to avoid crash)
+        // await calculateAndUpdateStockMetrics();
 
         await sendStrongPullbackNotifications();
 
