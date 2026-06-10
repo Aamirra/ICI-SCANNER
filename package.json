@@ -5,7 +5,8 @@
     "main": "ici-server.js",
     "dependencies": {
         "dotenv": "^16.0.0",
-        "firebase-admin": "^11.0.0"
+        "firebase-admin": "^11.0.0",
+        "yahoo-finance2": "^2.11.0"
     },
     "scripts": {
         "start": "node ici-server.js"
