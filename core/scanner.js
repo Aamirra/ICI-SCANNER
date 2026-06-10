@@ -9,7 +9,7 @@ const sendReport = require('../services/report');
 const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
-const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics'); // ✅ NEW
+const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -24,6 +24,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
+let RAW_DAILY = {};    // ✅ daily candles for tech metrics
 let keyUsage = {};
 let keyCallTimes = {};
 let keyCooldown = {};
@@ -198,6 +199,7 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const cls = sorted.map(v => parseFloat(v.close));
                         const ema20 = calcEMA(cls, 20);
                         const currentPrice = cls[cls.length - 1];
+
                         if (ema20) {
                             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
                             if (tf === '1h') {
@@ -205,6 +207,7 @@ async function fetchTF(p, tf, retryCount = 0) {
                                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
                             }
                         }
+
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -213,6 +216,21 @@ async function fetchTF(p, tf, retryCount = 0) {
                                 highs:  highs,
                                 lows:   lows,
                                 time:   sorted[sorted.length - 1]?.datetime
+                            };
+                        }
+
+                        // ✅ daily raw data store for technical metrics
+                        if (tf === '1day') {
+                            const dailyCls = sorted.map(v => parseFloat(v.close));
+                            const dailyVols = sorted.map(v => parseFloat(v.volume || '0'));
+                            const dailyHighs = sorted.map(v => parseFloat(v.high));
+                            const dailyLows = sorted.map(v => parseFloat(v.low));
+                            RAW_DAILY[p.n] = {
+                                closes: dailyCls,
+                                volumes: dailyVols,
+                                highs: dailyHighs,
+                                lows: dailyLows,
+                                time: sorted[sorted.length - 1]?.datetime
                             };
                         }
                         resolve(true);
@@ -235,8 +253,8 @@ async function masterScan() {
 
         fetchMentFXSentiment();
 
-        // ✅ NEW – Technical Metrics (200D trend, momentum, volume)
-        await calculateAndUpdateTechnicalMetrics();
+        // ✅ Technical metrics using already stored RAW_DAILY and RAW_1H — no extra API calls
+        await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
