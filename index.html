@@ -180,7 +180,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   --col3-width: 6%;
   --col4-width: 6%;
   --col5-width: 12%;
-  --col6-width: 5%;
+  --col6-width: 5%;   /* alert column */
   --col7-width: 9%;
   --col8-width: 9%;
   --col9-width: 9%;
@@ -209,7 +209,7 @@ th:nth-child(11), td:nth-child(11) { width: var(--col10-width); }
 th:nth-child(12), td:nth-child(12) { width: var(--col11-width); }
 
 th {
-  position: relative;               /* for resize handle */
+  position: relative;
   padding: 6px 2px;
   font-size: 9px;
   color: var(--acc);
@@ -241,12 +241,12 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 .resize-handle {
   position: absolute;
   right: 0; top: 0;
-  width: 6px; height: 100%;
+  width: 8px; height: 100%;
   cursor: col-resize;
   z-index: 2;
   background: transparent;
 }
-.resize-handle:hover { background: rgba(255,255,255,0.1); }
+.resize-handle:hover { background: rgba(255,255,255,0.15); }
 
 /* Signal dots */
 .sig {
@@ -352,8 +352,10 @@ body.desktop-mode #tv_chart_container:empty::after {
   content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace;
   font-size:12px; color:var(--txt); opacity:0.3;
 }
-body.desktop-mode .table-wrap { overflow-x: auto; }  /* Allow horizontal scroll if columns exceed sidebar */
-body.desktop-mode table { min-width: 580px; }       /* At least fill sidebar */
+
+/* desktop mode – no scrollbar because total width always 100% */
+body.desktop-mode .table-wrap { overflow-x: visible; }
+body.desktop-mode table { min-width: 0; }  /* allow table to be exactly as wide as container */
 body.desktop-mode th, body.desktop-mode td { padding: 4px 2px; }
 body.desktop-mode .pn { font-size: 10px; }
 body.desktop-mode .sig { width: 8px; height: 8px; }
@@ -388,7 +390,7 @@ body.desktop-mode .tech-cell { font-size: 9px; }
               <th style="text-align:left;padding-left:6px">Pair</th>
               <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
               <th>Sentiment</th>
-              <th></th>
+              <th></th>  <!-- alert bell column -->
               <th>200D Trend</th><th>10D Mom</th><th>1H Mom</th>
               <th>Vol 7D</th><th>Dollar Vol</th>
             </tr>
@@ -421,18 +423,17 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/modal.js"></script>
 <script>
 // ════════════════════════════════════════════
-// 1. COLUMN RESIZE ENGINE + PERSISTENCE
+// 1. COLUMN RESIZE ENGINE (Neighbor Shrink)
 // ════════════════════════════════════════════
 (function() {
-  const STORAGE_KEY = 'ici_table_col_widths';   // localStorage key
-  const COLUMN_COUNT = 12;                      // number of columns
-  const MIN_WIDTH_PCT = 3;                      // minimum column width percent
-  const MAX_WIDTH_PCT = 40;                     // maximum column width percent
+  const STORAGE_KEY = 'ici_table_col_widths';
+  const COLUMN_COUNT = 12;
+  const MIN_WIDTH_PCT = 3;
+  const MAX_WIDTH_PCT = 40;
 
-  // Default widths (match CSS variables)
+  // Default widths (percentages) – must sum to 100
   const defaultWidths = [11, 6, 6, 6, 6, 12, 5, 9, 9, 9, 9, 12];
 
-  // Load saved widths or use defaults
   let colWidths = loadColWidths();
 
   function loadColWidths() {
@@ -441,10 +442,10 @@ body.desktop-mode .tech-cell { font-size: 9px; }
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === COLUMN_COUNT) {
-          return parsed;   // already percentages
+          return parsed;
         }
       }
-    } catch (e) { }
+    } catch (e) {}
     return [...defaultWidths];
   }
 
@@ -452,7 +453,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colWidths));
   }
 
-  // Apply widths to CSS variables
   function applyWidths() {
     const root = document.documentElement;
     for (let i = 0; i < COLUMN_COUNT; i++) {
@@ -460,11 +460,9 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     }
   }
 
-  // Initialise on page load
   applyWidths();
 
-  // ── RESIZE HANDLER ──
-  let dragState = null;   // { columnIndex, startX, startWidth, tableWidth }
+  let dragState = null;
 
   function startResize(e, columnIndex) {
     e.preventDefault();
@@ -472,18 +470,23 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     if (!table) return;
     const startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const startWidth = table.offsetWidth * (colWidths[columnIndex] / 100);
+
+    // Determine neighbor index (to the right, or left if last column)
+    let neighborIndex = columnIndex < (COLUMN_COUNT - 1) ? columnIndex + 1 : columnIndex - 1;
+
     dragState = {
       columnIndex,
+      neighborIndex,
       startX,
       startWidth,
+      startNeighborWidth: table.offsetWidth * (colWidths[neighborIndex] / 100),
       tableWidth: table.offsetWidth
     };
-    // Add global listeners
+
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchmove', onDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
-    // Prevent text selection
     document.body.style.userSelect = 'none';
   }
 
@@ -492,31 +495,43 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     e.preventDefault();
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const deltaX = clientX - dragState.startX;
-    let newWidth = dragState.startWidth + deltaX;
-    // Convert to percent
-    let newPercent = (newWidth / dragState.tableWidth) * 100;
-    // Clamp
-    newPercent = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newPercent));
-    colWidths[dragState.columnIndex] = newPercent;
+
+    let newWidthPx = dragState.startWidth + deltaX;
+    let newWidthPct = (newWidthPx / dragState.tableWidth) * 100;
+
+    // Clamp column
+    newWidthPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newWidthPct));
+    
+    // Calculate neighbor width change
+    let oldTotalPct = colWidths[dragState.columnIndex] + colWidths[dragState.neighborIndex];
+    let newNeighborPct = oldTotalPct - newWidthPct;
+    // Clamp neighbor
+    newNeighborPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newNeighborPct));
+    // Recalculate column width if neighbor clamped (maintain sum)
+    if (newNeighborPct !== oldTotalPct - newWidthPct) {
+      newWidthPct = oldTotalPct - newNeighborPct;
+      newWidthPct = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newWidthPct));
+    }
+
+    colWidths[dragState.columnIndex] = newWidthPct;
+    colWidths[dragState.neighborIndex] = newNeighborPct;
     applyWidths();
   }
 
   function stopDrag() {
     if (!dragState) return;
-    dragState = null;
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
     document.removeEventListener('touchmove', onDrag);
     document.removeEventListener('touchend', stopDrag);
     document.body.style.userSelect = '';
     saveColWidths();
+    dragState = null;
   }
 
-  // Attach resize handles to all <th> elements
   function attachResizeHandles() {
     const headers = document.querySelectorAll('#mainTable thead th');
     headers.forEach((th, idx) => {
-      // Avoid duplicate handles
       if (th.querySelector('.resize-handle')) return;
       const handle = document.createElement('div');
       handle.className = 'resize-handle';
@@ -526,21 +541,15 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     });
   }
 
-  // Observe table changes (render.js re-creates tbody)
-  const observer = new MutationObserver(() => {
-    attachResizeHandles();
-  });
+  const observer = new MutationObserver(() => attachResizeHandles());
   observer.observe(document.getElementById('tb'), { childList: true });
-
-  // Also initial call (table already exists when script runs)
   attachResizeHandles();
 
-  // Expose applyWidths in case needed
   window.applyTableWidths = applyWidths;
 })();
 
 // ════════════════════════════════════════════
-// 2. EXISTING APP CODE (Theme, Scan, Parallax, etc.)
+// 2. EXISTING APP CODE (unchanged)
 // ════════════════════════════════════════════
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
@@ -604,7 +613,7 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// Parallax (disabled on touch & desktop mode)
+// Parallax
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
