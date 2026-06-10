@@ -1,133 +1,78 @@
 const https = require('https');
-const admin = require('firebase-admin');
 const config = require('../config');
 const firebasePut = require('./database');
 const calcSMA = require('../utils/smaCalc');
+const yahooFinance = require('yahoo-finance2').default; // Yahoo Finance module
 
-const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
-const sleep = (ms) => new Promise(res => setTimeout(res, ms));
-
-const AV_KEYS = (process.env.ALPHA_VANTAGE_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
-const AV_DAILY_LIMIT_PER_KEY = 25;
-
-if (AV_KEYS.length === 0) {
-    console.warn('[Alpha Vantage] No keys provided – set ALPHA_VANTAGE_KEYS env variable');
-}
-
-// ── Firebase‑based daily counter ──
-async function getKeyUsage(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-        const snap = await admin.database().ref(`av_counter/${today}/${keyIndex}`).once('value');
-        return snap.val() || 0;
-    } catch (e) { return 0; }
-}
-
-async function setKeyExhausted(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    await admin.database().ref(`av_counter/${today}/${keyIndex}`).set(AV_DAILY_LIMIT_PER_KEY);
-    console.log(`[Alpha Vantage] Key index ${keyIndex} manually exhausted`);
-}
-
-async function incrementKeyUsage(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    const ref = admin.database().ref(`av_counter/${today}/${keyIndex}`);
-    const snap = await ref.once('value');
-    const current = snap.val() || 0;
-    if (current >= AV_DAILY_LIMIT_PER_KEY) return current;
-    const newVal = current + 1;
-    await ref.set(newVal);
-    return newVal;
-}
-
-// ── Get next available key index ──
-async function getAvailableKeyIndex() {
-    for (let i = 0; i < AV_KEYS.length; i++) {
-        const used = await getKeyUsage(i);
-        if (used < AV_DAILY_LIMIT_PER_KEY) return i;
-    }
-    return -1;
-}
-
-// ── Firebase volume cache ──
-async function getCachedVolume(pairName) {
-    try {
-        const snap = await admin.database().ref(`volumeCache/${pairName}`).once('value');
-        return snap.val();
-    } catch (e) { return null; }
-}
-
-async function setCachedVolume(pairName, data) {
-    await admin.database().ref(`volumeCache/${pairName}`).set(data);
-}
-
-// ── Alpha Vantage FX daily volume fetcher ──
-async function fetchAlphaVantageVolume(pairName) {
-    if (AV_KEYS.length === 0) return null;
-
-    // Get available key (skip exhausted)
-    const keyIndex = await getAvailableKeyIndex();
-    if (keyIndex === -1) {
-        console.warn(`[Alpha Vantage] All keys exhausted for today`);
-        return null;
-    }
-
-    const apiKey = AV_KEYS[keyIndex];
-    const from = pairName.substring(0, 3);
-    const to = pairName.substring(3);
-    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${from}&to_symbol=${to}&outputsize=full&apikey=${apiKey}`;
-
-    console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
-
-    // Increment usage immediately (API call counts regardless of outcome)
-    const newCount = await incrementKeyUsage(keyIndex);
-    console.log(`[Alpha Vantage] Key index ${keyIndex} usage incremented to ${newCount}`);
-
-    return new Promise((resolve) => {
-        const req = https.get(url, { agent }, (res) => {
+// ── Binance daily klines fetcher (for crypto) ──
+function fetchBinanceDailyCandles(symbol) {
+    // symbol e.g., BTCUSDT, ETHUSDT
+    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=200`;
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
-            res.on('end', async () => {
+            res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
-
-                    // ✅ Auto‑exhaust if rate limit message detected
-                    if (json.Information && json.Information.includes('standard API rate limit is 25 requests per day')) {
-                        console.warn(`[Alpha Vantage] Rate limit detected for key ${keyIndex}. Exhausting it.`);
-                        await setKeyExhausted(keyIndex);
+                    if (!Array.isArray(json) || json.length === 0) {
+                        console.warn(`[Binance] No data for ${symbol}`);
                         resolve(null);
                         return;
                     }
-
-                    if (json['Time Series FX (Daily)']) {
-                        const ts = json['Time Series FX (Daily)'];
-                        const entries = Object.entries(ts)
-                            .sort(([a], [b]) => new Date(a) - new Date(b))
-                            .slice(-200);
-                        if (entries.length < 200) {
-                            console.warn(`[Alpha Vantage] Only ${entries.length} daily entries for ${pairName}`);
-                            resolve(null);
-                            return;
-                        }
-                        const closes = entries.map(([_, v]) => parseFloat(v['4. close']));
-                        const volumes = entries.map(([_, v]) => parseInt(v['5. volume'] || '0'));
-                        console.log(`[Alpha Vantage] Success for ${pairName}: ${entries.length} candles`);
-                        resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'AlphaVantage' });
-                    } else {
-                        console.warn(`[Alpha Vantage] No daily data for ${pairName}: ${JSON.stringify(json).slice(0, 200)}`);
-                        resolve(null);
-                    }
+                    // each element: [openTime, open, high, low, close, volume, ...]
+                    const closes = json.map(c => parseFloat(c[4]));
+                    const volumes = json.map(c => parseFloat(c[5]));
+                    resolve({ closes, volumes });
                 } catch (e) {
-                    console.error(`[Alpha Vantage] Parse error for ${pairName}:`, e.message);
+                    console.error(`[Binance] Parse error for ${symbol}:`, e.message);
                     resolve(null);
                 }
             });
+        }).on('error', (e) => {
+            console.error(`[Binance] Network error for ${symbol}:`, e.message);
+            resolve(null);
         });
-        req.setTimeout(15000, () => { req.destroy(); console.warn(`[Alpha Vantage] Timeout for ${pairName}`); resolve(null); });
-        req.on('error', (e) => { console.error(`[Alpha Vantage] Network error for ${pairName}:`, e.message); resolve(null); });
     });
 }
 
+// ── Yahoo Finance historical fetcher (for forex & gold) ──
+async function fetchYahooDailyCandles(yahooSymbol) {
+    // e.g., EURUSD=X, XAUUSD=X
+    try {
+        const queryOptions = { period1: '2020-01-01', interval: '1d' }; // enough for 200 candles
+        const result = await yahooFinance.chart(yahooSymbol, {
+            period1: '2020-01-01',
+            interval: '1d',
+        });
+        if (!result || !result.quotes || result.quotes.length === 0) {
+            console.warn(`[Yahoo] No data for ${yahooSymbol}`);
+            return null;
+        }
+        // Sort by date ascending, take last 200
+        const quotes = result.quotes
+            .filter(q => q.close !== null)
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .slice(-200);
+        if (quotes.length < 200) {
+            console.warn(`[Yahoo] Only ${quotes.length} daily candles for ${yahooSymbol}`);
+        }
+        const closes = quotes.map(q => q.close);
+        const volumes = quotes.map(q => q.volume || 0);
+        return { closes, volumes };
+    } catch (e) {
+        console.error(`[Yahoo] Error fetching ${yahooSymbol}:`, e.message);
+        return null;
+    }
+}
+
+// ── Helper: check if volume data is valid ──
+function hasValidVolume(volumes) {
+    if (!volumes || volumes.length === 0) return false;
+    return volumes.reduce((a, b) => a + b, 0) > 0;
+}
+
+// ── Format dollar volume ──
 function formatDollarVolume(volume, price) {
     const total = volume * price;
     if (total >= 1e9) return (total / 1e9).toFixed(2) + ' B';
@@ -136,13 +81,9 @@ function formatDollarVolume(volume, price) {
     return total.toFixed(2);
 }
 
-function hasValidVolume(volumes) {
-    if (!volumes || volumes.length === 0) return false;
-    return volumes.reduce((a, b) => a + b, 0) > 0;
-}
-
+// ── Main function ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (auto‑exhaust, 4 keys)...');
+    console.log('[Metrics] Starting technical metrics (Yahoo + Binance)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -150,6 +91,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         let daily = RAW_DAILY ? RAW_DAILY[pair.n] : undefined;
         let hourly = RAW_1H ? RAW_1H[pair.n] : undefined;
 
+        // Check if we need volume data
         let needVolume = false;
         if (!daily || !daily.closes || daily.closes.length < 200) {
             needVolume = true;
@@ -158,26 +100,44 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         }
 
         if (needVolume) {
-            const cached = await getCachedVolume(pair.n);
-            if (cached && cached.closes && cached.closes.length >= 200 && hasValidVolume(cached.volumes)) {
-                daily = cached;
-                needVolume = false;
-            } else {
-                const avData = await fetchAlphaVantageVolume(pair.n);
-                if (avData && avData.closes.length >= 200) {
-                    await setCachedVolume(pair.n, {
-                        closes: avData.closes,
-                        volumes: avData.volumes,
-                        updatedAt: Date.now()
-                    });
-                    daily = { closes: avData.closes, volumes: avData.volumes, time: new Date().toISOString() };
-                    needVolume = false;
-                } else {
-                    console.warn(`[Metrics] ${pair.n}: volume not obtained`);
+            console.log(`[Metrics] Fetching volume for ${pair.n}...`);
+
+            // Determine data source
+            let volumeData = null;
+            const isCrypto = pair.isCrypto || false; // from config, but we can also check name
+            // Better: use config's isCrypto flag if present, else detect by name
+            const isCryptoPair = pair.n === 'BTCUSD' || pair.n === 'ETHUSD' || pair.isCrypto;
+
+            if (isCryptoPair) {
+                // Binance for crypto (need to convert BTCUSD -> BTCUSDT)
+                const binanceSymbol = pair.n.replace('USD', 'USDT'); // e.g., BTCUSDT
+                const candles = await fetchBinanceDailyCandles(binanceSymbol);
+                if (candles && candles.closes.length >= 200) {
+                    volumeData = candles;
                 }
+            } else {
+                // Yahoo Finance for forex & gold & indices (if needed)
+                const yahooSymbol = pair.n + '=X'; // e.g., EURUSD=X, XAUUSD=X, US500=X (though indices volume already from scanner)
+                const candles = await fetchYahooDailyCandles(yahooSymbol);
+                if (candles && candles.closes.length >= 200) {
+                    volumeData = candles;
+                }
+            }
+
+            if (volumeData) {
+                daily = {
+                    closes: volumeData.closes,
+                    volumes: volumeData.volumes,
+                    time: new Date().toISOString()
+                };
+                console.log(`[Metrics] Volume fetched for ${pair.n}`);
+            } else {
+                console.warn(`[Metrics] Could not obtain volume for ${pair.n}, skipping`);
+                continue;
             }
         }
 
+        // At this point, daily should have valid data
         if (!daily || !daily.closes || daily.closes.length < 200) continue;
 
         const closesD = daily.closes;
@@ -211,15 +171,20 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         });
     }
 
+    // Save to Firebase
     for (const metric of results) {
-        await firebasePut(`technicalMetrics/${metric.pair}`, {
-            longTermTrend: metric.longTermTrend,
-            shortTermMomentum: metric.shortTermMomentum,
-            microMomentum: metric.microMomentum,
-            volume7dAvg: metric.volume7dAvg,
-            dollarVolume1d: metric.dollarVolume1d,
-            updatedAt: Date.now()
-        });
+        try {
+            await firebasePut(`technicalMetrics/${metric.pair}`, {
+                longTermTrend: metric.longTermTrend,
+                shortTermMomentum: metric.shortTermMomentum,
+                microMomentum: metric.microMomentum,
+                volume7dAvg: metric.volume7dAvg,
+                dollarVolume1d: metric.dollarVolume1d,
+                updatedAt: Date.now()
+            });
+        } catch (err) {
+            console.error(`[Metrics] Firebase save failed for ${metric.pair}:`, err.message);
+        }
     }
 
     console.log(`[Metrics] Updated ${results.length}/${allPairs.length} pairs.`);
