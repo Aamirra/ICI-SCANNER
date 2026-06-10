@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ICI Stocks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <style>
+        /* Same CSS as index.html for consistency */
+        :root {
+            --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
+            --brd:rgba(255,255,255,0.08); --acc:#00aaff;
+            --gold:#ffcc00; --txt:#dce8f5;
+            --topbar-bg:linear-gradient(135deg,#0d1f42,#071228);
+            --topbar-brd:rgba(0,170,255,0.2);
+        }
+        body {
+            background: var(--bg);
+            margin:0;
+            font-family:'JetBrains Mono',monospace;
+            color:var(--txt);
+            min-height:100vh;
+        }
+        .wrap { max-width:580px; margin:0 auto; padding:12px; }
+        .topbar {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:14px; background:var(--topbar-bg); border-radius:16px;
+            margin-bottom:12px; border:1px solid var(--topbar-brd);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
+        .nav-btn {
+            background:rgba(0,170,255,0.15); color:var(--acc);
+            border:1px solid var(--acc); padding:6px 12px;
+            border-radius:8px; cursor:pointer; font-size:10px;
+            font-family:'JetBrains Mono',monospace; font-weight:bold;
+            transition: all 0.2s; text-decoration:none;
+        }
+        .nav-btn:hover { background:rgba(0,170,255,0.25); transform: scale(1.05); }
+        .tw {
+            background:var(--sf); border-radius:16px;
+            border:1px solid var(--brd); overflow:hidden;
+        }
+        table { width:100%; border-collapse:collapse; min-width:600px; table-layout:fixed; }
+        th { padding:8px 4px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
+        td { padding:5px 2px; text-align:center; border-bottom:1px solid var(--brd); font-size:9px; }
+        .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; color:var(--acc); }
+        .green { color:#00cc66; }
+        .red { color:#ff2244; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div class="brand">ICI STOCKS</div>
+        <a href="/" class="nav-btn">🔙 Main</a>
+    </div>
+    <div class="tw">
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align:left;padding-left:8px">Symbol</th>
+                    <th>Price</th>
+                    <th>200 Candle Change</th>
+                    <th>10 Candle Change (1D)</th>
+                    <th>1H Mom</th>
+                    <th>Vol 7D</th>
+                    <th>Dollar Vol</th>
+                </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+</div>
+<script>
+    // Firebase config (same as main)
+    const firebaseConfig = {
+        databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let stockData = {};
+
+    db.ref('stockMarketData').on('value', (snap) => {
+        stockData = snap.val() || {};
+        render();
+    });
+
+    function render() {
+        const tbody = document.getElementById('tb');
+        const entries = Object.entries(stockData).sort(([a],[b]) => a.localeCompare(b));
+        tbody.innerHTML = entries.map(([symbol, data]) => {
+            const price = data.price ? data.price.toFixed(2) : '—';
+            const long = data.longTermTrend != null ? (data.longTermTrend > 0 ? '+' : '') + data.longTermTrend.toFixed(2) + '%' : '—';
+            const longColor = data.longTermTrend >= 0 ? 'green' : 'red';
+            const short = data.shortTermMomentum != null ? (data.shortTermMomentum > 0 ? '+' : '') + data.shortTermMomentum.toFixed(2) + '%' : '—';
+            const shortColor = data.shortTermMomentum >= 0 ? 'green' : 'red';
+            const micro = data.microMomentum != null ? (data.microMomentum > 0 ? '+' : '') + data.microMomentum.toFixed(2) + '%' : '—';
+            const microColor = data.microMomentum >= 0 ? 'green' : 'red';
+            const vol7d = data.volume7dAvg != null && data.volume7dAvg !== 0 ? data.volume7dAvg.toLocaleString() : '—';
+            const dollarVol = data.dollarVolume1d && data.dollarVolume1d !== '0.00' ? data.dollarVolume1d : '—';
+
+            return `<tr>
+                <td class="pn">${symbol}</td>
+                <td>${price}</td>
+                <td class="${longColor}">${long}</td>
+                <td class="${shortColor}">${short}</td>
+                <td class="${microColor}">${micro}</td>
+                <td>${vol7d}</td>
+                <td>${dollarVol}</td>
+            </tr>`;
+        }).join('');
+    }
+</script>
+</body>
+</html>
