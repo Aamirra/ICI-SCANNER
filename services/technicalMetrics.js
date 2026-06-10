@@ -7,9 +7,8 @@ const calcSMA = require('../utils/smaCalc');
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-// ── Load multiple Alpha Vantage keys ──
 const AV_KEYS = (process.env.ALPHA_VANTAGE_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
-const AV_DAILY_LIMIT_PER_KEY = 25;   // free tier limit
+const AV_DAILY_LIMIT_PER_KEY = 25;
 
 if (AV_KEYS.length === 0) {
     console.warn('[Alpha Vantage] No keys provided – set ALPHA_VANTAGE_KEYS env variable');
@@ -29,9 +28,9 @@ async function incrementKeyUsage(keyIndex) {
     const ref = admin.database().ref(`av_counter/${today}/${keyIndex}`);
     const snap = await ref.once('value');
     const current = snap.val() || 0;
-    if (current >= AV_DAILY_LIMIT_PER_KEY) return false;
-    await ref.set(current + 1);
-    return true;
+    const newVal = current + 1;
+    await ref.set(newVal);
+    return newVal;
 }
 
 // ── Get next available key index (returns -1 if all exhausted) ──
@@ -73,20 +72,18 @@ async function fetchAlphaVantageVolume(pairName) {
 
     console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
 
+    // Immediately increment usage (since API call counts regardless of outcome)
+    const newCount = await incrementKeyUsage(keyIndex);
+    console.log(`[Alpha Vantage] Key index ${keyIndex} usage incremented to ${newCount}`);
+
     return new Promise((resolve) => {
         const req = https.get(url, { agent }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
-            res.on('end', async () => {
+            res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
                     if (json['Time Series FX (Daily)']) {
-                        // Increment usage for this key only on success
-                        const incremented = await incrementKeyUsage(keyIndex);
-                        if (!incremented) {
-                            console.warn(`[Alpha Vantage] Could not increment usage for key ${keyIndex}, but data received — may exceed limit`);
-                            // still proceed, but cautious
-                        }
                         const ts = json['Time Series FX (Daily)'];
                         const entries = Object.entries(ts)
                             .sort(([a], [b]) => new Date(a) - new Date(b))
@@ -129,7 +126,7 @@ function hasValidVolume(volumes) {
 }
 
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (multi‑key AV)...');
+    console.log('[Metrics] Starting technical metrics (counter‑fixed AV)...');
     const allPairs = config.PAIRS;
     const results = [];
 
