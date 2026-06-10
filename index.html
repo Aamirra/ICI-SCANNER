@@ -179,8 +179,8 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   --col2-width: 6%;
   --col3-width: 6%;
   --col4-width: 6%;
-  --col5-width: 11%;   /* Sentiment column - slightly wider to accommodate bar */
-  --col6-width: 8%;    /* Bell column - narrower, no extra space */
+  --col5-width: 11%;
+  --col6-width: 8%;
   --col7-width: 9%;
   --col8-width: 9%;
   --col9-width: 8%;
@@ -195,7 +195,6 @@ table {
   table-layout: fixed;
 }
 
-/* Column widths */
 th:nth-child(1), td:nth-child(1) { width: var(--col0-width); }
 th:nth-child(2), td:nth-child(2) { width: var(--col1-width); }
 th:nth-child(3), td:nth-child(3) { width: var(--col2-width); }
@@ -401,8 +400,12 @@ body.desktop-mode .tech-cell { font-size: 9px; }
               <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
               <th>Sentiment</th>
               <th></th>  <!-- alert bell column -->
-              <th>200D Trend</th><th>10D Mom</th><th>1H Mom</th>
-              <th>Vol 7D</th><th>Dollar Vol</th>
+              <!-- ✅ Updated column names -->
+              <th>200 Candle Change</th>
+              <th>10 Candle Change (1D)</th>
+              <th>10 Candle Change (1H)</th>
+              <th>Vol 7D</th>
+              <th>Dollar Vol</th>
             </tr>
           </thead>
           <tbody id="tb"></tbody>
@@ -441,7 +444,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
   const MIN_WIDTH_PCT = 3;
   const MAX_WIDTH_PCT = 40;
 
-  // ✅ Updated defaults: sentiment 11%, bell 8% (no extra space on bell right)
   const defaultWidths = [11, 6, 6, 6, 6, 11, 8, 9, 9, 8, 8, 12];
 
   let colWidths = loadColWidths();
