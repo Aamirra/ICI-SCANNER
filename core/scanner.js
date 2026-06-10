@@ -13,8 +13,15 @@ const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 const { PB_STATE } = require('../pullback/tradeStateManager');
-// ✅ STOCKS LINE ACTIVE – safe to uncomment after improved stockMetrics.js is in place
-const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics');
+
+// ✅ SAFETY NET – stock scanner ko safely load karo
+let calculateAndUpdateStockMetrics = null;
+try {
+    const stockModule = require('../services/stockMetrics');
+    calculateAndUpdateStockMetrics = stockModule.calculateAndUpdateStockMetrics;
+} catch (err) {
+    console.warn('[Scanner] Could not load stock metrics module – stocks feature disabled. Error:', err.message);
+}
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -327,8 +334,14 @@ async function masterScan() {
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
-        // ✅ STOCK METRICS — ENABLED
-        await calculateAndUpdateStockMetrics();
+        // ✅ STOCK METRICS – safe call, server never crashes
+        if (calculateAndUpdateStockMetrics) {
+            try {
+                await calculateAndUpdateStockMetrics();
+            } catch (err) {
+                console.error('[Scanner] Stock metrics failed (will retry next cycle):', err.message);
+            }
+        }
 
         await sendStrongPullbackNotifications();
 
