@@ -2,14 +2,20 @@ let curF = 'all', fPairs = [];
 
 function render() {
     const tbody = document.getElementById('tb');
-    // filter logic
     fPairs = PAIRS.filter(p => {
         if (curF === 'all') return true;
         return ['4h','1day','1week'].every(tf => (MARKET_DATA[p.n]||{})[tf] === curF);
     });
-
+    
     tbody.innerHTML = fPairs.map((p, idx) => {
         const t = techMetrics ? (techMetrics[p.n] || {}) : {};
+        const s = window.sentimentData ? (window.sentimentData[p.n] || {}) : {};
+        const m = MARKET_DATA ? (MARKET_DATA[p.n] || {}) : {};
+
+        // Check for strong trend alignment (1D + 1W only)
+        const isStrongBull = checkStrongTrend(p.n, 'bull', m, t, s);
+        const isStrongBear = checkStrongTrend(p.n, 'bear', m, t, s);
+        const blinkClass = isStrongBull ? 'blink-pair-bull' : (isStrongBear ? 'blink-pair-bear' : '');
 
         // 200D trend
         const longTerm = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '—';
@@ -20,15 +26,15 @@ function render() {
         // 1H micro momentum
         const micro = t.microMomentum != null ? (t.microMomentum > 0 ? '+' : '') + t.microMomentum.toFixed(2) + '%' : '—';
         const microColor = t.microMomentum >= 0 ? '#00cc66' : '#ff2244';
-        // Volume 7d avg
-        const vol7d = t.volume7dAvg != null ? t.volume7dAvg.toLocaleString() : '—';
-        // Dollar volume
-        const dollarVol = t.dollarVolume1d || '—';
+        // Volume 7d avg – show "—" if null or zero
+        const vol7d = (t.volume7dAvg != null && t.volume7dAvg !== 0) ? t.volume7dAvg.toLocaleString() : '—';
+        // Dollar volume – show "—" if null or zero
+        const dollarVol = (t.dollarVolume1d != null && t.dollarVolume1d !== '0.00' && t.dollarVolume1d !== 0) ? t.dollarVolume1d : '—';
 
         return `<tr>
-            <td class="pn" onclick="openCFromTable(${idx})">${p.n}</td>
+            <td class="pn ${blinkClass}" onclick="openCFromTable(${idx})">${p.n}</td>
             ${['1h','4h','1day','1week'].map(tf =>
-                `<td><div class="sig ${(MARKET_DATA[p.n]||{})[tf] || ''}"></div></td>`
+                `<td><div class="sig ${(m[tf] || '')}"></div></td>`
             ).join('')}
             ${getSentimentCell(p.n)}
             <td class="alert-cell">${typeof getBellHtml === 'function' ? getBellHtml(p.n) : ''}</td>
@@ -39,6 +45,29 @@ function render() {
             <td class="tech-cell">${dollarVol}</td>
         </tr>`;
     }).join('');
+}
+
+// ✅ Updated: Dollar volume condition removed
+function checkStrongTrend(pairName, direction, marketData, techData, sentimentData) {
+    // 1. Timeframe alignment: only 1D and 1W must be same direction
+    const daily = marketData['1day'];
+    const weekly = marketData['1week'];
+    if (daily !== direction || weekly !== direction) return false;
+
+    // 2. Technical metrics alignment: 200D, 10D, 1H all same sign as direction
+    const sign = (direction === 'bull') ? 1 : -1;
+    const metrics = [techData.longTermTrend, techData.shortTermMomentum, techData.microMomentum];
+    if (metrics.some(m => m == null)) return false;
+    if (!metrics.every(m => (m * sign) > 0)) return false;
+
+    // 3. Sentiment dominant
+    const bullPct = sentimentData.bullish_pct || 0;
+    const bearPct = sentimentData.bearish_pct || 0;
+    if (direction === 'bull' && bullPct <= 60) return false;
+    if (direction === 'bear' && bearPct <= 60) return false;
+
+    // (Dollar volume condition removed – blink ab ispe depend nahi karega)
+    return true;
 }
 
 // Function to render Sentiment column (unchanged)
