@@ -33,9 +33,8 @@ function fetchBinanceDailyCandles(symbol) {
     });
 }
 
-// ── Yahoo Finance direct chart API (forex, gold, etc.) ──
+// ── Yahoo Finance direct chart API ──
 function fetchYahooDailyCandles(yahooSymbol) {
-    // yahooSymbol e.g., EURUSD=X, XAUUSD=X
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
     return new Promise((resolve) => {
         https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
@@ -51,13 +50,11 @@ function fetchYahooDailyCandles(yahooSymbol) {
                         return;
                     }
                     const quotes = result.indicators.quote[0];
-                    const timestamps = result.timestamp;
                     if (!quotes || !quotes.close || quotes.close.length < 200) {
-                        console.warn(`[Yahoo] Not enough candles for ${yahooSymbol} (${quotes?.close?.length || 0})`);
+                        console.warn(`[Yahoo] Not enough candles for ${yahooSymbol}`);
                         resolve(null);
                         return;
                     }
-                    // We only need last 200 entries
                     const closes = quotes.close.slice(-200);
                     const volumes = (quotes.volume || []).slice(-200).map(v => v || 0);
                     resolve({ closes, volumes });
@@ -89,7 +86,7 @@ function formatDollarVolume(volume, price) {
 
 // ── Main ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (Yahoo direct + Binance)...');
+    console.log('[Metrics] Starting technical metrics (Yahoo + Binance, XAU fix)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -113,8 +110,19 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                 const binanceSymbol = pair.n.replace('USD', 'USDT');
                 volumeData = await fetchBinanceDailyCandles(binanceSymbol);
             } else {
-                const yahooSymbol = pair.n + '=X';
+                // ✅ XAUUSD special handling
+                let yahooSymbol;
+                if (pair.n === 'XAUUSD') {
+                    yahooSymbol = 'GC=F';       // Gold Futures
+                } else {
+                    yahooSymbol = pair.n + '=X';
+                }
                 volumeData = await fetchYahooDailyCandles(yahooSymbol);
+                // Fallback: agar GC=F fail ho to XAUUSD=X try karo
+                if (!volumeData && pair.n === 'XAUUSD') {
+                    console.log('[Metrics] GC=F failed, trying XAUUSD=X...');
+                    volumeData = await fetchYahooDailyCandles('XAUUSD=X');
+                }
             }
 
             if (volumeData && volumeData.closes && volumeData.closes.length >= 200) {
@@ -130,7 +138,6 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             }
         }
 
-        // Proceed with calculation...
         if (!daily || !daily.closes || daily.closes.length < 200) continue;
 
         const closesD = daily.closes;
