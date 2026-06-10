@@ -2,13 +2,11 @@ const https = require('https');
 const config = require('../config');
 const firebasePut = require('./database');
 const calcSMA = require('../utils/smaCalc');
-const yahooFinance = require('yahoo-finance2').default; // Yahoo Finance module
 
-// ── Binance daily klines fetcher (for crypto) ──
+// ── Binance daily klines (crypto) ──
 function fetchBinanceDailyCandles(symbol) {
-    // symbol e.g., BTCUSDT, ETHUSDT
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=200`;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         https.get(url, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
@@ -20,7 +18,6 @@ function fetchBinanceDailyCandles(symbol) {
                         resolve(null);
                         return;
                     }
-                    // each element: [openTime, open, high, low, close, volume, ...]
                     const closes = json.map(c => parseFloat(c[4]));
                     const volumes = json.map(c => parseFloat(c[5]));
                     resolve({ closes, volumes });
@@ -36,43 +33,52 @@ function fetchBinanceDailyCandles(symbol) {
     });
 }
 
-// ── Yahoo Finance historical fetcher (for forex & gold) ──
-async function fetchYahooDailyCandles(yahooSymbol) {
-    // e.g., EURUSD=X, XAUUSD=X
-    try {
-        const queryOptions = { period1: '2020-01-01', interval: '1d' }; // enough for 200 candles
-        const result = await yahooFinance.chart(yahooSymbol, {
-            period1: '2020-01-01',
-            interval: '1d',
+// ── Yahoo Finance direct chart API (forex, gold, etc.) ──
+function fetchYahooDailyCandles(yahooSymbol) {
+    // yahooSymbol e.g., EURUSD=X, XAUUSD=X
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
+    return new Promise((resolve) => {
+        https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    const result = json?.chart?.result?.[0];
+                    if (!result) {
+                        console.warn(`[Yahoo] No chart data for ${yahooSymbol}`);
+                        resolve(null);
+                        return;
+                    }
+                    const quotes = result.indicators.quote[0];
+                    const timestamps = result.timestamp;
+                    if (!quotes || !quotes.close || quotes.close.length < 200) {
+                        console.warn(`[Yahoo] Not enough candles for ${yahooSymbol} (${quotes?.close?.length || 0})`);
+                        resolve(null);
+                        return;
+                    }
+                    // We only need last 200 entries
+                    const closes = quotes.close.slice(-200);
+                    const volumes = (quotes.volume || []).slice(-200).map(v => v || 0);
+                    resolve({ closes, volumes });
+                } catch (e) {
+                    console.error(`[Yahoo] Parse error for ${yahooSymbol}:`, e.message);
+                    resolve(null);
+                }
+            });
+        }).on('error', (e) => {
+            console.error(`[Yahoo] Network error for ${yahooSymbol}:`, e.message);
+            resolve(null);
         });
-        if (!result || !result.quotes || result.quotes.length === 0) {
-            console.warn(`[Yahoo] No data for ${yahooSymbol}`);
-            return null;
-        }
-        // Sort by date ascending, take last 200
-        const quotes = result.quotes
-            .filter(q => q.close !== null)
-            .sort((a, b) => new Date(a.date) - new Date(b.date))
-            .slice(-200);
-        if (quotes.length < 200) {
-            console.warn(`[Yahoo] Only ${quotes.length} daily candles for ${yahooSymbol}`);
-        }
-        const closes = quotes.map(q => q.close);
-        const volumes = quotes.map(q => q.volume || 0);
-        return { closes, volumes };
-    } catch (e) {
-        console.error(`[Yahoo] Error fetching ${yahooSymbol}:`, e.message);
-        return null;
-    }
+    });
 }
 
-// ── Helper: check if volume data is valid ──
+// ── Helpers ──
 function hasValidVolume(volumes) {
     if (!volumes || volumes.length === 0) return false;
     return volumes.reduce((a, b) => a + b, 0) > 0;
 }
 
-// ── Format dollar volume ──
 function formatDollarVolume(volume, price) {
     const total = volume * price;
     if (total >= 1e9) return (total / 1e9).toFixed(2) + ' B';
@@ -81,9 +87,9 @@ function formatDollarVolume(volume, price) {
     return total.toFixed(2);
 }
 
-// ── Main function ──
+// ── Main ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (Yahoo + Binance)...');
+    console.log('[Metrics] Starting technical metrics (Yahoo direct + Binance)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -91,7 +97,6 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         let daily = RAW_DAILY ? RAW_DAILY[pair.n] : undefined;
         let hourly = RAW_1H ? RAW_1H[pair.n] : undefined;
 
-        // Check if we need volume data
         let needVolume = false;
         if (!daily || !daily.closes || daily.closes.length < 200) {
             needVolume = true;
@@ -101,30 +106,18 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
 
         if (needVolume) {
             console.log(`[Metrics] Fetching volume for ${pair.n}...`);
-
-            // Determine data source
             let volumeData = null;
-            const isCrypto = pair.isCrypto || false; // from config, but we can also check name
-            // Better: use config's isCrypto flag if present, else detect by name
             const isCryptoPair = pair.n === 'BTCUSD' || pair.n === 'ETHUSD' || pair.isCrypto;
 
             if (isCryptoPair) {
-                // Binance for crypto (need to convert BTCUSD -> BTCUSDT)
-                const binanceSymbol = pair.n.replace('USD', 'USDT'); // e.g., BTCUSDT
-                const candles = await fetchBinanceDailyCandles(binanceSymbol);
-                if (candles && candles.closes.length >= 200) {
-                    volumeData = candles;
-                }
+                const binanceSymbol = pair.n.replace('USD', 'USDT');
+                volumeData = await fetchBinanceDailyCandles(binanceSymbol);
             } else {
-                // Yahoo Finance for forex & gold & indices (if needed)
-                const yahooSymbol = pair.n + '=X'; // e.g., EURUSD=X, XAUUSD=X, US500=X (though indices volume already from scanner)
-                const candles = await fetchYahooDailyCandles(yahooSymbol);
-                if (candles && candles.closes.length >= 200) {
-                    volumeData = candles;
-                }
+                const yahooSymbol = pair.n + '=X';
+                volumeData = await fetchYahooDailyCandles(yahooSymbol);
             }
 
-            if (volumeData) {
+            if (volumeData && volumeData.closes && volumeData.closes.length >= 200) {
                 daily = {
                     closes: volumeData.closes,
                     volumes: volumeData.volumes,
@@ -137,7 +130,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             }
         }
 
-        // At this point, daily should have valid data
+        // Proceed with calculation...
         if (!daily || !daily.closes || daily.closes.length < 200) continue;
 
         const closesD = daily.closes;
@@ -171,7 +164,6 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         });
     }
 
-    // Save to Firebase
     for (const metric of results) {
         try {
             await firebasePut(`technicalMetrics/${metric.pair}`, {
