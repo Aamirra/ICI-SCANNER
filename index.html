@@ -180,7 +180,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   --col3-width: 6%;
   --col4-width: 6%;
   --col5-width: 12%;
-  --col6-width: 7%;   /* Bell column – wider */
+  --col6-width: 7%;   /* Bell column */
   --col7-width: 9%;
   --col8-width: 9%;
   --col9-width: 8%;
@@ -238,12 +238,16 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   text-align:left; padding-left:6px; color:var(--acc); cursor:pointer;
 }
 
-/* ✅ Gap between Sentiment & Bell columns */
+/* ✅ Strong gap between sentiment & bell */
 th:nth-child(6), td:nth-child(6) {
-  padding-right: 6px;   /* add space on the right of sentiment */
+  padding-right: 10px;
+  border-right: 2px solid transparent;   /* invisible separator */
+  background-clip: padding-box;          /* prevent background color leakage */
 }
 th:nth-child(7), td:nth-child(7) {
-  padding-left: 6px;    /* add space on the left of bell */
+  padding-left: 10px;
+  border-left: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 /* Resize handle */
