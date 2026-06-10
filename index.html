@@ -94,7 +94,7 @@ body::before {
 * { margin:0; padding:0; box-sizing:border-box; }
 body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 
-/* ── WRAPPER: mobile max‑width, desktop full width ── */
+/* ── WRAPPER ── */
 .wrap {
   max-width: 480px;
   margin: 0 auto;
@@ -103,7 +103,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   transition: transform 0.1s ease-out;
 }
 
-/* ── Topbar with animated gradient + text glow ── */
+/* ── Topbar ── */
 .topbar {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px; background:var(--topbar-bg); border-radius:16px;
@@ -125,7 +125,6 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   0% { text-shadow: 0 0 5px var(--acc); }
   100% { text-shadow: 0 0 15px var(--acc), 0 0 25px var(--acc); }
 }
-
 .scan-btn {
   background:rgba(0,170,255,0.15); color:var(--acc);
   border:1px solid var(--acc); padding:6px 12px;
@@ -142,22 +141,12 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 }
 .theme-btn:hover, .desktop-btn:hover { transform: scale(1.1); }
 
-/* Summary Cards layout */
-.sum {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-/* Summary Cards: original size + subtle glow */
+/* Summary Cards */
+.sum { display: flex; gap: 8px; margin-bottom: 12px; }
 .sc {
-  flex:1;
-  padding: 12px;
-  border-radius: 14px;
-  border:1px solid var(--sc-brd);
-  text-align:center;
-  cursor:pointer;
-  background: var(--sf);
+  flex:1; padding: 12px; border-radius: 14px;
+  border:1px solid var(--sc-brd); text-align:center;
+  cursor:pointer; background: var(--sf);
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   animation: cardPulse 3s ease-in-out infinite;
@@ -166,27 +155,39 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
   50% { box-shadow: 0 0 15px rgba(0,170,255,0.15); }
 }
-.sc:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 15px rgba(0,170,255,0.25);
-}
+.sc:hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,170,255,0.25); }
 .sn { font-size:20px; display:block; font-weight:bold; }
 
-/* ── TABLE CONTAINER (scroll on mobile only) ── */
+/* ── TABLE CONTAINER ── */
 .tw {
   background:var(--sf); border-radius:16px;
   border:1px solid var(--brd); overflow:hidden;
-  transform-style: preserve-3d;
-  transition: transform 0.2s;
+  transform-style: preserve-3d; transition: transform 0.2s;
 }
 .tw:hover { transform: translateZ(5px); }
 
-/* ── RESPONSIVE TABLE ── */
 .table-wrap {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ── TABLE with dynamic column widths ── */
+:root {
+  --col0-width: 11%;
+  --col1-width: 6%;
+  --col2-width: 6%;
+  --col3-width: 6%;
+  --col4-width: 6%;
+  --col5-width: 12%;
+  --col6-width: 5%;
+  --col7-width: 9%;
+  --col8-width: 9%;
+  --col9-width: 9%;
+  --col10-width: 9%;
+  --col11-width: 12%;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -194,21 +195,21 @@ table {
   table-layout: fixed;
 }
 
-/* Column widths for 12 columns */
-th:nth-child(1)  { width: 11%; }  /* Pair */
-th:nth-child(2)  { width: 6%; }   /* 1H */
-th:nth-child(3)  { width: 6%; }   /* 4H */
-th:nth-child(4)  { width: 6%; }   /* 1D */
-th:nth-child(5)  { width: 6%; }   /* 1W */
-th:nth-child(6)  { width: 12%; }  /* Sentiment */
-th:nth-child(7)  { width: 5%; }   /* Bell */
-th:nth-child(8)  { width: 9%; }   /* 200D */
-th:nth-child(9)  { width: 9%; }   /* 10D */
-th:nth-child(10) { width: 9%; }   /* 1H Mom */
-th:nth-child(11) { width: 9%; }   /* Vol 7D */
-th:nth-child(12) { width: 12%; }  /* Dollar Vol */
+th:nth-child(1), td:nth-child(1) { width: var(--col0-width); }
+th:nth-child(2), td:nth-child(2) { width: var(--col1-width); }
+th:nth-child(3), td:nth-child(3) { width: var(--col2-width); }
+th:nth-child(4), td:nth-child(4) { width: var(--col3-width); }
+th:nth-child(5), td:nth-child(5) { width: var(--col4-width); }
+th:nth-child(6), td:nth-child(6) { width: var(--col5-width); }
+th:nth-child(7), td:nth-child(7) { width: var(--col6-width); }
+th:nth-child(8), td:nth-child(8) { width: var(--col7-width); }
+th:nth-child(9), td:nth-child(9) { width: var(--col8-width); }
+th:nth-child(10), td:nth-child(10) { width: var(--col9-width); }
+th:nth-child(11), td:nth-child(11) { width: var(--col10-width); }
+th:nth-child(12), td:nth-child(12) { width: var(--col11-width); }
 
 th {
+  position: relative;               /* for resize handle */
   padding: 6px 2px;
   font-size: 9px;
   color: var(--acc);
@@ -217,6 +218,7 @@ th {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 td {
   padding: 5px 2px;
   text-align: center;
@@ -227,33 +229,36 @@ td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
-.pn { 
-  font-family:'Syne',sans-serif; font-weight:700; font-size: 12px; text-align:left; padding-left:6px; 
-  color:var(--acc); cursor:pointer;
+.pn {
+  font-family:'Syne',sans-serif; font-weight:700; font-size: 12px;
+  text-align:left; padding-left:6px; color:var(--acc); cursor:pointer;
 }
 
-/* Expanding ring dots */
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  right: 0; top: 0;
+  width: 6px; height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+  background: transparent;
+}
+.resize-handle:hover { background: rgba(255,255,255,0.1); }
+
+/* Signal dots */
 .sig {
-  display: inline-block;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  position: relative;
-  border: none;
-  background: #555;
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; position: relative; border: none; background: #555;
 }
 .sig.bull { background: #00cc66; }
 .sig.bear { background: #ff2244; }
 .sig::after {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  border: 2px solid transparent;
-  opacity: 0;
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 100%; height: 100%; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 2px solid transparent; opacity: 0;
   animation: ringPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 .sig.bull::after { border-color: #00cc66; box-shadow: 0 0 6px #00cc66; }
@@ -281,21 +286,10 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   animation: shimmer 2s infinite;
 }
-@keyframes shimmer {
-  0% { left: -50%; }
-  100% { left: 150%; }
-}
+@keyframes shimmer { 0% { left: -50%; } 100% { left: 150%; } }
 
 /* Tech cells */
-.tech-cell {
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--txt);
-  padding: 4px 2px;
-  text-align: right;
-}
-
-/* Alert cell */
+.tech-cell { font-size: 9px; font-weight: 500; color: var(--txt); padding: 4px 2px; text-align: right; }
 .alert-cell { padding: 4px 2px; }
 
 /* Modal, chart, nav */
@@ -311,19 +305,12 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   animation: cardPop 0.3s ease;
 }
-@keyframes cardPop {
-  0% { transform: scale(0.9); opacity:0; }
-  100% { transform: scale(1); opacity:1; }
-}
+@keyframes cardPop { 0% { transform: scale(0.9); opacity:0; } 100% { transform: scale(1); opacity:1; } }
 #chartOverlay {
   position:fixed; inset:0; background:var(--bg); z-index:4000;
-  display:none; flex-direction:column;
-  animation: slideUp 0.3s ease;
+  display:none; flex-direction:column; animation: slideUp 0.3s ease;
 }
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .nav-btn {
   background:var(--nav-btn-bg); color:var(--nav-btn-color);
   border:none; padding:8px 15px; border-radius:8px;
@@ -344,41 +331,30 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 
 /* ── DESKTOP MODE ── */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-
-/* Sidebar – table ko poori width dene ke liye wrap ka max‑width hataya */
-body.desktop-mode #app-container { 
-  flex-shrink: 0; 
-  width: 580px; max-width: 580px;
-  height: 100vh; overflow-y: auto; 
-  border-right: 1px solid var(--brd); 
-  perspective: none; 
+body.desktop-mode #app-container {
+  flex-shrink: 0; width: 580px; max-width: 580px;
+  height: 100vh; overflow-y: auto;
+  border-right: 1px solid var(--brd); perspective: none;
 }
-body.desktop-mode .wrap { 
-  max-width: none;   /* ← KEY FIX: poori sidebar width table ko mile */
-  margin: 0; 
-  padding: 10px 12px;
-}
-body.desktop-mode #chartOverlay { 
-  position: relative !important; inset: auto !important; 
-  flex: 1; height: 100vh; 
-  display: flex !important; flex-direction: column; z-index: 1 !important; 
+body.desktop-mode .wrap { max-width: none; margin: 0; padding: 10px 12px; }
+body.desktop-mode #chartOverlay {
+  position: relative !important; inset: auto !important;
+  flex: 1; height: 100vh;
+  display: flex !important; flex-direction: column; z-index: 1 !important;
 }
 body.desktop-mode #tv_chart_container { min-height: 0; }
 body.desktop-mode #chartCloseBtn { display: none !important; }
-body.desktop-mode #tv_chart_container:empty { 
-  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 12px; 
+body.desktop-mode #tv_chart_container:empty {
+  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
 }
 body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
-body.desktop-mode #tv_chart_container:empty::after { 
-  content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace; 
-  font-size:12px; color:var(--txt); opacity:0.3; 
+body.desktop-mode #tv_chart_container:empty::after {
+  content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--txt); opacity:0.3;
 }
-
-/* Desktop table – full width, comfortably sized */
-body.desktop-mode .table-wrap { overflow-x: visible; }
-body.desktop-mode table { min-width: auto; table-layout: fixed; width: 100%; font-size: 9px; }
-body.desktop-mode th { padding: 5px 2px; font-size: 8px; }
-body.desktop-mode td { padding: 4px 2px; font-size: 9px; }
+body.desktop-mode .table-wrap { overflow-x: auto; }  /* Allow horizontal scroll if columns exceed sidebar */
+body.desktop-mode table { min-width: 580px; }       /* At least fill sidebar */
+body.desktop-mode th, body.desktop-mode td { padding: 4px 2px; }
 body.desktop-mode .pn { font-size: 10px; }
 body.desktop-mode .sig { width: 8px; height: 8px; }
 body.desktop-mode .sentiment-bar { height: 16px; min-width: 60px; }
@@ -406,7 +382,7 @@ body.desktop-mode .tech-cell { font-size: 9px; }
     </div>
     <div class="tw">
       <div class="table-wrap">
-        <table>
+        <table id="mainTable">
           <thead>
             <tr>
               <th style="text-align:left;padding-left:6px">Pair</th>
@@ -444,7 +420,128 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
-// Theme Toggle
+// ════════════════════════════════════════════
+// 1. COLUMN RESIZE ENGINE + PERSISTENCE
+// ════════════════════════════════════════════
+(function() {
+  const STORAGE_KEY = 'ici_table_col_widths';   // localStorage key
+  const COLUMN_COUNT = 12;                      // number of columns
+  const MIN_WIDTH_PCT = 3;                      // minimum column width percent
+  const MAX_WIDTH_PCT = 40;                     // maximum column width percent
+
+  // Default widths (match CSS variables)
+  const defaultWidths = [11, 6, 6, 6, 6, 12, 5, 9, 9, 9, 9, 12];
+
+  // Load saved widths or use defaults
+  let colWidths = loadColWidths();
+
+  function loadColWidths() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === COLUMN_COUNT) {
+          return parsed;   // already percentages
+        }
+      }
+    } catch (e) { }
+    return [...defaultWidths];
+  }
+
+  function saveColWidths() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(colWidths));
+  }
+
+  // Apply widths to CSS variables
+  function applyWidths() {
+    const root = document.documentElement;
+    for (let i = 0; i < COLUMN_COUNT; i++) {
+      root.style.setProperty(`--col${i}-width`, colWidths[i] + '%');
+    }
+  }
+
+  // Initialise on page load
+  applyWidths();
+
+  // ── RESIZE HANDLER ──
+  let dragState = null;   // { columnIndex, startX, startWidth, tableWidth }
+
+  function startResize(e, columnIndex) {
+    e.preventDefault();
+    const table = document.getElementById('mainTable');
+    if (!table) return;
+    const startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const startWidth = table.offsetWidth * (colWidths[columnIndex] / 100);
+    dragState = {
+      columnIndex,
+      startX,
+      startWidth,
+      tableWidth: table.offsetWidth
+    };
+    // Add global listeners
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+    // Prevent text selection
+    document.body.style.userSelect = 'none';
+  }
+
+  function onDrag(e) {
+    if (!dragState) return;
+    e.preventDefault();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - dragState.startX;
+    let newWidth = dragState.startWidth + deltaX;
+    // Convert to percent
+    let newPercent = (newWidth / dragState.tableWidth) * 100;
+    // Clamp
+    newPercent = Math.min(MAX_WIDTH_PCT, Math.max(MIN_WIDTH_PCT, newPercent));
+    colWidths[dragState.columnIndex] = newPercent;
+    applyWidths();
+  }
+
+  function stopDrag() {
+    if (!dragState) return;
+    dragState = null;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
+    document.body.style.userSelect = '';
+    saveColWidths();
+  }
+
+  // Attach resize handles to all <th> elements
+  function attachResizeHandles() {
+    const headers = document.querySelectorAll('#mainTable thead th');
+    headers.forEach((th, idx) => {
+      // Avoid duplicate handles
+      if (th.querySelector('.resize-handle')) return;
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      handle.addEventListener('mousedown', (e) => startResize(e, idx));
+      handle.addEventListener('touchstart', (e) => startResize(e, idx));
+      th.appendChild(handle);
+    });
+  }
+
+  // Observe table changes (render.js re-creates tbody)
+  const observer = new MutationObserver(() => {
+    attachResizeHandles();
+  });
+  observer.observe(document.getElementById('tb'), { childList: true });
+
+  // Also initial call (table already exists when script runs)
+  attachResizeHandles();
+
+  // Expose applyWidths in case needed
+  window.applyTableWidths = applyWidths;
+})();
+
+// ════════════════════════════════════════════
+// 2. EXISTING APP CODE (Theme, Scan, Parallax, etc.)
+// ════════════════════════════════════════════
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
@@ -507,13 +604,12 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// Parallax
+// Parallax (disabled on touch & desktop mode)
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 function handleParallax(e) {
-  if (isTouchDevice) return;
-  if (document.body.classList.contains('desktop-mode')) return;
+  if (isTouchDevice || document.body.classList.contains('desktop-mode')) return;
   const rect = appContainer.getBoundingClientRect();
   wrap.style.transform = `rotateY(${(rect.width/2-(e.clientX-rect.left))/25}deg) rotateX(${(rect.height/2-(e.clientY-rect.top))/25}deg)`;
 }
