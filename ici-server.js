@@ -5,6 +5,7 @@ const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 const { spawn } = require('child_process');
+const sendTG = require('./services/telegram'); // ✅ Added back
 
 // ═══════════════════════════════════════════
 // FIREBASE INIT (only once)
@@ -46,14 +47,13 @@ function firebaseGet(p) {
 })();
 
 // ═══════════════════════════════════════════
-// HTTP SERVER — Serves dashboard + handles /scan
+// HTTP SERVER — Dashboard + /scan
 // ═══════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // ✅ /scan endpoint for manual trigger
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan.isBusy()) {
@@ -66,11 +66,9 @@ http.createServer((req, res) => {
         return;
     }
 
-    // ✅ Serve static files (dashboard)
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
 
-    // Basic security: prevent directory traversal
     if (!filePath.startsWith(path.join(__dirname))) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -97,5 +95,6 @@ http.createServer((req, res) => {
     });
 }).listen(PORT, () => {
     console.log(`🚀 Dashboard server listening on port ${PORT}`);
-    console.log(`Open https://ici-scaner.onrender.com to view dashboard`);
+    // ✅ Telegram notification restored
+    sendTG('✅ *ICI SCANNER ONLINE*\nServer successfully started!');
 });
