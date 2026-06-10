@@ -1,5 +1,6 @@
 const https = require('https');
-const cheerio = require('cheerio'); // ✅ naya parser
+const cheerio = require('cheerio');
+const admin = require('firebase-admin');                          // ✅ for push notifications
 const config = require('../config');
 const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
@@ -11,6 +12,7 @@ const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
+const { PB_STATE } = require('../pullback/tradeStateManager');   // ✅ access to pullback states
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -73,18 +75,16 @@ function fetchMentFXSentiment() {
                 const $ = cheerio.load(raw);
                 let savedCount = 0;
 
-                // Har table row check karo jisme 3 columns ho
                 $('table tr').each((i, row) => {
                     const cells = $(row).find('td');
                     if (cells.length >= 3) {
                         const symbolText = $(cells[0]).text().trim();
-                        const dailyCellText = $(cells[2]).text().trim(); // Daily column
+                        const dailyCellText = $(cells[2]).text().trim();
 
                         const pairName = symbolText.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
                         const knownPair = config.PAIRS.find(p => p.n === pairName || p.s === pairName);
                         if (!knownPair) return;
 
-                        // e.g., "45% 55%"
                         const numbers = dailyCellText.match(/(\d+(?:\.\d+)?)/g);
                         if (numbers && numbers.length >= 2) {
                             const bear = parseFloat(numbers[0]);
@@ -233,6 +233,10 @@ async function fetchTF(p, tf, retryCount = 0) {
                                 lows:   lows,
                                 time:   sorted[sorted.length - 1]?.datetime
                             };
+
+                            // ✅ Feature 4 – save mini chart data (last 50 hourly closes)
+                            const last50Closes = cls.slice(-50);
+                            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
                         }
 
                         if (tf === '1day') {
@@ -254,6 +258,66 @@ async function fetchTF(p, tf, retryCount = 0) {
     });
 }
 
+// ✅ Feature 2 – Strong Pullback Push Notifications
+async function sendStrongPullbackNotifications() {
+    const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
+    for (const stateKey in PB_STATE) {
+        const s = PB_STATE[stateKey];
+        if (!s || !TARGET_PHASES.includes(s.phase)) continue;
+
+        const pairName = stateKey.replace(/_1h_(bull|bear)$/, '');
+        const p = config.PAIRS.find(x => x.n === pairName);
+        if (!p) continue;
+
+        // Need daily and hourly data to check technical alignment
+        const daily = RAW_DAILY[pairName];
+        const hourly = RAW_1H[pairName];
+        if (!daily || !daily.closes || daily.closes.length < 200) continue;
+        if (!hourly || !hourly.closes || hourly.closes.length < 11) continue;
+
+        const dailyCloses = daily.closes;
+        const hourlyCloses = hourly.closes;
+        const currentDaily = dailyCloses[dailyCloses.length - 1];
+        const close200Ago = dailyCloses[0];
+        const close10D = dailyCloses[dailyCloses.length - 11];
+        const longTermTrend = ((currentDaily - close200Ago) / close200Ago) * 100;
+        const shortTermMomentum = ((currentDaily - close10D) / close10D) * 100;
+
+        const currentHourly = hourlyCloses[hourlyCloses.length - 1];
+        const close10H = hourlyCloses[hourlyCloses.length - 11];
+        const microMomentum = ((currentHourly - close10H) / close10H) * 100;
+
+        const direction = s.dir; // 'bull' or 'bear'
+        const sign = (direction === 'bull') ? 1 : -1;
+
+        // Check all technical metrics same sign as direction
+        if (longTermTrend * sign <= 0 || shortTermMomentum * sign <= 0 || microMomentum * sign <= 0) continue;
+
+        // Check 1D & 1W signals from DATA_STORE
+        const marketData = DATA_STORE[pairName] || {};
+        if (marketData['1day'] !== direction || marketData['1week'] !== direction) continue;
+
+        // Strong pullback detected – send push notification
+        const isBull = direction === 'bull';
+        const title = isBull ? '🟢 Strong Bullish Pullback' : '🔴 Strong Bearish Pullback';
+        const body = `${pairName} — Strong trend + pullback setup is active. Check dashboard.`;
+
+        const message = {
+            notification: { title, body },
+            topic: 'all_users',
+            android: { priority: 'high', notification: { sound: 'default', channel_id: 'ici_notif' } },
+            apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+        };
+
+        try {
+            await admin.messaging().send(message);
+            console.log(`✅ Push sent for ${pairName}`);
+        } catch (err) {
+            console.error(`❌ Push failed for ${pairName}:`, err.message);
+        }
+    }
+}
+
 async function masterScan() {
     if (isScanning) return;
     isScanning = true;
@@ -264,6 +328,9 @@ async function masterScan() {
 
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
+
+        // ✅ Strong pullback push notifications (after tech metrics are fresh)
+        await sendStrongPullbackNotifications();
 
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
