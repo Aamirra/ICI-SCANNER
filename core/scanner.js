@@ -12,7 +12,8 @@ const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
-const { PB_STATE } = require('../pullback/tradeStateManager');   // ✅ access to pullback states
+const { PB_STATE } = require('../pullback/tradeStateManager');
+const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics'); // ✅ NEW – stocks scanner
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
@@ -269,7 +270,6 @@ async function sendStrongPullbackNotifications() {
         const p = config.PAIRS.find(x => x.n === pairName);
         if (!p) continue;
 
-        // Need daily and hourly data to check technical alignment
         const daily = RAW_DAILY[pairName];
         const hourly = RAW_1H[pairName];
         if (!daily || !daily.closes || daily.closes.length < 200) continue;
@@ -287,17 +287,14 @@ async function sendStrongPullbackNotifications() {
         const close10H = hourlyCloses[hourlyCloses.length - 11];
         const microMomentum = ((currentHourly - close10H) / close10H) * 100;
 
-        const direction = s.dir; // 'bull' or 'bear'
+        const direction = s.dir;
         const sign = (direction === 'bull') ? 1 : -1;
 
-        // Check all technical metrics same sign as direction
         if (longTermTrend * sign <= 0 || shortTermMomentum * sign <= 0 || microMomentum * sign <= 0) continue;
 
-        // Check 1D & 1W signals from DATA_STORE
         const marketData = DATA_STORE[pairName] || {};
         if (marketData['1day'] !== direction || marketData['1week'] !== direction) continue;
 
-        // Strong pullback detected – send push notification
         const isBull = direction === 'bull';
         const title = isBull ? '🟢 Strong Bullish Pullback' : '🔴 Strong Bearish Pullback';
         const body = `${pairName} — Strong trend + pullback setup is active. Check dashboard.`;
@@ -329,7 +326,9 @@ async function masterScan() {
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
-        // ✅ Strong pullback push notifications (after tech metrics are fresh)
+        // ✅ NEW – stock metrics update (no Twelve Data calls)
+        await calculateAndUpdateStockMetrics();
+
         await sendStrongPullbackNotifications();
 
         for (const p of config.PAIRS) {
