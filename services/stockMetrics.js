@@ -18,7 +18,6 @@ function fetchYahooCandles(symbol, range = '1y', interval = '1d') {
                     if (!result) { resolve(null); return; }
                     const quotes = result.indicators.quote[0];
                     if (!quotes || !quotes.close || quotes.close.length === 0) { resolve(null); return; }
-                    // Filter out nulls
                     const closes = quotes.close.filter(v => v !== null);
                     const volumes = (quotes.volume || []).map(v => v || 0);
                     resolve({ closes, volumes });
@@ -60,14 +59,14 @@ async function calculateAndUpdateStockMetrics() {
 
             console.log(`[Stocks] Fetching ${symbol} (${yahooSymbol})...`);
 
-            // Fetch all three timeframes in parallel
+            // ✅ Fetch hourly for 6 months (enough for 4H aggregation)
             const [dailyData, hourlyRaw, weeklyData] = await Promise.all([
                 fetchYahooCandles(yahooSymbol, '1y', '1d'),
-                fetchYahooCandles(yahooSymbol, '3mo', '1h'),   // enough for 4h aggregation
+                fetchYahooCandles(yahooSymbol, '6mo', '1h'),   // 6 months hourly
                 fetchYahooCandles(yahooSymbol, '2y', '1wk')
             ]);
 
-            // ── 1. Daily data (must have at least 200) ──
+            // ── 1. Daily data (minimum 200 candles) ──
             if (!dailyData || dailyData.closes.length < 200) {
                 console.warn(`[Stocks] Insufficient daily data for ${symbol}`);
                 continue;
@@ -81,16 +80,16 @@ async function calculateAndUpdateStockMetrics() {
             const ema20d = calcEMA(dailyCloses, 20);
             const signal1d = ema20d && currentPrice > ema20d ? 'bull' : 'bear';
 
-            // ── 2. Weekly data (200 weeks) ──
+            // ── 2. Weekly data (minimum 50 weeks, stocks ke liye kaafi) ──
             let signal1w = null;
-            if (weeklyData && weeklyData.closes.length >= 200) {
-                const weeklyCloses = weeklyData.closes.slice(-200);
+            if (weeklyData && weeklyData.closes.length >= 50) {
+                const weeklyCloses = weeklyData.closes.slice(-200); // at most 200
                 const ema20w = calcEMA(weeklyCloses, 20);
                 if (ema20w) {
                     signal1w = weeklyCloses[weeklyCloses.length - 1] > ema20w ? 'bull' : 'bear';
                 }
             } else {
-                console.warn(`[Stocks] Weekly data insufficient for ${symbol}, 1W signal missing`);
+                console.warn(`[Stocks] Weekly data insufficient for ${symbol} (${weeklyData?.closes?.length || 0} weeks)`);
             }
 
             // ── 3. Hourly data (for 1H & 4H signals, micro momentum) ──
@@ -102,15 +101,18 @@ async function calculateAndUpdateStockMetrics() {
                 const hourlyCloses = hourlyRaw.closes;
                 const currentHourly = hourlyCloses[hourlyCloses.length - 1];
 
-                // 1H signal (last 200 1h candles)
+                // 1H signal
                 const ema20h = calcEMA(hourlyCloses, 20);
                 if (ema20h) signal1h = currentHourly > ema20h ? 'bull' : 'bear';
 
-                // 4H signal: aggregate hourly closes, then take last 200 4h candles
+                // 4H signal – aggregate hourly into 4‑hour bars
                 const fourHourCloses = aggregateTo4Hour(hourlyCloses);
-                if (fourHourCloses.length >= 200) {
+                // For 4H, use min 50 bars
+                if (fourHourCloses.length >= 50) {
                     const ema20_4h = calcEMA(fourHourCloses, 20);
                     if (ema20_4h) signal4h = fourHourCloses[fourHourCloses.length - 1] > ema20_4h ? 'bull' : 'bear';
+                } else {
+                    console.warn(`[Stocks] 4H aggregation insufficient for ${symbol} (${fourHourCloses.length} bars)`);
                 }
 
                 // Micro momentum (10‑hour)
@@ -119,7 +121,7 @@ async function calculateAndUpdateStockMetrics() {
                     microMomentum = ((currentHourly - close10h) / close10h) * 100;
                 }
             } else {
-                console.warn(`[Stocks] Hourly data insufficient for ${symbol}, 1H/4H signals missing`);
+                console.warn(`[Stocks] Hourly data insufficient for ${symbol}`);
             }
 
             // ── 200‑day & 10‑day momentum ──
