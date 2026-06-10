@@ -168,7 +168,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 }
 .sn { font-size:20px; display:block; font-weight:bold; }
 
-/* ── Table with depth ── */
+/* ── TABLE CONTAINER (scroll on mobile) ── */
 .tw {
   background:var(--sf); border-radius:16px;
   border:1px solid var(--brd); overflow:hidden;
@@ -176,18 +176,58 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   transition: transform 0.2s;
 }
 .tw:hover { transform: translateZ(5px); }
-table { width:100%; border-collapse:collapse; }
-th { padding:12px 6px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
-td { padding:10px 6px; text-align:center; border-bottom:1px solid var(--brd); transition: background 0.2s; }
+
+/* ── RESPONSIVE TABLE ── */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;          /* ensures columns don't squeeze beyond readability */
+  table-layout: fixed;       /* helps control column widths */
+}
+
+/* Column widths (percentages) for 12 columns */
+th:nth-child(1) { width: 12%; }  /* Pair */
+th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { width: 7%; } /* 1H,4H,1D,1W */
+th:nth-child(6) { width: 13%; } /* Sentiment */
+th:nth-child(7) { width: 6%; }  /* Alert bell */
+th:nth-child(8), th:nth-child(9), th:nth-child(10), th:nth-child(11), th:nth-child(12) { width: 8%; } /* tech columns */
+
+th {
+  padding: 8px 4px;
+  font-size: 9px;
+  color: var(--acc);
+  border-bottom: 1px solid var(--th-brd);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+td {
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--brd);
+  transition: background 0.2s;
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
-.pn { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:12px; color:var(--acc); cursor:pointer; }
+.pn { 
+  font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:8px; 
+  color:var(--acc); cursor:pointer;
+}
 
-/* Expanding ring dots */
+/* Expanding ring dots (smaller) */
 .sig {
   display: inline-block;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   position: relative;
   border: none;
@@ -195,7 +235,6 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 }
 .sig.bull { background: #00cc66; }
 .sig.bear { background: #ff2244; }
-
 .sig::after {
   content: '';
   position: absolute;
@@ -209,7 +248,6 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   opacity: 0;
   animation: ringPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
-
 .sig.bull::after {
   border-color: #00cc66;
   box-shadow: 0 0 6px #00cc66;
@@ -218,37 +256,24 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   border-color: #ff2244;
   box-shadow: 0 0 6px #ff2244;
 }
-
 @keyframes ringPulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2.8);
-    opacity: 0;
-  }
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
 }
 
-/* Sentiment bar with shimmer */
+/* Sentiment bar (compact) */
 .sentiment-bar {
-  display:flex; height:22px; border-radius:5px; overflow:hidden;
-  width:100%; min-width:80px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+  display:flex; height:18px; border-radius:4px; overflow:hidden;
+  width:100%; min-width:70px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
-.s-bear {
-  background:#ff2244; box-shadow:0 0 6px #ff2244;
+.s-bear, .s-bull {
   display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:7.5px; font-weight:bold;
+  color:#fff; font-size:7px; font-weight:bold;
   white-space:nowrap; overflow:hidden; flex-shrink:0;
   transition: width 0.4s ease; position: relative;
 }
-.s-bull {
-  background:#00cc66; box-shadow:0 0 6px #00cc66;
-  display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:7.5px; font-weight:bold;
-  white-space:nowrap; overflow:hidden; flex-shrink:0;
-  transition: width 0.4s ease; position: relative;
-}
+.s-bear { background:#ff2244; box-shadow:0 0 6px #ff2244; }
+.s-bull { background:#00cc66; box-shadow:0 0 6px #00cc66; }
 .s-bear::after, .s-bull::after {
   content: ''; position: absolute; top:0; left:-50%; width:50%; height:100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
@@ -259,7 +284,20 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   100% { left: 150%; }
 }
 
-/* Modal 3D pop */
+/* Tech cells styling */
+.tech-cell {
+  font-size: 9px;
+  color: var(--txt);
+  padding: 4px 2px;
+  text-align: right;
+}
+
+/* Alert cell */
+.alert-cell {
+  padding: 4px 2px;
+}
+
+/* Modal, chart, nav, etc. (unchanged) */
 .modal {
   position:fixed; inset:0; background:var(--modal-bg); z-index:3000;
   display:none; align-items:center; justify-content:center; padding:20px;
@@ -276,8 +314,6 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   0% { transform: scale(0.9); opacity:0; }
   100% { transform: scale(1); opacity:1; }
 }
-
-/* Chart overlay */
 #chartOverlay {
   position:fixed; inset:0; background:var(--bg); z-index:4000;
   display:none; flex-direction:column;
@@ -287,7 +323,6 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-
 .nav-btn {
   background:var(--nav-btn-bg); color:var(--nav-btn-color);
   border:none; padding:8px 15px; border-radius:8px;
@@ -295,9 +330,9 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 }
 .nav-btn:hover { transform: scale(1.1); }
 
-/* Desktop mode adjustments */
+/* Desktop mode adjustments (unchanged, but .wrap width increased for better fit) */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-body.desktop-mode #app-container { flex-shrink:0; width:420px; min-width:320px; max-width:420px; height:100vh; overflow-y:auto; border-right:1px solid var(--brd); perspective: none; }
+body.desktop-mode #app-container { flex-shrink:0; width:450px; min-width:350px; max-width:450px; height:100vh; overflow-y:auto; border-right:1px solid var(--brd); perspective: none; }
 body.desktop-mode .wrap { margin:0; padding:10px; }
 body.desktop-mode #chartOverlay { position:relative !important; inset:auto !important; flex:1; height:100vh; display:flex !important; flex-direction:column; z-index:1 !important; }
 body.desktop-mode #tv_chart_container { min-height:0; }
@@ -306,12 +341,15 @@ body.desktop-mode #tv_chart_container:empty { display:flex !important; flex-dire
 body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
 body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--txt); opacity:0.3; }
 
-/* Tech metrics columns */
-.tech-cell {
-  font-size: 10px;
-  color: var(--txt);
-  padding: 8px 4px;
-  text-align: right;
+/* ── RESPONSIVE FONTS & PADDINGS for smaller screens ── */
+@media (max-width: 480px) {
+  th { font-size: 7px; padding: 4px 2px; }
+  td { font-size: 7px; padding: 4px 2px; }
+  .pn { font-size: 10px; }
+  .sig { width: 8px; height: 8px; }
+  .sentiment-bar { height: 14px; min-width: 50px; }
+  .s-bear, .s-bull { font-size: 6px; }
+  .tech-cell { font-size: 7px; }
 }
 </style>
 </head>
@@ -334,29 +372,32 @@ body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to v
       <div class="sc" style="color:var(--all-color)" onclick="setFilter('all')"><span class="sn">36</span>ALL</div>
     </div>
     <div class="tw">
-      <table>
-        <thead>
-          <tr>
-            <th style="text-align:left;padding-left:12px">Pair</th>
-            <th>1H</th>
-            <th>4H</th>
-            <th>1D</th>
-            <th>1W</th>
-            <th class="sent-th">Daily Sentiment</th>
-            <!-- Technical metrics columns -->
-            <th>200D Trend</th>
-            <th>10D Mom</th>
-            <th>1H Mom</th>
-            <th>Vol 7D</th>
-            <th>Dollar Vol</th>
-          </tr>
-        </thead>
-        <tbody id="tb"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:8px">Pair</th>
+              <th>1H</th>
+              <th>4H</th>
+              <th>1D</th>
+              <th>1W</th>
+              <th>Sentiment</th>
+              <th></th> <!-- Alert bell -->
+              <th>200D Trend</th>
+              <th>10D Mom</th>
+              <th>1H Mom</th>
+              <th>Vol 7D</th>
+              <th>Dollar Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- Modal, chart, alerts overlay same as before -->
 <div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
   <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
@@ -467,7 +508,7 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// ── 3D Mouse Parallax (disabled on touch devices & desktop mode) ──
+// 3D Mouse Parallax (disabled on touch devices & desktop mode)
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
