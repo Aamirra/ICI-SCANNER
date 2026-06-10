@@ -14,7 +14,7 @@ if (AV_KEYS.length === 0) {
     console.warn('[Alpha Vantage] No keys provided – set ALPHA_VANTAGE_KEYS env variable');
 }
 
-// ── Firebase‑based daily counter (per key, per date) ──
+// ── Firebase‑based daily counter ──
 async function getKeyUsage(keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -23,17 +23,24 @@ async function getKeyUsage(keyIndex) {
     } catch (e) { return 0; }
 }
 
+async function setKeyExhausted(keyIndex) {
+    const today = new Date().toISOString().slice(0, 10);
+    await admin.database().ref(`av_counter/${today}/${keyIndex}`).set(AV_DAILY_LIMIT_PER_KEY);
+    console.log(`[Alpha Vantage] Key index ${keyIndex} manually exhausted`);
+}
+
 async function incrementKeyUsage(keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     const ref = admin.database().ref(`av_counter/${today}/${keyIndex}`);
     const snap = await ref.once('value');
     const current = snap.val() || 0;
+    if (current >= AV_DAILY_LIMIT_PER_KEY) return current;
     const newVal = current + 1;
     await ref.set(newVal);
     return newVal;
 }
 
-// ── Get next available key index (returns -1 if all exhausted) ──
+// ── Get next available key index ──
 async function getAvailableKeyIndex() {
     for (let i = 0; i < AV_KEYS.length; i++) {
         const used = await getKeyUsage(i);
@@ -42,7 +49,7 @@ async function getAvailableKeyIndex() {
     return -1;
 }
 
-// ── Firebase volume cache helpers ──
+// ── Firebase volume cache ──
 async function getCachedVolume(pairName) {
     try {
         const snap = await admin.database().ref(`volumeCache/${pairName}`).once('value');
@@ -54,11 +61,11 @@ async function setCachedVolume(pairName, data) {
     await admin.database().ref(`volumeCache/${pairName}`).set(data);
 }
 
-// ── Alpha Vantage daily FX volume fetcher (multi‑key) ──
+// ── Alpha Vantage FX daily volume fetcher ──
 async function fetchAlphaVantageVolume(pairName) {
     if (AV_KEYS.length === 0) return null;
 
-    // Find an available key index
+    // Get available key (skip exhausted)
     const keyIndex = await getAvailableKeyIndex();
     if (keyIndex === -1) {
         console.warn(`[Alpha Vantage] All keys exhausted for today`);
@@ -72,7 +79,7 @@ async function fetchAlphaVantageVolume(pairName) {
 
     console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
 
-    // Immediately increment usage (since API call counts regardless of outcome)
+    // Increment usage immediately (API call counts regardless of outcome)
     const newCount = await incrementKeyUsage(keyIndex);
     console.log(`[Alpha Vantage] Key index ${keyIndex} usage incremented to ${newCount}`);
 
@@ -80,9 +87,18 @@ async function fetchAlphaVantageVolume(pairName) {
         const req = https.get(url, { agent }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
-            res.on('end', () => {
+            res.on('end', async () => {
                 try {
                     const json = JSON.parse(data);
+
+                    // ✅ Auto‑exhaust if rate limit message detected
+                    if (json.Information && json.Information.includes('standard API rate limit is 25 requests per day')) {
+                        console.warn(`[Alpha Vantage] Rate limit detected for key ${keyIndex}. Exhausting it.`);
+                        await setKeyExhausted(keyIndex);
+                        resolve(null);
+                        return;
+                    }
+
                     if (json['Time Series FX (Daily)']) {
                         const ts = json['Time Series FX (Daily)'];
                         const entries = Object.entries(ts)
@@ -126,7 +142,7 @@ function hasValidVolume(volumes) {
 }
 
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting technical metrics (counter‑fixed AV)...');
+    console.log('[Metrics] Starting technical metrics (auto‑exhaust, 4 keys)...');
     const allPairs = config.PAIRS;
     const results = [];
 
