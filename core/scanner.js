@@ -24,7 +24,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
-let RAW_DAILY = {};    // ✅ daily candles for tech metrics
+let RAW_DAILY = {};           // ✅ daily candles store
 let keyUsage = {};
 let keyCallTimes = {};
 let keyCooldown = {};
@@ -208,6 +208,7 @@ async function fetchTF(p, tf, retryCount = 0) {
                             }
                         }
 
+                        // hourly OHLC
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -219,18 +220,14 @@ async function fetchTF(p, tf, retryCount = 0) {
                             };
                         }
 
-                        // ✅ daily raw data store for technical metrics
+                        // ✅ daily OHLC + volume → RAW_DAILY
                         if (tf === '1day') {
                             const dailyCls = sorted.map(v => parseFloat(v.close));
                             const dailyVols = sorted.map(v => parseFloat(v.volume || '0'));
-                            const dailyHighs = sorted.map(v => parseFloat(v.high));
-                            const dailyLows = sorted.map(v => parseFloat(v.low));
                             RAW_DAILY[p.n] = {
                                 closes: dailyCls,
                                 volumes: dailyVols,
-                                highs: dailyHighs,
-                                lows: dailyLows,
-                                time: sorted[sorted.length - 1]?.datetime
+                                time:   sorted[sorted.length - 1]?.datetime
                             };
                         }
                         resolve(true);
@@ -253,7 +250,7 @@ async function masterScan() {
 
         fetchMentFXSentiment();
 
-        // ✅ Technical metrics using already stored RAW_DAILY and RAW_1H — no extra API calls
+        // ✅ metrics using RAW_DAILY
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
         for (const p of config.PAIRS) {
