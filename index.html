@@ -93,8 +93,12 @@ body::before {
 
 * { margin:0; padding:0; box-sizing:border-box; }
 body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
+
+/* ── WRAPPER: mobile max‑width, desktop full width ── */
 .wrap {
-  max-width:480px; margin:0 auto; padding:12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px;
   transform-style: preserve-3d;
   transition: transform 0.1s ease-out;
 }
@@ -168,7 +172,7 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 }
 .sn { font-size:20px; display:block; font-weight:bold; }
 
-/* ── TABLE CONTAINER (scroll on mobile) ── */
+/* ── TABLE CONTAINER (scroll on mobile only) ── */
 .tw {
   background:var(--sf); border-radius:16px;
   border:1px solid var(--brd); overflow:hidden;
@@ -186,19 +190,26 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px;          /* ensures columns don't squeeze beyond readability */
-  table-layout: fixed;       /* helps control column widths */
+  min-width: 700px;
+  table-layout: fixed;
 }
 
-/* Column widths (percentages) for 12 columns */
-th:nth-child(1) { width: 12%; }  /* Pair */
-th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { width: 7%; } /* 1H,4H,1D,1W */
-th:nth-child(6) { width: 13%; } /* Sentiment */
-th:nth-child(7) { width: 6%; }  /* Alert bell */
-th:nth-child(8), th:nth-child(9), th:nth-child(10), th:nth-child(11), th:nth-child(12) { width: 8%; } /* tech columns */
+/* Column widths for 12 columns */
+th:nth-child(1)  { width: 11%; }  /* Pair */
+th:nth-child(2)  { width: 6%; }   /* 1H */
+th:nth-child(3)  { width: 6%; }   /* 4H */
+th:nth-child(4)  { width: 6%; }   /* 1D */
+th:nth-child(5)  { width: 6%; }   /* 1W */
+th:nth-child(6)  { width: 12%; }  /* Sentiment */
+th:nth-child(7)  { width: 5%; }   /* Bell */
+th:nth-child(8)  { width: 9%; }   /* 200D */
+th:nth-child(9)  { width: 9%; }   /* 10D */
+th:nth-child(10) { width: 9%; }   /* 1H Mom */
+th:nth-child(11) { width: 9%; }   /* Vol 7D */
+th:nth-child(12) { width: 12%; }  /* Dollar Vol */
 
 th {
-  padding: 8px 4px;
+  padding: 6px 2px;
   font-size: 9px;
   color: var(--acc);
   border-bottom: 1px solid var(--th-brd);
@@ -207,7 +218,7 @@ th {
   text-overflow: ellipsis;
 }
 td {
-  padding: 6px 4px;
+  padding: 5px 2px;
   text-align: center;
   border-bottom: 1px solid var(--brd);
   transition: background 0.2s;
@@ -219,15 +230,14 @@ td {
 tr { transition: transform 0.2s; }
 tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ(5px); }
 .pn { 
-  font-family:'Syne',sans-serif; font-weight:700; font-size:13px; text-align:left; padding-left:8px; 
+  font-family:'Syne',sans-serif; font-weight:700; font-size: 12px; text-align:left; padding-left:6px; 
   color:var(--acc); cursor:pointer;
 }
 
-/* Expanding ring dots (smaller) */
+/* Expanding ring dots */
 .sig {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   position: relative;
   border: none;
@@ -238,33 +248,25 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 .sig::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
+  top: 50%; left: 50%;
+  width: 100%; height: 100%;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   border: 2px solid transparent;
   opacity: 0;
   animation: ringPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
-.sig.bull::after {
-  border-color: #00cc66;
-  box-shadow: 0 0 6px #00cc66;
-}
-.sig.bear::after {
-  border-color: #ff2244;
-  box-shadow: 0 0 6px #ff2244;
-}
+.sig.bull::after { border-color: #00cc66; box-shadow: 0 0 6px #00cc66; }
+.sig.bear::after { border-color: #ff2244; box-shadow: 0 0 6px #ff2244; }
 @keyframes ringPulse {
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
   100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
 }
 
-/* Sentiment bar (compact) */
+/* Sentiment bar */
 .sentiment-bar {
   display:flex; height:18px; border-radius:4px; overflow:hidden;
-  width:100%; min-width:70px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+  width:100%; min-width:60px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 .s-bear, .s-bull {
   display:flex; align-items:center; justify-content:center;
@@ -284,9 +286,9 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   100% { left: 150%; }
 }
 
-/* Tech cells styling – thoda bada */
+/* Tech cells */
 .tech-cell {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   color: var(--txt);
   padding: 4px 2px;
@@ -294,11 +296,9 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 }
 
 /* Alert cell */
-.alert-cell {
-  padding: 4px 2px;
-}
+.alert-cell { padding: 4px 2px; }
 
-/* Modal, chart, nav, etc. (unchanged) */
+/* Modal, chart, nav */
 .modal {
   position:fixed; inset:0; background:var(--modal-bg); z-index:3000;
   display:none; align-items:center; justify-content:center; padding:20px;
@@ -331,10 +331,10 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
 }
 .nav-btn:hover { transform: scale(1.1); }
 
-/* ── RESPONSIVE FONTS & PADDINGS for smaller screens ── */
+/* ── MOBILE FINE‑TUNING ── */
 @media (max-width: 480px) {
-  th { font-size: 7px; padding: 4px 2px; }
-  td { font-size: 7px; padding: 4px 2px; }
+  th { font-size: 7px; padding: 4px 1px; }
+  td { font-size: 7px; padding: 4px 1px; }
   .pn { font-size: 10px; }
   .sig { width: 8px; height: 8px; }
   .sentiment-bar { height: 14px; min-width: 50px; }
@@ -342,24 +342,31 @@ tr:hover { background: rgba(255,255,255,0.02); transform: scale(1.01) translateZ
   .tech-cell { font-size: 8px; }
 }
 
-/* ── DESKTOP MODE (no scroll, all columns visible, wider sidebar) ── */
+/* ── DESKTOP MODE ── */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
+
+/* Sidebar – table ko poori width dene ke liye wrap ka max‑width hataya */
 body.desktop-mode #app-container { 
-  flex-shrink:0; 
-  width: 580px; max-width: 580px;   /* wider sidebar to fit all columns comfortably */
-  height:100vh; overflow-y:auto; 
-  border-right:1px solid var(--brd); 
+  flex-shrink: 0; 
+  width: 580px; max-width: 580px;
+  height: 100vh; overflow-y: auto; 
+  border-right: 1px solid var(--brd); 
   perspective: none; 
 }
-body.desktop-mode .wrap { margin:0; padding:10px; }
-body.desktop-mode #chartOverlay { 
-  position:relative !important; inset:auto !important; flex:1; 
-  height:100vh; display:flex !important; flex-direction:column; z-index:1 !important; 
+body.desktop-mode .wrap { 
+  max-width: none;   /* ← KEY FIX: poori sidebar width table ko mile */
+  margin: 0; 
+  padding: 10px 12px;
 }
-body.desktop-mode #tv_chart_container { min-height:0; }
-body.desktop-mode #chartCloseBtn { display:none !important; }
+body.desktop-mode #chartOverlay { 
+  position: relative !important; inset: auto !important; 
+  flex: 1; height: 100vh; 
+  display: flex !important; flex-direction: column; z-index: 1 !important; 
+}
+body.desktop-mode #tv_chart_container { min-height: 0; }
+body.desktop-mode #chartCloseBtn { display: none !important; }
 body.desktop-mode #tv_chart_container:empty { 
-  display:flex !important; flex-direction:column; align-items:center; justify-content:center; gap:12px; 
+  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 12px; 
 }
 body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
 body.desktop-mode #tv_chart_container:empty::after { 
@@ -367,22 +374,15 @@ body.desktop-mode #tv_chart_container:empty::after {
   font-size:12px; color:var(--txt); opacity:0.3; 
 }
 
-/* override table for desktop: no scroll, fit content */
-body.desktop-mode .table-wrap {
-  overflow-x: visible;
-}
-body.desktop-mode table {
-  min-width: auto;
-  table-layout: fixed;
-  font-size: 9px;
-}
-body.desktop-mode th, body.desktop-mode td {
-  padding: 3px 2px;
-}
+/* Desktop table – full width, comfortably sized */
+body.desktop-mode .table-wrap { overflow-x: visible; }
+body.desktop-mode table { min-width: auto; table-layout: fixed; width: 100%; font-size: 9px; }
+body.desktop-mode th { padding: 5px 2px; font-size: 8px; }
+body.desktop-mode td { padding: 4px 2px; font-size: 9px; }
 body.desktop-mode .pn { font-size: 10px; }
 body.desktop-mode .sig { width: 8px; height: 8px; }
-body.desktop-mode .sentiment-bar { height: 14px; min-width: 50px; }
-body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 6px; }
+body.desktop-mode .sentiment-bar { height: 16px; min-width: 60px; }
+body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 7px; }
 body.desktop-mode .tech-cell { font-size: 9px; }
 </style>
 </head>
@@ -409,18 +409,12 @@ body.desktop-mode .tech-cell { font-size: 9px; }
         <table>
           <thead>
             <tr>
-              <th style="text-align:left;padding-left:8px">Pair</th>
-              <th>1H</th>
-              <th>4H</th>
-              <th>1D</th>
-              <th>1W</th>
+              <th style="text-align:left;padding-left:6px">Pair</th>
+              <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
               <th>Sentiment</th>
-              <th></th> <!-- Alert bell -->
-              <th>200D Trend</th>
-              <th>10D Mom</th>
-              <th>1H Mom</th>
-              <th>Vol 7D</th>
-              <th>Dollar Vol</th>
+              <th></th>
+              <th>200D Trend</th><th>10D Mom</th><th>1H Mom</th>
+              <th>Vol 7D</th><th>Dollar Vol</th>
             </tr>
           </thead>
           <tbody id="tb"></tbody>
@@ -430,7 +424,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
   </div>
 </div>
 
-<!-- Modal, chart, alerts overlay same as before -->
 <div class="modal" id="mo" onclick="this.classList.remove('open')"><div class="m-card" onclick="event.stopPropagation()"><div id="ml"></div></div></div>
 <div id="chartOverlay">
   <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
@@ -451,7 +444,7 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/chart.js"></script>
 <script src="js/modal.js"></script>
 <script>
-// ── Theme Toggle ──
+// Theme Toggle
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
@@ -472,134 +465,90 @@ function toggleTheme() {
     }
 })();
 
-// ── Filter tab click ──
 function setFilter(f) {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
-    curF = f;
-    render();
+    curF = f; render();
 }
 
-// ── Target List open ──
 function openM() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const l = document.getElementById('ml');
     const targets = collectTargets();
     const entries = Object.entries(targets);
     targetOrder = entries.map(([n]) => n);
-    l.innerHTML =
-        `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
-        (entries.length
-            ? entries.map(([n, s]) => {
-                const dir = (s.dir || '').toLowerCase();
-                const dirTxt = dir ? dir.toUpperCase() : '?';
-                const dirCol = dir === 'bull' ? '#00ff88' : (dir === 'bear' ? '#ff4466' : '#888');
-                return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span>
-                    <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(s.phase)}</span>
-                    <span style="color:${dirCol}">${dirTxt}</span>
-                </div>`;
-              }).join('')
-            : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`
-        );
+    l.innerHTML = `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` + (entries.length ? entries.map(([n, s]) => {
+        const dir = (s.dir || '').toLowerCase();
+        const dirTxt = dir ? dir.toUpperCase() : '?';
+        const dirCol = dir === 'bull' ? '#00ff88' : (dir === 'bear' ? '#ff4466' : '#888');
+        return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span><span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(s.phase)}</span><span style="color:${dirCol}">${dirTxt}</span></div>`;
+    }).join('') : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`);
     document.getElementById('mo').classList.add('open');
 }
 
-// ── Scan button click ──
 function manualScan() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const btn = document.querySelector('.scan-btn');
-    btn.textContent = '⏳ Scanning...';
-    btn.disabled = true;
+    btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     btn.style.animation = 'rotate360 1s linear infinite';
-    fetch('/scan')
-        .then(() => {
-            btn.textContent = '✅ Started!';
-            btn.style.animation = '';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
-        })
-        .catch(() => {
-            btn.textContent = '❌ Error';
-            btn.style.animation = '';
-            setTimeout(() => {
-                btn.textContent = '🔄 SCAN';
-                btn.disabled = false;
-            }, 3000);
-        });
+    fetch('/scan').then(() => {
+        btn.textContent = '✅ Started!'; btn.style.animation = '';
+        setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+    }).catch(() => {
+        btn.textContent = '❌ Error'; btn.style.animation = '';
+        setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+    });
 }
 const styleSheet = document.createElement("style");
 styleSheet.textContent = "@keyframes rotate360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
 document.head.appendChild(styleSheet);
-
 window.addEventListener('load', function() {
     setTimeout(function() {
-        if (document.getElementById('st').textContent === 'Connecting...') {
-            location.reload();
-        }
+        if (document.getElementById('st').textContent === 'Connecting...') location.reload();
     }, 5000);
 });
 
-// 3D Mouse Parallax (disabled on touch devices & desktop mode)
+// Parallax
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
 function handleParallax(e) {
   if (isTouchDevice) return;
   if (document.body.classList.contains('desktop-mode')) return;
   const rect = appContainer.getBoundingClientRect();
-  const xAxis = (rect.width / 2 - (e.clientX - rect.left)) / 25;
-  const yAxis = (rect.height / 2 - (e.clientY - rect.top)) / 25;
-  wrap.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+  wrap.style.transform = `rotateY(${(rect.width/2-(e.clientX-rect.left))/25}deg) rotateX(${(rect.height/2-(e.clientY-rect.top))/25}deg)`;
 }
-
 function resetParallax() {
-  if (isTouchDevice) return;
-  if (document.body.classList.contains('desktop-mode')) return;
+  if (isTouchDevice || document.body.classList.contains('desktop-mode')) return;
   wrap.style.transform = 'rotateY(0deg) rotateX(0deg)';
 }
-
 appContainer.addEventListener('mousemove', handleParallax);
 appContainer.addEventListener('mouseleave', resetParallax);
 
-// Floating particles
+// Particles
 function createParticles() {
-  const particleContainer = document.createElement('div');
-  particleContainer.style.position = 'fixed';
-  particleContainer.style.top = 0;
-  particleContainer.style.left = 0;
-  particleContainer.style.width = '100%';
-  particleContainer.style.height = '100%';
-  particleContainer.style.pointerEvents = 'none';
-  particleContainer.style.zIndex = '-1';
-  document.body.appendChild(particleContainer);
-  for (let i = 0; i < 30; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'particle';
-    particle.style.left = Math.random() * 100 + '%';
-    particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
-    particle.style.animationDelay = (Math.random() * 10) + 's';
-    particleContainer.appendChild(particle);
+  const pc = document.createElement('div');
+  pc.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1';
+  document.body.appendChild(pc);
+  for (let i=0; i<30; i++) {
+    const p = document.createElement('div'); p.className='particle';
+    p.style.left = Math.random()*100+'%';
+    p.style.animationDuration = (Math.random()*15+10)+'s';
+    p.style.animationDelay = (Math.random()*10)+'s';
+    pc.appendChild(p);
   }
 }
 createParticles();
 
-// Desktop Mode Logic
+// Desktop Mode
 function toggleDesktopMode() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const isDesktop = document.body.classList.toggle('desktop-mode');
-    const overlay  = document.getElementById('chartOverlay');
-    const btn      = document.getElementById('desktopBtn');
+    const overlay = document.getElementById('chartOverlay');
+    const btn = document.getElementById('desktopBtn');
     if (isDesktop) {
-        overlay.style.display = 'flex';
-        btn.textContent = '📱';
-        btn.title = 'Switch to Mobile';
+        overlay.style.display = 'flex'; btn.textContent = '📱'; btn.title = 'Switch to Mobile';
     } else {
-        overlay.style.display = 'none';
-        btn.textContent = '🖥️';
-        btn.title = 'Switch to Desktop';
+        overlay.style.display = 'none'; btn.textContent = '🖥️'; btn.title = 'Switch to Desktop';
     }
     localStorage.setItem('ici-mode', isDesktop ? 'desktop' : 'mobile');
     resetParallax();
@@ -607,23 +556,17 @@ function toggleDesktopMode() {
 window.addEventListener('load', function() {
     if (typeof window.closeC === 'function') {
         const _origClose = window.closeC;
-        window.closeC = function() {
-            if (document.body.classList.contains('desktop-mode')) return;
-            _origClose.apply(this, arguments);
-        };
+        window.closeC = function() { if (document.body.classList.contains('desktop-mode')) return; _origClose.apply(this, arguments); };
     }
     if (localStorage.getItem('ici-mode') === 'desktop') {
         document.body.classList.add('desktop-mode');
         document.getElementById('desktopBtn').textContent = '📱';
-        document.getElementById('desktopBtn').title = 'Switch to Mobile';
         document.getElementById('chartOverlay').style.display = 'flex';
         resetParallax();
     }
 });
 
-// ──────────────────────────────────────────────────
-// TECHNICAL METRICS – Firebase listener → re-render table
-// ──────────────────────────────────────────────────
+// Tech Metrics
 let techMetrics = {};
 db.ref('technicalMetrics').on('value', (snap) => {
     techMetrics = snap.val() || {};
