@@ -1,6 +1,6 @@
 let chartPairs = [], cIdx = 0;
-let fromModal = false;          // ✅ Track karo kahan se aaye
-let currentChartInterval = "60"; // default 1 hour
+let fromModal = false;
+let currentChartInterval = "60"; // default 1 Hour
 
 function getTheme() {
     const htmlTheme = document.documentElement.getAttribute('data-theme');
@@ -9,13 +9,14 @@ function getTheme() {
 
 function openCFromTable(i) {
     chartPairs = [...fPairs];
-    fromModal = false;          // ✅ Table se aaye
+    fromModal = false;
     currentChartInterval = "60"; // reset to 1h when coming from table
     openC(i);
 }
 
+// ✅ Now accepts optional interval (e.g., "240" for 4H, "60" for 1H)
 function openC(i, interval = null) {
-    if (interval) currentChartInterval = interval;   // ✅ set interval if given
+    if (interval) currentChartInterval = interval;
 
     cIdx = i;
     const p = chartPairs[cIdx];
@@ -26,7 +27,7 @@ function openC(i, interval = null) {
     new TradingView.widget({
         "autosize": true,
         "symbol": p.n,
-        "interval": currentChartInterval,   // ✅ dynamic interval
+        "interval": currentChartInterval,   // dynamic interval
         "theme": getTheme(),
         "container_id": "tv_chart_container",
         "studies_overrides": {
@@ -75,7 +76,7 @@ function openC(i, interval = null) {
 
 function movePair(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);   // uses stored interval
+    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);   // keeps current interval
 }
 
 function closeC() {
