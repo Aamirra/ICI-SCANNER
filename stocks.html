@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* ── Same theme CSS (unchanged) ── */
+        /* ── Dark & Light Mode ── */
         [data-theme="dark"] {
             --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
             --brd:rgba(255,255,255,0.08); --acc:#00aaff;
@@ -40,6 +40,7 @@
             font-family:'JetBrains Mono',monospace;
             color:var(--txt);
             min-height:100vh;
+            transition: background 0.3s, color 0.3s;
         }
         .wrap { max-width:580px; margin:0 auto; padding:12px; }
         .topbar {
@@ -79,18 +80,17 @@
             overflow-x: auto; overflow-y: hidden;
         }
 
-        /* ── TABLE NOW WITH AUTO LAYOUT & MIN‑WIDTHS ── */
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: auto;                /* allows columns to size to content */
+            table-layout: auto;
         }
         th {
             padding: 6px 4px;
             font-size: 9px;
             color: var(--acc);
             border-bottom: 1px solid var(--th-brd);
-            white-space: nowrap;               /* keep header text on one line */
+            white-space: nowrap;
         }
         td {
             padding: 4px 4px;
@@ -101,15 +101,14 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        /* Give essential columns a minimum width so they never disappear */
-        th:nth-child(1) { min-width: 55px; }  /* Symbol */
-        th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { min-width: 30px; }  /* 1H,4H,1D,1W */
-        th:nth-child(6) { min-width: 50px; }  /* Price */
-        th:nth-child(7) { min-width: 85px; }  /* 200 Candle Change */
-        th:nth-child(8) { min-width: 100px; } /* 10 Candle Change (1D) */
-        th:nth-child(9) { min-width: 55px; }  /* 1H Mom */
-        th:nth-child(10) { min-width: 60px; } /* Vol 7D */
-        th:nth-child(11) { min-width: 70px; } /* Dollar Vol */
+        th:nth-child(1) { min-width: 55px; }
+        th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { min-width: 30px; }
+        th:nth-child(6) { min-width: 50px; }
+        th:nth-child(7) { min-width: 85px; }
+        th:nth-child(8) { min-width: 100px; }
+        th:nth-child(9) { min-width: 55px; }
+        th:nth-child(10) { min-width: 60px; }
+        th:nth-child(11) { min-width: 70px; }
 
         .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; color:var(--acc); cursor:pointer; }
         .green { color:#00cc66; }
@@ -140,7 +139,6 @@
             50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
         }
 
-        /* Desktop mode */
         body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
         body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:580px; overflow-y:auto; border-right:1px solid var(--brd); }
         body.desktop-mode .tw { overflow:visible; }
@@ -157,6 +155,14 @@
             width:100%; max-width:400px; padding:22px; color:var(--txt);
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             animation: slideUp 0.3s ease;
+            max-height: 80vh;                /* ✅ limit height */
+            display: flex;
+            flex-direction: column;
+        }
+        #targetListContent {
+            overflow-y: auto;                /* ✅ scroll inside */
+            flex: 1;
+            padding-right: 8px;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -220,13 +226,15 @@
     </div>
 </div>
 
-<!-- Modals same as before -->
+<!-- Target List Modal -->
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="m-card" onclick="event.stopPropagation()">
+        <h3 style="margin-top:0;margin-bottom:15px;color:var(--gold)">Target List</h3>
         <div id="targetListContent"></div>
     </div>
 </div>
 
+<!-- Chart Overlay -->
 <div id="chartOverlay">
     <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
         <div style="display:flex; gap:12px; align-items:center">
@@ -241,7 +249,6 @@
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // ── Same JavaScript (no change) ──
     const firebaseConfig = {
         databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com"
     };
@@ -418,8 +425,7 @@
             }
         }
         const div = document.getElementById('targetListContent');
-        div.innerHTML = `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
-            (targets.length ? targets.map(t => {
+        div.innerHTML = (targets.length ? targets.map(t => {
                 const dirCol = t.dir === 'bull' ? '#00ff88' : '#ff4466';
                 const phaseLabel = t.phase === 'pullback' ? 'Pullback' : (t.phase === 'mark_high' || t.phase === 'mark_low') ? 'Ready — inside bar wait' : t.phase;
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
