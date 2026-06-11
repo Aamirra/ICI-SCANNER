@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* ── Dark & Light Mode ── */
+        /* ── Same CSS as before (unchanged, just keeping it clean) ── */
         [data-theme="dark"] {
             --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
             --brd:rgba(255,255,255,0.08); --acc:#00aaff;
@@ -52,18 +52,20 @@
         .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
 
         /* Buttons */
-        .scan-btn, .theme-btn, .desktop-btn, .nav-btn {
+        .scan-btn, .theme-btn, .desktop-btn, .nav-btn, .psx-btn {
             background:rgba(0,170,255,0.15); color:var(--acc);
             border:1px solid var(--acc); padding:6px 12px;
             border-radius:8px; cursor:pointer; font-size:10px;
             font-family:'JetBrains Mono',monospace; font-weight:bold;
             transition: all 0.2s; text-decoration:none;
         }
-        .scan-btn:hover, .theme-btn:hover, .desktop-btn:hover, .nav-btn:hover {
+        .psx-btn.active {
+            background:rgba(0,170,255,0.35); color:#fff;
+        }
+        .scan-btn:hover, .theme-btn:hover, .desktop-btn:hover, .nav-btn:hover, .psx-btn:hover {
             background:rgba(0,170,255,0.25); transform: scale(1.05);
         }
 
-        /* Summary Cards */
         .sum { display: flex; gap: 8px; margin-bottom: 12px; }
         .sc {
             flex:1; padding: 12px; border-radius: 14px;
@@ -82,14 +84,10 @@
         table { width:100%; border-collapse:collapse; min-width:700px; table-layout:fixed; }
         th { padding:6px 2px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
         td { padding:4px 2px; text-align:center; border-bottom:1px solid var(--brd); font-size:9px; }
-        .pn {
-            font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; 
-            color:var(--acc); cursor:pointer;
-        }
+        .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; color:var(--acc); cursor:pointer; }
         .green { color:#00cc66; }
         .red { color:#ff2244; }
 
-        /* Signal dots */
         .sig {
             display: inline-block; width: 10px; height: 10px;
             border-radius: 50%; position: relative; border: none;
@@ -98,7 +96,6 @@
         .sig.bull { background: #00cc66; }
         .sig.bear { background: #ff2244; }
 
-        /* Blink classes for strong trend */
         .pn.blink-pair-bull {
             animation: blinkBull 1.5s infinite;
             background: rgba(0,204,102,0.15);
@@ -116,13 +113,11 @@
             50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
         }
 
-        /* Desktop mode */
         body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
         body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:580px; overflow-y:auto; border-right:1px solid var(--brd); }
         body.desktop-mode .tw { overflow:visible; }
         body.desktop-mode table { min-width:0; }
 
-        /* Target List modal */
         .modal {
             position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:500;
             display:none; align-items:flex-end; justify-content:center;
@@ -137,7 +132,6 @@
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* Chart overlay (exactly like main dashboard) */
         #chartOverlay {
             position:fixed; inset:0; background:var(--bg); z-index:4000;
             display:none; flex-direction:column;
@@ -160,12 +154,14 @@
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
             <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
             <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
+            <!-- ✅ Market toggle buttons -->
+            <button class="psx-btn active" id="exnessBtn" onclick="setMarket('exness')">💹 Exness</button>
+            <button class="psx-btn" id="psxBtn" onclick="setMarket('psx')">🇵🇰 PSX</button>
             <button class="nav-btn" onclick="openTargetList()">👁 Target</button>
             <a href="/" class="nav-btn">🔙 Main</a>
         </div>
     </div>
 
-    <!-- Summary Cards (BULL/BEAR/ALL) -->
     <div class="sum">
         <div class="sc" style="color:#00cc66" onclick="setFilter('bull')">
             <span class="sn" id="bc">0</span>BULL
@@ -178,7 +174,6 @@
         </div>
     </div>
 
-    <!-- Table -->
     <div class="tw">
         <table>
             <thead>
@@ -205,7 +200,7 @@
     </div>
 </div>
 
-<!-- Chart Overlay (same as main dashboard) -->
+<!-- Chart Overlay -->
 <div id="chartOverlay">
     <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
         <div style="display:flex; gap:12px; align-items:center">
@@ -226,23 +221,53 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // ── State variables ──
+    let currentMarket = 'exness';          // 'exness' or 'psx'
     let stockData = {};
     let stockPbState = {};
     let currentFilter = 'all';
-
-    // ── Chart navigation globals ──
     let stockChartPairs = [];
     let stockCIdx = 0;
 
-    db.ref('stockMarketData').on('value', (snap) => {
-        stockData = snap.val() || {};
-        render();
-        updateCounts();
-    });
+    // ── Firebase listeners (both markets) ──
+    function attachListeners() {
+        // Exness
+        db.ref('stockMarketData').off();   // remove old listeners
+        db.ref('stockMarketDataPbState').off();
+        // PSX
+        db.ref('psxStockMarketData').off();
+        db.ref('psxStockMarketDataPbState').off();
 
-    db.ref('stockPbState').on('value', (snap) => {
-        stockPbState = snap.val() || {};
-    });
+        if (currentMarket === 'exness') {
+            db.ref('stockMarketData').on('value', snap => {
+                stockData = snap.val() || {};
+                render();
+                updateCounts();
+            });
+            db.ref('stockMarketDataPbState').on('value', snap => {
+                stockPbState = snap.val() || {};
+            });
+        } else {
+            db.ref('psxStockMarketData').on('value', snap => {
+                stockData = snap.val() || {};
+                render();
+                updateCounts();
+            });
+            db.ref('psxStockMarketDataPbState').on('value', snap => {
+                stockPbState = snap.val() || {};
+            });
+        }
+    }
+
+    // ── Market switch ──
+    function setMarket(market) {
+        currentMarket = market;
+        document.getElementById('exnessBtn').classList.toggle('active', market === 'exness');
+        document.getElementById('psxBtn').classList.toggle('active', market === 'psx');
+        currentFilter = 'all';
+        stockChartPairs = [];
+        attachListeners();   // re‑attach correct listener
+    }
 
     // ── Chart functions ──
     function openStockChartFromTable(symbol) {
@@ -272,40 +297,12 @@
                 "moving average.plot.color": "#9E9E9E",
                 "moving average.plot.linewidth": 1
             },
-            "overrides": {
-                "scalesProperties.showStudyLastValue": false
-            },
+            "overrides": { "scalesProperties.showStudyLastValue": false },
             "studies": [
-                {
-                    "id": "MAExp@tv-basicstudies",
-                    "inputs": { "length": 10 },
-                    "overrides": {
-                        "Plot.color": "#2962FF",
-                        "Plot.linewidth": 1,
-                        "Plot.visible": true
-                    }
-                },
-                {
-                    "id": "MAExp@tv-basicstudies",
-                    "inputs": { "length": 20 },
-                    "overrides": {
-                        "Plot.color": "#F44336",
-                        "Plot.linewidth": 1,
-                        "Plot.visible": true
-                    }
-                },
-                {
-                    "id": "MASimple@tv-basicstudies",
-                    "inputs": { "length": 50 },
-                    "overrides": {
-                        "Plot.color": "#9E9E9E",
-                        "Plot.linewidth": 1,
-                        "Plot.visible": true
-                    }
-                },
-                {
-                    "id": "WilliamFractal@tv-basicstudies"
-                }
+                { "id": "MAExp@tv-basicstudies", "inputs": { "length": 10 }, "overrides": { "Plot.color": "#2962FF", "Plot.linewidth": 1, "Plot.visible": true } },
+                { "id": "MAExp@tv-basicstudies", "inputs": { "length": 20 }, "overrides": { "Plot.color": "#F44336", "Plot.linewidth": 1, "Plot.visible": true } },
+                { "id": "MASimple@tv-basicstudies", "inputs": { "length": 50 }, "overrides": { "Plot.color": "#9E9E9E", "Plot.linewidth": 1, "Plot.visible": true } },
+                { "id": "WilliamFractal@tv-basicstudies" }
             ]
         });
     }
@@ -321,28 +318,21 @@
     }
 
     function getTheme() {
-        const htmlTheme = document.documentElement.getAttribute('data-theme');
-        return htmlTheme === 'light' ? 'light' : 'dark';
+        return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     }
 
-    // ── Strong trend check (exactly like forex page: 4H,1D,1W all same direction) ──
+    // ── Strong trend (same as forex) ──
     function isStrongTrend(symbol, data, direction) {
         if (!data) return false;
-        const sig4h = data.signal4h;
-        const sig1d = data.signal1d;
-        const sig1w = data.signal1w;
-        // All three must be non‑null and equal to direction
-        return sig4h === direction && sig1d === direction && sig1w === direction;
+        return data.signal4h === direction && data.signal1d === direction && data.signal1w === direction;
     }
 
     function getFilteredStocks() {
         const entries = Object.entries(stockData).sort(([a],[b]) => a.localeCompare(b));
         if (currentFilter === 'all') return entries;
-        return entries.filter(([symbol, data]) => {
-            const bull = isStrongTrend(symbol, data, 'bull');
-            const bear = isStrongTrend(symbol, data, 'bear');
-            if (currentFilter === 'bull') return bull;
-            if (currentFilter === 'bear') return bear;
+        return entries.filter(([sym, data]) => {
+            if (currentFilter === 'bull') return isStrongTrend(sym, data, 'bull');
+            if (currentFilter === 'bear') return isStrongTrend(sym, data, 'bear');
             return true;
         });
     }
@@ -366,7 +356,6 @@
             const sig1d = data.signal1d || '';
             const sig1w = data.signal1w || '';
 
-            // Blink uses same condition (already aligns with isStrongTrend)
             const isBull = isStrongTrend(symbol, data, 'bull');
             const isBear = isStrongTrend(symbol, data, 'bear');
             const blinkClass = isBull ? 'blink-pair-bull' : (isBear ? 'blink-pair-bear' : '');
@@ -389,9 +378,9 @@
 
     function updateCounts() {
         let bullCount = 0, bearCount = 0;
-        for (const [symbol, data] of Object.entries(stockData)) {
-            if (isStrongTrend(symbol, data, 'bull')) bullCount++;
-            if (isStrongTrend(symbol, data, 'bear')) bearCount++;
+        for (const [sym, data] of Object.entries(stockData)) {
+            if (isStrongTrend(sym, data, 'bull')) bullCount++;
+            if (isStrongTrend(sym, data, 'bear')) bearCount++;
         }
         document.getElementById('bc').textContent = bullCount;
         document.getElementById('rc').textContent = bearCount;
@@ -440,8 +429,7 @@
         if (saved) {
             document.documentElement.setAttribute('data-theme', saved);
             document.addEventListener('DOMContentLoaded', () => {
-                const btn = document.getElementById('themeBtn');
-                if (btn) btn.textContent = saved === 'light' ? '🌙' : '☀️';
+                document.getElementById('themeBtn').textContent = saved === 'light' ? '🌙' : '☀️';
             });
         }
     })();
@@ -449,8 +437,7 @@
     // ── Scan ──
     function manualScan() {
         const btn = document.querySelector('.scan-btn');
-        btn.textContent = '⏳ Scanning...';
-        btn.disabled = true;
+        btn.textContent = '⏳ Scanning...'; btn.disabled = true;
         fetch('/scan')
             .then(() => {
                 btn.textContent = '✅ Started!';
@@ -466,22 +453,19 @@
     function toggleDesktopMode() {
         const isDesktop = document.body.classList.toggle('desktop-mode');
         const btn = document.getElementById('desktopBtn');
-        if (isDesktop) {
-            btn.textContent = '📱';
-            btn.title = 'Switch to Mobile';
-        } else {
-            btn.textContent = '🖥️';
-            btn.title = 'Switch to Desktop';
-        }
+        if (isDesktop) { btn.textContent = '📱'; btn.title = 'Switch to Mobile'; }
+        else { btn.textContent = '🖥️'; btn.title = 'Switch to Desktop'; }
         localStorage.setItem('ici-stocks-desktop', isDesktop ? 'desktop' : 'mobile');
     }
     (function() {
         if (localStorage.getItem('ici-stocks-desktop') === 'desktop') {
             document.body.classList.add('desktop-mode');
             document.getElementById('desktopBtn').textContent = '📱';
-            document.getElementById('desktopBtn').title = 'Switch to Mobile';
         }
     })();
+
+    // ── Initial load ──
+    attachListeners();    // default Exness
 </script>
 </body>
 </html>
