@@ -1,26 +1,12 @@
-// ─────────────────────────────────────────
-// bearSetupLogic.js
-// Kaam: Sirf BEAR setup ki poori logic
-//
-// FLOW:
-//   1W+1D price < 20EMA → monitor shuru
-//   1H 20EMA < 50SMA → structure valid
-//   1H price > 20EMA close  → PULLBACK
-//   1H price < 20EMA close  → refLow mark
-//   next candle low < refLow → update, wait
-//   next candle low ≥ refLow → INSIDE BAR → 🔔 ALERT
-//   Invalid sirf tab: 20EMA 50SMA se upar aa jaaye
-// ─────────────────────────────────────────
-
 const calcEMA  = require('../utils/emaCalc');
 const calcSMA  = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
-
-const { PB_STATE,
-        LAST_ALERT_TIME,
-        trimAlertCache }      = require('./tradeStateManager');
-
-const { buildICIAlertMsg }    = require('./telegramAlertBuilder');
+const {
+    PB_STATE,
+    LAST_ALERT_TIME,
+    trimAlertCache
+} = require('./tradeStateManager');
+const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
 function defaultBearState() {
     return {
@@ -33,38 +19,36 @@ function defaultBearState() {
 }
 
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-
     const cls  = raw.closes;
-    const lows = raw.lows || cls;
+    const highs = raw.highs || cls;
+    const lows  = raw.lows  || cls;
 
     const lastClose = cls[cls.length - 1];
+    const lastHigh  = highs[highs.length - 1];
     const lastLow   = lows[lows.length - 1];
 
     const ema20 = calcEMA(cls, 20);
     const sma50 = calcSMA(cls, 50);
 
-    // Data kam ho to skip
     if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // 1W+1D bear hona chahiye
+    // 1W+1D both bear
     const higherTFValid = r['1week'] === 'bear' && r['1day'] === 'bear';
-
-    // 1H structure — 20EMA 50SMA se neeche honi chahiye
+    // 1H structure
     const h1StructureValid = ema20 < sma50;
-
     const trendValid = higherTFValid && h1StructureValid;
 
     let s = PB_STATE[stateKey] || defaultBearState();
 
-    // ❌ Trend ya structure khatam → poora reset
+    // ❌ Invalid trend → reset
     if (!trendValid) {
         if (s.phase !== null) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
-            console.log(`[BEAR INVALID] ${p.n} — trend ya structure khatam`);
+            console.log(`[BEAR INVALID] ${p.n}`);
         }
         return s;
     }
@@ -76,7 +60,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // watching / fired / mark_low → price 20EMA se upar → PULLBACK
+    // Price > EMA20 → PULLBACK
     if (lastClose > ema20) {
         if (s.phase !== 'pullback') {
             s.phase  = 'pullback';
@@ -88,7 +72,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // pullback → price 20EMA se neeche → MARK_LOW
+    // Pullback ke baad price < EMA20 → MARK_LOW
     if (s.phase === 'pullback' && lastClose < ema20) {
         s.phase  = 'mark_low';
         s.refLow = lastLow;
@@ -98,19 +82,19 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // mark_low — inside bar ka intzaar
+    // Inside‑bar detection (strict)
     if (s.phase === 'mark_low') {
+        if (highs.length < 2 || lows.length < 2) return s;
 
-        if (lastLow < s.refLow) {
-            // Low toot gaya → update karo, wait jaari
-            console.log(`[BEAR LOW BREAK] ${p.n} — ${s.refLow} → ${lastLow}`);
-            s.refLow = lastLow;
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-            return s;
+        const prevHigh = highs[highs.length - 2];
+        const prevLow  = lows[lows.length - 2];
+        const currentHigh = highs[highs.length - 1];
+        const currentLow  = lows[lows.length - 1];
 
-        } else {
-            // 🔔 Inside bar → ALERT
+        // ✅ True inside bar: both high and low inside previous range
+        const isInsideBar = (currentHigh <= prevHigh) && (currentLow >= prevLow);
+
+        if (isInsideBar) {
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
 
@@ -128,6 +112,13 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 PB_STATE[stateKey] = s;
                 await saveTargetList(PB_STATE, firebasePut);
             }
+        }
+        // Low break – just update reference, no alert
+        else if (currentLow < s.refLow) {
+            console.log(`[BEAR LOW BREAK] ${p.n} — ${s.refLow} → ${currentLow}`);
+            s.refLow = currentLow;
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
         }
     }
 
