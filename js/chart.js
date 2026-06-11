@@ -10,7 +10,7 @@ function getTheme() {
 function openCFromTable(i) {
     chartPairs = [...fPairs];
     fromModal = false;
-    currentChartInterval = "60"; // reset to 1h when coming from table
+    currentChartInterval = "60";
     openC(i);
 }
 
@@ -76,7 +76,7 @@ function openC(i, interval = null) {
 
 function movePair(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);   // keeps current interval
+    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
 }
 
 function closeC() {
