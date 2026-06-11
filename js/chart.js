@@ -1,20 +1,22 @@
 let chartPairs = [], cIdx = 0;
-let fromModal = false; // ✅ Track karo kahan se aaye
+let fromModal = false;          // ✅ Track karo kahan se aaye
+let currentChartInterval = "60"; // default 1 hour
 
 function getTheme() {
-    const isDark = document.documentElement.classList.contains('dark') ||
-                   document.body.classList.contains('dark') ||
-                   document.body.getAttribute('data-theme') === 'dark';
-    return isDark ? 'dark' : 'light';
+    const htmlTheme = document.documentElement.getAttribute('data-theme');
+    return htmlTheme === 'light' ? 'light' : 'dark';
 }
 
 function openCFromTable(i) {
     chartPairs = [...fPairs];
-    fromModal = false; // ✅ Table se aaye
+    fromModal = false;          // ✅ Table se aaye
+    currentChartInterval = "60"; // reset to 1h when coming from table
     openC(i);
 }
 
-function openC(i) {
+function openC(i, interval = null) {
+    if (interval) currentChartInterval = interval;   // ✅ set interval if given
+
     cIdx = i;
     const p = chartPairs[cIdx];
     if (!p) return;
@@ -24,7 +26,7 @@ function openC(i) {
     new TradingView.widget({
         "autosize": true,
         "symbol": p.n,
-        "interval": "60",
+        "interval": currentChartInterval,   // ✅ dynamic interval
         "theme": getTheme(),
         "container_id": "tv_chart_container",
         "studies_overrides": {
@@ -73,13 +75,12 @@ function openC(i) {
 
 function movePair(step) {
     const newIdx = cIdx + step;
-    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);
+    if (newIdx >= 0 && newIdx < chartPairs.length) openC(newIdx);   // uses stored interval
 }
 
 function closeC() {
     document.getElementById('chartOverlay').style.display = 'none';
     document.getElementById('tv_chart_container').innerHTML = '';
-    // ✅ Target List se aaye the to wapas kholo
     if (fromModal) {
         fromModal = false;
         openM();
