@@ -469,7 +469,8 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="Alerts.js"></script>
 <script src="js/render.js"></script>
 <script src="js/chart.js"></script>
-<script src="js/modal.js"></script>
+<!-- ✅ Version added to force fresh download -->
+<script src="js/modal.js?v=10"></script>
 <script>
 // Column resize engine (unchanged)
 (function() {
@@ -732,18 +733,21 @@ function showMiniChart(pairName, event) {
     }
     ctx.stroke();
 
+    // Position popup near the clicked cell
     const rect = event.target.getBoundingClientRect();
     miniChartPopup.style.left = (rect.left + window.scrollX) + 'px';
     miniChartPopup.style.top = (rect.bottom + window.scrollY + 5) + 'px';
     miniChartPopup.style.display = 'block';
 }
 
+// Hide popup when clicking elsewhere
 document.addEventListener('click', (e) => {
     if (!miniChartPopup.contains(e.target) && !e.target.classList.contains('pn')) {
         miniChartPopup.style.display = 'none';
     }
 });
 
+// Firebase listener for mini chart data
 db.ref('miniChart').on('value', snap => {
     window.miniChartData = snap.val() || {};
 });
