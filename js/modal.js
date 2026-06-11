@@ -19,7 +19,7 @@ function isTarget(s) {
     return s && TARGET_PHASES.includes(s.phase);
 }
 
-// ✅ Array return karta hai (object nahi) – taake 1H/4H dono alag dikhein
+// ✅ Array return karta hai (taake 1H/4H dono alag entry banaye)
 function collectTargets() {
     const list = [];
     for (const key in PB_STATE) {
@@ -42,18 +42,20 @@ let targetOrder = [];
 
 function openM() {
     const l = document.getElementById('ml');
-    const targets = collectTargets();   // array of objects
+    const targets = collectTargets();   // always array now
 
-    // order save karo (unique pairs)
+    // ✅ Save unique pair names for chart navigation
     targetOrder = [...new Set(targets.map(t => t.pair))];
 
+    // ✅ Build HTML with pair names and timeframe badges
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
         (targets.length
-            ? targets.map(t => {                          // ✅ array iteration, t.pair used
+            ? targets.map(t => {
                 const dir = t.dir.toLowerCase();
                 const dirTxt = dir.toUpperCase();
                 const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
+                // pair name & timeframe badge
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${t.pair}', '${t.tf}')">
                         ${t.pair} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
