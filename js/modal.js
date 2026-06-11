@@ -1,10 +1,12 @@
 // Target list mein yeh phases dikhte hain (active monitoring)
 const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
 
-// ✅ Dono timeframes ke prefix hatao
+// ✅ Simple but robust: key ka first segment hi pair name hai
 function pairNameFromKey(key) {
-    // e.g., "EURUSD_1h_bull" → "EURUSD",  "EURUSD_4h_bear" → "EURUSD"
-    return key.replace(/_1h_(bull|bear)$/, '').replace(/_4h_(bull|bear)$/, '');
+    if (!key) return 'Unknown';
+    // e.g., "EURUSD_1h_bull" → "EURUSD", "GBPJPY_4h_bear" → "GBPJPY"
+    const parts = key.split('_');
+    return parts[0] || key; // agar empty ho to pura key dikhao
 }
 
 function phaseLabel(phase) {
@@ -23,9 +25,11 @@ function collectTargets() {
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!isTarget(s)) continue;
-        const name = pairNameFromKey(key);  // sahi pair name
+        const name = pairNameFromKey(key);
         let tf = '1h';
         if (key.includes('_4h_')) tf = '4h';
+        // ✅ Debug: console mein key aur name print karo
+        console.log(`[TargetList] Key: ${key} → Name: ${name}, TF: ${tf}, Phase: ${s.phase}`);
         list.push({ pair: name, dir: s.dir, phase: s.phase, tf });
     }
     return list;
@@ -51,7 +55,7 @@ function openM() {
                 const dir = t.dir.toLowerCase();
                 const dirTxt = dir.toUpperCase();
                 const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
-                const pairName = t.pair || 'Unknown';
+                const pairName = t.pair || 'Unknown'; // fallback
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${pairName}', '${t.tf}')">
                         ${pairName} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
