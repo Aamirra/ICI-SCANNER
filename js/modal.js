@@ -4,9 +4,8 @@ const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
 // ✅ Simple but robust: key ka first segment hi pair name hai
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
-    // e.g., "EURUSD_1h_bull" → "EURUSD", "GBPJPY_4h_bear" → "GBPJPY"
     const parts = key.split('_');
-    return parts[0] || key; // agar empty ho to pura key dikhao
+    return parts[0] || key;
 }
 
 function phaseLabel(phase) {
@@ -20,6 +19,7 @@ function isTarget(s) {
     return s && TARGET_PHASES.includes(s.phase);
 }
 
+// ✅ Array return karta hai (object nahi) – taake 1H/4H dono alag dikhein
 function collectTargets() {
     const list = [];
     for (const key in PB_STATE) {
@@ -28,8 +28,6 @@ function collectTargets() {
         const name = pairNameFromKey(key);
         let tf = '1h';
         if (key.includes('_4h_')) tf = '4h';
-        // ✅ Debug: console mein key aur name print karo
-        console.log(`[TargetList] Key: ${key} → Name: ${name}, TF: ${tf}, Phase: ${s.phase}`);
         list.push({ pair: name, dir: s.dir, phase: s.phase, tf });
     }
     return list;
@@ -44,21 +42,21 @@ let targetOrder = [];
 
 function openM() {
     const l = document.getElementById('ml');
-    const targets = collectTargets();
+    const targets = collectTargets();   // array of objects
 
+    // order save karo (unique pairs)
     targetOrder = [...new Set(targets.map(t => t.pair))];
 
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
         (targets.length
-            ? targets.map(t => {
+            ? targets.map(t => {                          // ✅ array iteration, t.pair used
                 const dir = t.dir.toLowerCase();
                 const dirTxt = dir.toUpperCase();
                 const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
-                const pairName = t.pair || 'Unknown'; // fallback
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${pairName}', '${t.tf}')">
-                        ${pairName} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${t.pair}', '${t.tf}')">
+                        ${t.pair} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
                     </span>
                     <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(t.phase)}</span>
                     <span style="color:${dirCol}">${dirTxt}</span>
