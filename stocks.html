@@ -15,10 +15,11 @@
             --gold:#ffcc00; --txt:#dce8f5;
             --topbar-bg:linear-gradient(135deg,#0d1f42,#071228);
             --topbar-brd:rgba(0,170,255,0.2);
-            --sc-brd:#333;
-            --cloud-color:#00ff88;
-            --all-color:#fff;
-            --toggle-icon:"☀️";
+            --sc-brd:#333; --cloud-color:#00ff88;
+            --all-color:#fff; --toggle-icon:"☀️";
+            --nav-btn-bg:rgba(255,255,255,0.1); --nav-btn-color:#fff;
+            --close-color:#ff4466;
+            --chart-header:#0d1828; --chart-brd:#333;
         }
         [data-theme="light"] {
             --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
@@ -26,10 +27,11 @@
             --gold:#cc9900; --txt:#1a2a3a;
             --topbar-bg:linear-gradient(135deg,#c8dff5,#a0c4e8);
             --topbar-brd:rgba(0,119,204,0.3);
-            --sc-brd:#ccd6e0;
-            --cloud-color:#00aa55;
-            --all-color:#1a2a3a;
-            --toggle-icon:"🌙";
+            --sc-brd:#ccd6e0; --cloud-color:#00aa55;
+            --all-color:#1a2a3a; --toggle-icon:"🌙";
+            --nav-btn-bg:rgba(0,0,0,0.1); --nav-btn-color:#1a2a3a;
+            --close-color:#cc2233;
+            --chart-header:#c8dff5; --chart-brd:#aac4dc;
         }
 
         body {
@@ -134,6 +136,20 @@
             animation: slideUp 0.3s ease;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Chart overlay (exactly like main dashboard) */
+        #chartOverlay {
+            position:fixed; inset:0; background:var(--bg); z-index:4000;
+            display:none; flex-direction:column;
+            animation: slideUp 0.3s ease;
+        }
+        .nav-btn {
+            background:var(--nav-btn-bg); color:var(--nav-btn-color);
+            border:none; padding:8px 15px; border-radius:8px;
+            cursor:pointer; font-weight:bold; transition: transform 0.2s;
+            margin:0 4px;
+        }
+        .nav-btn:hover { transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -189,6 +205,20 @@
     </div>
 </div>
 
+<!-- Chart Overlay (same as main dashboard) -->
+<div id="chartOverlay">
+    <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
+        <div style="display:flex; gap:12px; align-items:center">
+            <button class="nav-btn" onclick="moveStockPair(-1)">❮</button>
+            <span id="cp" style="color:var(--brand-color); font-weight:800; font-family:'Syne'; font-size:18px; min-width:80px; text-align:center">Stock</span>
+            <button class="nav-btn" onclick="moveStockPair(1)">❯</button>
+        </div>
+        <span onclick="closeStockChart()" style="color:var(--close-color); font-size:14px; font-weight:800; cursor:pointer; padding:10px">✕ CLOSE</span>
+    </div>
+    <div id="tv_chart_container" style="flex:1"></div>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
 <script>
     const firebaseConfig = {
         databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com"
@@ -200,26 +230,102 @@
     let stockPbState = {};
     let currentFilter = 'all';
 
-    // Market data listener
+    // ── Chart navigation globals ──
+    let stockChartPairs = [];
+    let stockCIdx = 0;
+
     db.ref('stockMarketData').on('value', (snap) => {
         stockData = snap.val() || {};
         render();
         updateCounts();
     });
 
-    // Pullback state listener
     db.ref('stockPbState').on('value', (snap) => {
         stockPbState = snap.val() || {};
     });
 
-    // ── Open TradingView chart in a new tab ──
-    function openStockChart(symbol) {
-        // Use TradingView's chart page with the symbol
-        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
-        window.open(url, '_blank');
+    // ── Chart functions ──
+    function openStockChartFromTable(symbol) {
+        const filtered = getFilteredStocks();
+        stockChartPairs = filtered.map(([sym, data]) => sym);
+        stockCIdx = stockChartPairs.indexOf(symbol);
+        if (stockCIdx === -1) stockCIdx = 0;
+        openStockChart(stockCIdx);
     }
 
-    // ── Check Strong Trend for Blink ──
+    function openStockChart(idx) {
+        stockCIdx = idx;
+        const symbol = stockChartPairs[idx];
+        if (!symbol) return;
+        document.getElementById('cp').textContent = symbol;
+        document.getElementById('chartOverlay').style.display = 'flex';
+        document.getElementById('tv_chart_container').innerHTML = '';
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": symbol,
+            "interval": "60",
+            "theme": getTheme(),
+            "container_id": "tv_chart_container",
+            "studies_overrides": {
+                "moving average exponential.plot.color": "#2962FF",
+                "moving average exponential.plot.linewidth": 1,
+                "moving average.plot.color": "#9E9E9E",
+                "moving average.plot.linewidth": 1
+            },
+            "overrides": {
+                "scalesProperties.showStudyLastValue": false
+            },
+            "studies": [
+                {
+                    "id": "MAExp@tv-basicstudies",
+                    "inputs": { "length": 10 },
+                    "overrides": {
+                        "Plot.color": "#2962FF",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "MAExp@tv-basicstudies",
+                    "inputs": { "length": 20 },
+                    "overrides": {
+                        "Plot.color": "#F44336",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "MASimple@tv-basicstudies",
+                    "inputs": { "length": 50 },
+                    "overrides": {
+                        "Plot.color": "#9E9E9E",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "WilliamFractal@tv-basicstudies"
+                }
+            ]
+        });
+    }
+
+    function moveStockPair(step) {
+        const newIdx = stockCIdx + step;
+        if (newIdx >= 0 && newIdx < stockChartPairs.length) openStockChart(newIdx);
+    }
+
+    function closeStockChart() {
+        document.getElementById('chartOverlay').style.display = 'none';
+        document.getElementById('tv_chart_container').innerHTML = '';
+    }
+
+    function getTheme() {
+        const htmlTheme = document.documentElement.getAttribute('data-theme');
+        return htmlTheme === 'light' ? 'light' : 'dark';
+    }
+
+    // ── Strong trend check ──
     function isStrongTrend(symbol, data, direction) {
         if (!data) return false;
         const sig1d = data.signal1d;
@@ -235,7 +341,6 @@
         return true;
     }
 
-    // ── Get filtered stocks list ──
     function getFilteredStocks() {
         const entries = Object.entries(stockData).sort(([a],[b]) => a.localeCompare(b));
         if (currentFilter === 'all') return entries;
@@ -267,13 +372,12 @@
             const sig1d = data.signal1d || '';
             const sig1w = data.signal1w || '';
 
-            // Blink class for strong trend
             const isBull = isStrongTrend(symbol, data, 'bull');
             const isBear = isStrongTrend(symbol, data, 'bear');
             const blinkClass = isBull ? 'blink-pair-bull' : (isBear ? 'blink-pair-bear' : '');
 
             return `<tr>
-                <td class="pn ${blinkClass}" onclick="openStockChart('${symbol}')">${symbol}</td>
+                <td class="pn ${blinkClass}" onclick="openStockChartFromTable('${symbol}')">${symbol}</td>
                 <td><div class="sig ${sig1h}"></div></td>
                 <td><div class="sig ${sig4h}"></div></td>
                 <td><div class="sig ${sig1d}"></div></td>
@@ -296,7 +400,6 @@
         }
         document.getElementById('bc').textContent = bullCount;
         document.getElementById('rc').textContent = bearCount;
-        // ✅ Fix: directly set ALL count by id
         document.getElementById('allCount').textContent = Object.keys(stockData).length;
     }
 
@@ -305,7 +408,7 @@
         render();
     }
 
-    // ── Target List (Pullback‑based, exactly like main dashboard) ──
+    // ── Target List ──
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     function openTargetList() {
         const targets = [];
@@ -328,7 +431,7 @@
         document.getElementById('targetModal').classList.add('open');
     }
 
-    // ── Theme Toggle ──
+    // ── Theme ──
     function toggleTheme() {
         const html = document.documentElement;
         const isDark = html.getAttribute('data-theme') === 'dark';
@@ -348,7 +451,7 @@
         }
     })();
 
-    // ── Scan Button ──
+    // ── Scan ──
     function manualScan() {
         const btn = document.querySelector('.scan-btn');
         btn.textContent = '⏳ Scanning...';
@@ -364,7 +467,7 @@
             });
     }
 
-    // ── Desktop Mode Toggle ──
+    // ── Desktop Mode ──
     function toggleDesktopMode() {
         const isDesktop = document.body.classList.toggle('desktop-mode');
         const btn = document.getElementById('desktopBtn');
