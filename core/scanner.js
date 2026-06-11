@@ -13,99 +13,8 @@ const checkReminders = require('../pullback/checkReminders');
 const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 const { PB_STATE } = require('../pullback/tradeStateManager');
-const { calculateAndUpdateStockMetrics } = require('../services/stockMetrics');
 
-const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
-
-const RATE_PER_MIN   = 8;
-const MIN_CREDIT     = 10;
-const COOLDOWN_MS    = 60 * 1000;
-const MAX_CONCURRENT = 12;
-const DAILY_LIMIT = 800;
-const REQUEST_DELAY_MS  = 1500;
-const BATCH_DELAY_MS    = 2000;
-const MINUTE_WAIT_MS    = 61 * 1000;
-
-let DATA_STORE = {};
-let RAW_1H = {};
-let RAW_4H = {};                          // ✅ new — store 4H raw candles
-let RAW_DAILY = {};
-let keyUsage = {};
-let keyCallTimes = {};
-let keyCooldown = {};
-let currentKeyIdx = 0;
-let lastReportTime = Date.now();
-let isScanning = false;
-let lastResetDay = new Date().getUTCDate();
-let lastUsageRefresh = 0;
-const USAGE_REFRESH_MS = 30 * 60 * 1000;
-
-const sleep = (ms) => new Promise(res => setTimeout(res, ms));
-
-config.KEYS.forEach(k => {
-    keyUsage[k] = DAILY_LIMIT;
-    keyCallTimes[k] = [];
-    keyCooldown[k] = 0;
-});
-
-function maybeResetDaily() {
-    const today = new Date().getUTCDate();
-    if (today !== lastResetDay) {
-        config.KEYS.forEach(k => {
-            keyUsage[k] = DAILY_LIMIT;
-            keyCooldown[k] = 0;
-        });
-        lastResetDay = today;
-        updateApiStatus(keyUsage);
-    }
-}
-
-// ... (fetchMentFXSentiment, fetchKeyUsage, etc. – unchanged)
-// Only show the changes below (we'll output full file but highlight changes)
-
-// In fetchTF, after existing 1H block, add 4H raw storage:
-// (already in the provided file, but we need to add the 4H part)
-
-// I'll provide the full fetchTF function with the 4H addition.
-
-// The rest of masterScan modifications:
-// After the for loop that saves marketData and calls pullbackEngine for 1H, add:
-//      if (RAW_4H[p.n]) {
-//          pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], sendTG, firebasePut, '4h');
-//      }
-
-// I'll give the whole updated scanner.js. But the user might have a current scanner.js. I'll give the full file with all previous fixes plus the 4H addition.
-
-// Actually, they already have a scanner.js that includes stock metrics, etc. I'll base on the last scanner they used (which had stockMetrics and safe load). I'll add the 4H changes to that version.
-
-// We'll provide the complete final scanner.js.
-
-// I'll craft the response with the three files.Saari teen files neeche hain — bas inhe replace karo, deploy karo, aur agle scan se 4H pullback bhi Target List mein dikhega. 🚀
-
----
-
-### 🔧 1. Updated `core/scanner.js`
-
-Isko puri tarah replace karo. Pichle saare features (stocks, mini chart, strong pullback push, etc.) isme maujood hain, bas **4H raw data store** aur **dual checkRules calls** add kiye hain.
-
-```javascript
-const https = require('https');
-const cheerio = require('cheerio');
-const admin = require('firebase-admin');
-const config = require('../config');
-const pullbackEngine = require('../pullback_engine');
-const calcEMA = require('../utils/emaCalc');
-const msUntilNextHourClose = require('../utils/timer');
-const firebasePut = require('../services/database');
-const sendTG = require('../services/telegram');
-const sendReport = require('../services/report');
-const updateApiStatus = require('../services/apiTracker');
-const checkReminders = require('../pullback/checkReminders');
-const { shouldSkip } = require('../pullback/marketTimeHelper');
-const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
-const { PB_STATE } = require('../pullback/tradeStateManager');
-
-// ✅ SAFETY NET – stock scanner ko safely load karo
+// ✅ Safety net – stock metrics load karo
 let calculateAndUpdateStockMetrics = null;
 try {
     const stockModule = require('../services/stockMetrics');
@@ -127,7 +36,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
-let RAW_4H = {};            // ✅ NEW — 4H raw candles
+let RAW_4H = {};            // 4H raw candles
 let RAW_DAILY = {};
 let keyUsage = {};
 let keyCallTimes = {};
@@ -159,7 +68,7 @@ function maybeResetDaily() {
     }
 }
 
-// ✅ FIXED: MentFX sentiment scraper using cheerio
+// MentFX sentiment scraper using cheerio
 function fetchMentFXSentiment() {
     const MENTFX_URL = 'https://mentfx.com/sentiment-viewer/index.php';
     const options = {
@@ -325,7 +234,6 @@ async function fetchTF(p, tf, retryCount = 0) {
                             }
                         }
 
-                        // Store raw OHLC
                         if (tf === '1h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -335,12 +243,11 @@ async function fetchTF(p, tf, retryCount = 0) {
                                 lows:   lows,
                                 time:   sorted[sorted.length - 1]?.datetime
                             };
-                            // Mini chart data
                             const last50Closes = cls.slice(-50);
                             firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
                         }
 
-                        // ✅ NEW: 4H raw candles
+                        // 4H raw candles
                         if (tf === '4h') {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
@@ -371,7 +278,6 @@ async function fetchTF(p, tf, retryCount = 0) {
     });
 }
 
-// ✅ Feature 2 – Strong Pullback Push Notifications (1H only, can extend later)
 async function sendStrongPullbackNotifications() {
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     for (const stateKey in PB_STATE) {
@@ -438,22 +344,18 @@ async function masterScan() {
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
 
-        // Stock metrics
         if (calculateAndUpdateStockMetrics) {
             try { await calculateAndUpdateStockMetrics(); } catch (err) {
                 console.error('[Scanner] Stock metrics failed:', err.message);
             }
         }
 
-        // Strong pullback push (1H only)
         await sendStrongPullbackNotifications();
 
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
                 await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                // 1H pullback engine
                 pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut, '1h');
-                // ✅ 4H pullback engine
                 if (RAW_4H[p.n]) {
                     pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], sendTG, firebasePut, '4h');
                 }
