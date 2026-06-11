@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* ── Same CSS as before (unchanged, just keeping it clean) ── */
+        /* ── Same theme CSS (unchanged) ── */
         [data-theme="dark"] {
             --bg:#020812; --sf:#080f1e; --sf2:#0d1828;
             --brd:rgba(255,255,255,0.08); --acc:#00aaff;
@@ -40,7 +40,6 @@
             font-family:'JetBrains Mono',monospace;
             color:var(--txt);
             min-height:100vh;
-            transition: background 0.3s, color 0.3s;
         }
         .wrap { max-width:580px; margin:0 auto; padding:12px; }
         .topbar {
@@ -51,7 +50,6 @@
         }
         .brand { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#fff; }
 
-        /* Buttons */
         .scan-btn, .theme-btn, .desktop-btn, .nav-btn, .psx-btn {
             background:rgba(0,170,255,0.15); color:var(--acc);
             border:1px solid var(--acc); padding:6px 12px;
@@ -59,9 +57,7 @@
             font-family:'JetBrains Mono',monospace; font-weight:bold;
             transition: all 0.2s; text-decoration:none;
         }
-        .psx-btn.active {
-            background:rgba(0,170,255,0.35); color:#fff;
-        }
+        .psx-btn.active { background:rgba(0,170,255,0.35); color:#fff; }
         .scan-btn:hover, .theme-btn:hover, .desktop-btn:hover, .nav-btn:hover, .psx-btn:hover {
             background:rgba(0,170,255,0.25); transform: scale(1.05);
         }
@@ -79,11 +75,42 @@
 
         .tw {
             background:var(--sf); border-radius:16px;
-            border:1px solid var(--brd); overflow:auto;
+            border:1px solid var(--brd);
+            overflow-x: auto; overflow-y: hidden;
         }
-        table { width:100%; border-collapse:collapse; min-width:700px; table-layout:fixed; }
-        th { padding:6px 2px; font-size:9px; color:var(--acc); border-bottom:1px solid var(--th-brd); }
-        td { padding:4px 2px; text-align:center; border-bottom:1px solid var(--brd); font-size:9px; }
+
+        /* ── TABLE NOW WITH AUTO LAYOUT & MIN‑WIDTHS ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;                /* allows columns to size to content */
+        }
+        th {
+            padding: 6px 4px;
+            font-size: 9px;
+            color: var(--acc);
+            border-bottom: 1px solid var(--th-brd);
+            white-space: nowrap;               /* keep header text on one line */
+        }
+        td {
+            padding: 4px 4px;
+            text-align: center;
+            border-bottom: 1px solid var(--brd);
+            font-size: 9px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Give essential columns a minimum width so they never disappear */
+        th:nth-child(1) { min-width: 55px; }  /* Symbol */
+        th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { min-width: 30px; }  /* 1H,4H,1D,1W */
+        th:nth-child(6) { min-width: 50px; }  /* Price */
+        th:nth-child(7) { min-width: 85px; }  /* 200 Candle Change */
+        th:nth-child(8) { min-width: 100px; } /* 10 Candle Change (1D) */
+        th:nth-child(9) { min-width: 55px; }  /* 1H Mom */
+        th:nth-child(10) { min-width: 60px; } /* Vol 7D */
+        th:nth-child(11) { min-width: 70px; } /* Dollar Vol */
+
         .pn { font-family:'Syne',sans-serif; font-weight:700; font-size:12px; text-align:left; padding-left:8px; color:var(--acc); cursor:pointer; }
         .green { color:#00cc66; }
         .red { color:#ff2244; }
@@ -113,6 +140,7 @@
             50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
         }
 
+        /* Desktop mode */
         body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
         body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:580px; overflow-y:auto; border-right:1px solid var(--brd); }
         body.desktop-mode .tw { overflow:visible; }
@@ -154,7 +182,6 @@
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
             <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
             <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-            <!-- ✅ Market toggle buttons -->
             <button class="psx-btn active" id="exnessBtn" onclick="setMarket('exness')">💹 Exness</button>
             <button class="psx-btn" id="psxBtn" onclick="setMarket('psx')">🇵🇰 PSX</button>
             <button class="nav-btn" onclick="openTargetList()">👁 Target</button>
@@ -193,14 +220,13 @@
     </div>
 </div>
 
-<!-- Target List Modal -->
+<!-- Modals same as before -->
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="m-card" onclick="event.stopPropagation()">
         <div id="targetListContent"></div>
     </div>
 </div>
 
-<!-- Chart Overlay -->
 <div id="chartOverlay">
     <div style="padding:10px 15px; background:var(--chart-header); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--chart-brd);">
         <div style="display:flex; gap:12px; align-items:center">
@@ -215,26 +241,23 @@
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
+    // ── Same JavaScript (no change) ──
     const firebaseConfig = {
         databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ── State variables ──
-    let currentMarket = 'exness';          // 'exness' or 'psx'
+    let currentMarket = 'exness';
     let stockData = {};
     let stockPbState = {};
     let currentFilter = 'all';
     let stockChartPairs = [];
     let stockCIdx = 0;
 
-    // ── Firebase listeners (both markets) ──
     function attachListeners() {
-        // Exness
-        db.ref('stockMarketData').off();   // remove old listeners
+        db.ref('stockMarketData').off();
         db.ref('stockMarketDataPbState').off();
-        // PSX
         db.ref('psxStockMarketData').off();
         db.ref('psxStockMarketDataPbState').off();
 
@@ -259,17 +282,15 @@
         }
     }
 
-    // ── Market switch ──
     function setMarket(market) {
         currentMarket = market;
         document.getElementById('exnessBtn').classList.toggle('active', market === 'exness');
         document.getElementById('psxBtn').classList.toggle('active', market === 'psx');
         currentFilter = 'all';
         stockChartPairs = [];
-        attachListeners();   // re‑attach correct listener
+        attachListeners();
     }
 
-    // ── Chart functions ──
     function openStockChartFromTable(symbol) {
         const filtered = getFilteredStocks();
         stockChartPairs = filtered.map(([sym, data]) => sym);
@@ -321,7 +342,6 @@
         return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     }
 
-    // ── Strong trend (same as forex) ──
     function isStrongTrend(symbol, data, direction) {
         if (!data) return false;
         return data.signal4h === direction && data.signal1d === direction && data.signal1w === direction;
@@ -387,12 +407,8 @@
         document.getElementById('allCount').textContent = Object.keys(stockData).length;
     }
 
-    function setFilter(f) {
-        currentFilter = f;
-        render();
-    }
+    function setFilter(f) { currentFilter = f; render(); }
 
-    // ── Target List ──
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     function openTargetList() {
         const targets = [];
@@ -415,7 +431,6 @@
         document.getElementById('targetModal').classList.add('open');
     }
 
-    // ── Theme ──
     function toggleTheme() {
         const html = document.documentElement;
         const isDark = html.getAttribute('data-theme') === 'dark';
@@ -434,7 +449,6 @@
         }
     })();
 
-    // ── Scan ──
     function manualScan() {
         const btn = document.querySelector('.scan-btn');
         btn.textContent = '⏳ Scanning...'; btn.disabled = true;
@@ -449,7 +463,6 @@
             });
     }
 
-    // ── Desktop Mode ──
     function toggleDesktopMode() {
         const isDesktop = document.body.classList.toggle('desktop-mode');
         const btn = document.getElementById('desktopBtn');
@@ -464,8 +477,7 @@
         }
     })();
 
-    // ── Initial load ──
-    attachListeners();    // default Exness
+    attachListeners();
 </script>
 </body>
 </html>
