@@ -1,7 +1,6 @@
 // Target list mein yeh phases dikhte hain (active monitoring)
 const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
 
-// ✅ Simple but robust: key ka first segment hi pair name hai
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
     const parts = key.split('_');
@@ -19,7 +18,7 @@ function isTarget(s) {
     return s && TARGET_PHASES.includes(s.phase);
 }
 
-// ✅ Array return karta hai (taake 1H/4H dono alag entry banaye)
+// ✅ Array return karta hai (object nahi)
 function collectTargets() {
     const list = [];
     for (const key in PB_STATE) {
@@ -42,12 +41,10 @@ let targetOrder = [];
 
 function openM() {
     const l = document.getElementById('ml');
-    const targets = collectTargets();   // always array now
+    const targets = collectTargets();
 
-    // ✅ Save unique pair names for chart navigation
     targetOrder = [...new Set(targets.map(t => t.pair))];
 
-    // ✅ Build HTML with pair names and timeframe badges
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
         (targets.length
@@ -55,7 +52,6 @@ function openM() {
                 const dir = t.dir.toLowerCase();
                 const dirTxt = dir.toUpperCase();
                 const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
-                // pair name & timeframe badge
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${t.pair}', '${t.tf}')">
                         ${t.pair} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
