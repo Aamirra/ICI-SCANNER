@@ -1,6 +1,7 @@
 // Target list mein yeh phases dikhte hain (active monitoring)
 const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
 
+// ✅ Simple but robust: key ka first segment hi pair name hai
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
     const parts = key.split('_');
@@ -18,7 +19,7 @@ function isTarget(s) {
     return s && TARGET_PHASES.includes(s.phase);
 }
 
-// ✅ Array return karta hai (object nahi)
+// ✅ Array return karta hai (object nahi) – taake 1H/4H dono alag dikhein
 function collectTargets() {
     const list = [];
     for (const key in PB_STATE) {
@@ -41,14 +42,15 @@ let targetOrder = [];
 
 function openM() {
     const l = document.getElementById('ml');
-    const targets = collectTargets();
+    const targets = collectTargets();   // array of objects
 
+    // ✅ unique pair names for chart navigation
     targetOrder = [...new Set(targets.map(t => t.pair))];
 
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
         (targets.length
-            ? targets.map(t => {
+            ? targets.map(t => {                         // <-- directly iterate over array, no Object.entries
                 const dir = t.dir.toLowerCase();
                 const dirTxt = dir.toUpperCase();
                 const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
