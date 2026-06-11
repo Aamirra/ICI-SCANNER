@@ -1,37 +1,24 @@
-// ─────────────────────────────────────────
-// setupScanner.js
-// Kaam: Main entry point — har pair scan karta hai
-//       Bull aur Bear bilkul alag hain, koi mix nahi
-// ─────────────────────────────────────────
-
 const calcEMA  = require('../utils/emaCalc');
 const calcSMA  = require('../utils/smaCalc');
+const { PB_STATE, restoreState, getPBState } = require('./tradeStateManager');
+const { shouldSkip } = require('./marketTimeHelper');
+const { handleBull } = require('./bullSetupLogic');
+const { handleBear } = require('./bearSetupLogic');
 
-const { PB_STATE,
-        restoreState,
-        getPBState }   = require('./tradeStateManager');
-
-const { shouldSkip }   = require('./marketTimeHelper');
-const { handleBull }   = require('./bullSetupLogic');
-const { handleBear }   = require('./bearSetupLogic');
-
-async function checkSetup(p, r, raw, sendTG, firebasePut) {
-
-    // ── Basic validations ────────────────────────────────────
+// ✅ Updated: accepts `tf` (timeframe string, e.g., '1h' or '4h')
+async function checkSetup(p, r, raw, sendTG, firebasePut, tf = '1h') {
     if (!p || !p.n) return;
-    if (shouldSkip(p.n)) return;                          // Weekend pe forex skip
-    if (!raw?.closes || raw.closes.length < 50) return;   // Data kam hai
-    if (!r['1day'] || !r['1week']) return;                 // Timeframe data nahi
+    if (shouldSkip(p.n)) return;
+    if (!raw?.closes || raw.closes.length < 50) return;
+    if (!r['1day'] || !r['1week']) return;
 
     const ema20 = calcEMA(raw.closes, 20);
     const sma50 = calcSMA(raw.closes, 50);
     if (!ema20 || !sma50) return;
 
-    // ── Alag alag keys — bull/bear ka koi contact nahi ──────
-    const bullKey = `${p.n}_1h_bull`;
-    const bearKey = `${p.n}_1h_bear`;
+    const bullKey = `${p.n}_${tf}_bull`;
+    const bearKey = `${p.n}_${tf}_bear`;
 
-    // ── Bull aur Bear dono alag alag chalao ──────────────────
     const sBull = await handleBull(bullKey, p, raw, r, sendTG, firebasePut);
     const sBear = await handleBear(bearKey, p, raw, r, sendTG, firebasePut);
 
@@ -39,8 +26,8 @@ async function checkSetup(p, r, raw, sendTG, firebasePut) {
     PB_STATE[bearKey] = sBear;
 }
 
-async function checkRules(p, r, raw, sendTG, firebasePut) {
-    await checkSetup(p, r, raw, sendTG, firebasePut);
+async function checkRules(p, r, raw, sendTG, firebasePut, tf = '1h') {
+    await checkSetup(p, r, raw, sendTG, firebasePut, tf);
 }
 
 module.exports = {
