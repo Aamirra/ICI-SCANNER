@@ -364,14 +364,19 @@ th:nth-child(7), td:nth-child(7) { padding-left: 2px; }
   .tech-cell { font-size: 8px; }
 }
 
-/* ── DESKTOP MODE ── */
+/* ── DESKTOP MODE (Optimized for spacing) ── */
 body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
 body.desktop-mode #app-container {
-  flex-shrink: 0; width: 580px; max-width: 580px;
+  flex-shrink: 0;
+  width: 620px; max-width: 620px;
   height: 100vh; overflow-y: auto;
-  border-right: 1px solid var(--brd); perspective: none;
+  border-right: 1px solid var(--brd);
+  perspective: none;
 }
-body.desktop-mode .wrap { max-width: none; margin: 0; padding: 10px 12px; }
+body.desktop-mode .wrap {
+  max-width: none; margin: 0;
+  padding: 12px 12px;
+}
 body.desktop-mode #chartOverlay {
   position: relative !important; inset: auto !important;
   flex: 1; height: 100vh;
@@ -388,14 +393,19 @@ body.desktop-mode #tv_chart_container:empty::after {
   font-size:12px; color:var(--txt); opacity:0.3;
 }
 
-/* desktop mode – no scrollbar */
 body.desktop-mode .table-wrap { overflow-x: visible; }
-body.desktop-mode table { min-width: 0; }
-body.desktop-mode th, body.desktop-mode td { padding: 4px 2px; }
+body.desktop-mode table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 9px;
+}
+body.desktop-mode th { padding: 4px 2px; font-size: 8px; }
+body.desktop-mode td { padding: 3px 2px; font-size: 9px; }
 body.desktop-mode .pn { font-size: 10px; }
 body.desktop-mode .sig { width: 8px; height: 8px; }
-body.desktop-mode .sentiment-bar { height: 16px; min-width: 60px; }
-body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 7px; }
+body.desktop-mode .sentiment-bar { height: 14px; min-width: 55px; }
+body.desktop-mode .s-bear, body.desktop-mode .s-bull { font-size: 6px; }
 body.desktop-mode .tech-cell { font-size: 9px; }
 </style>
 </head>
@@ -408,7 +418,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
         <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
         <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
         <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-        <!-- ✅ Stocks Button (clickable, opens new page) -->
         <a href="/stocks" class="theme-btn" style="text-decoration:none; font-size:14px;">📈 Stocks</a>
         <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
       </div>
@@ -427,7 +436,7 @@ body.desktop-mode .tech-cell { font-size: 9px; }
               <th style="text-align:left;padding-left:6px">Pair</th>
               <th>1H</th><th>4H</th><th>1D</th><th>1W</th>
               <th>Sentiment</th>
-              <th></th>  <!-- alert bell column -->
+              <th></th>
               <th>200 Candle Change</th>
               <th>10 Candle Change (1D)</th>
               <th>10 Candle Change (1H)</th>
@@ -723,21 +732,18 @@ function showMiniChart(pairName, event) {
     }
     ctx.stroke();
 
-    // Position popup near the clicked cell
     const rect = event.target.getBoundingClientRect();
     miniChartPopup.style.left = (rect.left + window.scrollX) + 'px';
     miniChartPopup.style.top = (rect.bottom + window.scrollY + 5) + 'px';
     miniChartPopup.style.display = 'block';
 }
 
-// Hide popup when clicking elsewhere
 document.addEventListener('click', (e) => {
     if (!miniChartPopup.contains(e.target) && !e.target.classList.contains('pn')) {
         miniChartPopup.style.display = 'none';
     }
 });
 
-// Firebase listener for mini chart data
 db.ref('miniChart').on('value', snap => {
     window.miniChartData = snap.val() || {};
 });
