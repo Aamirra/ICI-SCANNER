@@ -325,20 +325,14 @@
         return htmlTheme === 'light' ? 'light' : 'dark';
     }
 
-    // ── Strong trend check ──
+    // ── Strong trend check (exactly like forex page: 4H,1D,1W all same direction) ──
     function isStrongTrend(symbol, data, direction) {
         if (!data) return false;
+        const sig4h = data.signal4h;
         const sig1d = data.signal1d;
         const sig1w = data.signal1w;
-        if (sig1d !== direction || sig1w !== direction) return false;
-
-        const sign = (direction === 'bull') ? 1 : -1;
-        const long = data.longTermTrend;
-        const short = data.shortTermMomentum;
-        const micro = data.microMomentum;
-        if (long == null || short == null || micro == null) return false;
-        if (long * sign <= 0 || short * sign <= 0 || micro * sign <= 0) return false;
-        return true;
+        // All three must be non‑null and equal to direction
+        return sig4h === direction && sig1d === direction && sig1w === direction;
     }
 
     function getFilteredStocks() {
@@ -372,6 +366,7 @@
             const sig1d = data.signal1d || '';
             const sig1w = data.signal1w || '';
 
+            // Blink uses same condition (already aligns with isStrongTrend)
             const isBull = isStrongTrend(symbol, data, 'bull');
             const isBear = isStrongTrend(symbol, data, 'bear');
             const blinkClass = isBull ? 'blink-pair-bull' : (isBear ? 'blink-pair-bear' : '');
