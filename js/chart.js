@@ -10,7 +10,7 @@ function getTheme() {
 function openCFromTable(i) {
     chartPairs = [...fPairs];
     fromModal = false;
-    currentChartInterval = "60";
+    currentChartInterval = "60"; // reset to 1h when coming from table
     openC(i);
 }
 
