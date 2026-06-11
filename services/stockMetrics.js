@@ -2,10 +2,10 @@ const https = require('https');
 const firebasePut = require('./database');
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
-const stockList = require('../stockList');
-const psxStockList = require('../psxStockList');
+const stockList = require('../stockList');           // Exness stocks
+const psxStockList = require('../psxStockList');     // PSX stocks
 
-// ── Yahoo candle fetcher ──
+// ── Fetch Yahoo candles (generic) ──
 function fetchYahooCandles(symbol, range = '1y', interval = '1d') {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
     return new Promise((resolve) => {
@@ -28,10 +28,13 @@ function fetchYahooCandles(symbol, range = '1y', interval = '1d') {
     });
 }
 
+// ── Aggregate 1h → 4h ──
 function aggregateTo4Hour(hourlyCloses) {
     if (!hourlyCloses || hourlyCloses.length === 0) return [];
     const agg = [];
-    for (let i = 3; i < hourlyCloses.length; i += 4) agg.push(hourlyCloses[i]);
+    for (let i = 3; i < hourlyCloses.length; i += 4) {
+        agg.push(hourlyCloses[i]);
+    }
     return agg;
 }
 
@@ -43,8 +46,9 @@ function formatDollarVolume(volume, price) {
     return total.toFixed(2);
 }
 
+// ── Pullback Detection ──
 function detectStockPullback(symbol, hourlyCloses, dailySignal, weeklySignal) {
-    if (!hourlyCloses || hourlyCloses.length < 50) return null;
+    if (!hourlyCloses || hourlyCloses.length < 20) return null; // reduced for PSX
     const ema20 = calcEMA(hourlyCloses, 20);
     const sma50 = calcSMA(hourlyCloses, 50);
     if (!ema20 || !sma50) return null;
@@ -66,6 +70,7 @@ function detectStockPullback(symbol, hourlyCloses, dailySignal, weeklySignal) {
     return { dir: direction, phase, firedAt: Date.now(), reminded: false };
 }
 
+// ── Process a single stock list (generic) ──
 async function processStockList(list, firebaseNode, prefix = '') {
     const results = [];
     const pbStates = {};
@@ -81,46 +86,61 @@ async function processStockList(list, firebaseNode, prefix = '') {
                 fetchYahooCandles(yahooSymbol, '2y', '1wk')
             ]);
 
-            if (!dailyData || dailyData.closes.length < 200) {
+            if (!dailyData || dailyData.closes.length < 50) {   // also relaxed for stocks with short history
                 console.warn(`[Stocks] Insufficient daily data for ${symbol}`);
                 continue;
             }
 
-            const dailyCloses = dailyData.closes.slice(-200);
-            const dailyVolumes = dailyData.volumes.slice(-200);
+            const dailyCloses = dailyData.closes.slice(-200); // still use up to 200 if available, else less
+            const dailyVolumes = (dailyData.volumes || []).slice(-200);
             const currentPrice = dailyCloses[dailyCloses.length - 1];
+
             const ema20d = calcEMA(dailyCloses, 20);
             const signal1d = ema20d && currentPrice > ema20d ? 'bull' : 'bear';
 
+            // Weekly signal (unchanged)
             let signal1w = null;
-            if (weeklyData && weeklyData.closes.length >= 50) {
+            if (weeklyData && weeklyData.closes.length >= 20) {
                 const weeklyCloses = weeklyData.closes.slice(-200);
                 const ema20w = calcEMA(weeklyCloses, 20);
-                if (ema20w) signal1w = weeklyCloses[weeklyCloses.length - 1] > ema20w ? 'bull' : 'bear';
+                if (ema20w) {
+                    signal1w = weeklyCloses[weeklyCloses.length - 1] > ema20w ? 'bull' : 'bear';
+                }
             }
 
+            // ── Hourly signals (relaxed thresholds for PSX / all stocks) ──
             let signal1h = null, signal4h = null, microMomentum = null;
             let hourlyCloses = [];
-            if (hourlyRaw && hourlyRaw.closes.length >= 200) {
+            const MIN_HOURLY_FOR_1H = 50;   // before: 200
+            const MIN_4H_BARS = 20;         // before: 50
+            if (hourlyRaw && hourlyRaw.closes.length >= MIN_HOURLY_FOR_1H) {
                 hourlyCloses = hourlyRaw.closes;
                 const currentHourly = hourlyCloses[hourlyCloses.length - 1];
+
+                // 1H signal
                 const ema20h = calcEMA(hourlyCloses, 20);
                 if (ema20h) signal1h = currentHourly > ema20h ? 'bull' : 'bear';
 
+                // 4H signal (aggregate if enough bars)
                 const fourHourCloses = aggregateTo4Hour(hourlyCloses);
-                if (fourHourCloses.length >= 50) {
+                if (fourHourCloses.length >= MIN_4H_BARS) {
                     const ema20_4h = calcEMA(fourHourCloses, 20);
                     if (ema20_4h) signal4h = fourHourCloses[fourHourCloses.length - 1] > ema20_4h ? 'bull' : 'bear';
                 }
+
+                // Micro momentum
                 if (hourlyCloses.length >= 11) {
                     const close10h = hourlyCloses[hourlyCloses.length - 11];
                     microMomentum = ((currentHourly - close10h) / close10h) * 100;
                 }
+            } else {
+                console.warn(`[Stocks] Insufficient hourly data for ${symbol} (${hourlyRaw?.closes?.length || 0} candles)`);
             }
 
+            // Candle change metrics
             const close200Ago = dailyCloses[0];
             const longTermTrend = ((currentPrice - close200Ago) / close200Ago) * 100;
-            const close10D = dailyCloses[dailyCloses.length - 11];
+            const close10D = dailyCloses.length > 10 ? dailyCloses[dailyCloses.length - 11] : dailyCloses[0];
             const shortTermMomentum = ((currentPrice - close10D) / close10D) * 100;
 
             const last7Volumes = dailyVolumes.slice(-7);
@@ -145,7 +165,8 @@ async function processStockList(list, firebaseNode, prefix = '') {
 
             const pbState = detectStockPullback(symbol, hourlyCloses, signal1d, signal1w);
             if (pbState) pbStates[symbol] = pbState;
-            console.log(`[Stocks] ${symbol} saved`);
+
+            console.log(`[Stocks] ${symbol} saved (1H:${signal1h}, 4H:${signal4h}, 1D:${signal1d}, 1W:${signal1w})`);
         } catch (err) {
             console.error(`[Stocks] Error processing ${symbol}:`, err.message);
         }
@@ -160,7 +181,7 @@ async function processStockList(list, firebaseNode, prefix = '') {
 }
 
 async function calculateAndUpdateStockMetrics() {
-    console.log('[Stocks] Starting Exness + PSX stock metrics...');
+    console.log('[Stocks] Starting Exness + PSX stock metrics (relaxed hourly req)...');
     await processStockList(stockList, 'stockMarketData');
     await processStockList(psxStockList, 'psxStockMarketData', 'KA');
     console.log('[Stocks] All stock metrics completed.');
