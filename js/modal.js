@@ -1,11 +1,9 @@
-// Target list mein yeh phases dikhte hain (active monitoring)
+// modal.js — original working version (object‑based, names perfect)
+console.log('modal.js v10 loaded');
 const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
 
-// ✅ Simple but robust: key ka first segment hi pair name hai
 function pairNameFromKey(key) {
-    if (!key) return 'Unknown';
-    const parts = key.split('_');
-    return parts[0] || key;
+    return key.replace(/_1h_(bull|bear)$/, '');
 }
 
 function phaseLabel(phase) {
@@ -19,22 +17,21 @@ function isTarget(s) {
     return s && TARGET_PHASES.includes(s.phase);
 }
 
-// ✅ Array return karta hai (object nahi) – taake 1H/4H dono alag dikhein
 function collectTargets() {
-    const list = [];
+    const map = {};
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!isTarget(s)) continue;
         const name = pairNameFromKey(key);
-        let tf = '1h';
-        if (key.includes('_4h_')) tf = '4h';
-        list.push({ pair: name, dir: s.dir, phase: s.phase, tf });
+        if (!map[name]) {
+            map[name] = { dir: s.dir, phase: s.phase };
+        }
     }
-    return list;
+    return map;
 }
 
 function updateBadge() {
-    const count = collectTargets().length;
+    const count = Object.keys(collectTargets()).length;
     document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
 }
 
@@ -42,23 +39,21 @@ let targetOrder = [];
 
 function openM() {
     const l = document.getElementById('ml');
-    const targets = collectTargets();   // array of objects
+    const targets = collectTargets();
+    const entries = Object.entries(targets);
 
-    // ✅ unique pair names for chart navigation
-    targetOrder = [...new Set(targets.map(t => t.pair))];
+    targetOrder = entries.map(([n]) => n);
 
     l.innerHTML =
         `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
-        (targets.length
-            ? targets.map(t => {                         // <-- directly iterate over array, no Object.entries
-                const dir = t.dir.toLowerCase();
-                const dirTxt = dir.toUpperCase();
-                const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
+        (entries.length
+            ? entries.map(([n, s]) => {
+                const dir = (s.dir || '').toLowerCase();
+                const dirTxt = dir ? dir.toUpperCase() : '?';
+                const dirCol = dir === 'bull' ? '#00ff88' : (dir === 'bear' ? '#ff4466' : '#888');
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${t.pair}', '${t.tf}')">
-                        ${t.pair} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
-                    </span>
-                    <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(t.phase)}</span>
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span>
+                    <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(s.phase)}</span>
                     <span style="color:${dirCol}">${dirTxt}</span>
                 </div>`;
               }).join('')
@@ -67,11 +62,10 @@ function openM() {
     document.getElementById('mo').classList.add('open');
 }
 
-function openChartFromModal(pairName, tf = '1h') {
+function openChartFromModal(pairName) {
     document.getElementById('mo').classList.remove('open');
     fromModal = true;
     chartPairs = targetOrder.map(n => PAIRS.find(p => p.n === n)).filter(Boolean);
     const pbIdx = chartPairs.findIndex(p => p.n === pairName);
-    const interval = (tf === '4h') ? '240' : '60';
-    openC(pbIdx !== -1 ? pbIdx : 0, interval);
+    openC(pbIdx !== -1 ? pbIdx : 0);
 }
