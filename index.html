@@ -468,11 +468,12 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/firebase.js"></script>
 <script src="Alerts.js"></script>
 <script src="js/render.js"></script>
-<!-- ✅ Versioned script tags to break cache -->
-<script src="js/modal.js?v=11"></script>
+<!-- ❌ External modal.js REMOVED – inline script handles target list -->
 <script src="js/chart.js?v=11"></script>
 <script>
-// Column resize engine (unchanged)
+// ═══════════════════════════════════════════
+// COLUMN RESIZE ENGINE
+// ═══════════════════════════════════════════
 (function() {
   const STORAGE_KEY = 'ici_table_col_widths';
   const COLUMN_COUNT = 12;
@@ -566,7 +567,9 @@ body.desktop-mode .tech-cell { font-size: 9px; }
   attachResizeHandles();
 })();
 
-// Theme Toggle
+// ═══════════════════════════════════════════
+// THEME TOGGLE
+// ═══════════════════════════════════════════
 function toggleTheme() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const html = document.documentElement;
@@ -587,26 +590,94 @@ function toggleTheme() {
     }
 })();
 
+// ═══════════════════════════════════════════
+// FILTER TAB CLICK
+// ═══════════════════════════════════════════
 function setFilter(f) {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     curF = f; render();
 }
 
+// ═══════════════════════════════════════════
+// ARRAY‑BASED TARGET LIST (1H + 4H)
+// ═══════════════════════════════════════════
+const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
+
+function pairNameFromKey(key) {
+    if (!key) return 'Unknown';
+    const parts = key.split('_');
+    return parts[0] || key;
+}
+
+function phaseLabel(phase) {
+    if (phase === 'pullback')  return 'Pullback';
+    if (phase === 'mark_high') return 'Ready — inside bar wait';
+    if (phase === 'mark_low')  return 'Ready — inside bar wait';
+    return phase || '';
+}
+
+function isTarget(s) {
+    return s && TARGET_PHASES.includes(s.phase);
+}
+
+function collectTargets() {
+    const list = [];
+    for (const key in PB_STATE) {
+        const s = PB_STATE[key];
+        if (!isTarget(s)) continue;
+        const name = pairNameFromKey(key);
+        let tf = '1h';
+        if (key.includes('_4h_')) tf = '4h';
+        list.push({ pair: name, dir: s.dir, phase: s.phase, tf });
+    }
+    return list;
+}
+
+function updateBadge() {
+    const count = collectTargets().length;
+    document.getElementById('pb').textContent = `👁 Target List: ${count} ❯`;
+}
+
+let targetOrder = [];
+
 function openM() {
-    document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const l = document.getElementById('ml');
     const targets = collectTargets();
-    const entries = Object.entries(targets);
-    targetOrder = entries.map(([n]) => n);
-    l.innerHTML = `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` + (entries.length ? entries.map(([n, s]) => {
-        const dir = (s.dir || '').toLowerCase();
-        const dirTxt = dir ? dir.toUpperCase() : '?';
-        const dirCol = dir === 'bull' ? '#00ff88' : (dir === 'bear' ? '#ff4466' : '#888');
-        return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${n}')">${n}</span><span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(s.phase)}</span><span style="color:${dirCol}">${dirTxt}</span></div>`;
-    }).join('') : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`);
+
+    targetOrder = [...new Set(targets.map(t => t.pair))];
+
+    l.innerHTML =
+        `<h3 style="margin-bottom:15px;color:var(--gold)">Target List</h3>` +
+        (targets.length
+            ? targets.map(t => {
+                const dir = t.dir.toLowerCase();
+                const dirTxt = dir.toUpperCase();
+                const dirCol = dir === 'bull' ? '#00ff88' : '#ff4466';
+                return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openChartFromModal('${t.pair}', '${t.tf}')">
+                        ${t.pair} <span style="font-size:9px;color:#888;">${t.tf.toUpperCase()}</span>
+                    </span>
+                    <span style="flex:1;text-align:center;font-size:10px;color:#aaa">${phaseLabel(t.phase)}</span>
+                    <span style="color:${dirCol}">${dirTxt}</span>
+                </div>`;
+              }).join('')
+            : `<div style="color:#888;text-align:center;padding:20px">Koi active setup nahi mila</div>`
+        );
     document.getElementById('mo').classList.add('open');
 }
 
+function openChartFromModal(pairName, tf = '1h') {
+    document.getElementById('mo').classList.remove('open');
+    fromModal = true;
+    chartPairs = targetOrder.map(n => PAIRS.find(p => p.n === n)).filter(Boolean);
+    const pbIdx = chartPairs.findIndex(p => p.n === pairName);
+    const interval = (tf === '4h') ? '240' : '60';
+    openC(pbIdx !== -1 ? pbIdx : 0, interval);
+}
+
+// ═══════════════════════════════════════════
+// MANUAL SCAN
+// ═══════════════════════════════════════════
 function manualScan() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const btn = document.querySelector('.scan-btn');
@@ -629,7 +700,9 @@ window.addEventListener('load', function() {
     }, 5000);
 });
 
-// Parallax
+// ═══════════════════════════════════════════
+// PARALLAX
+// ═══════════════════════════════════════════
 const wrap = document.getElementById('mainWrap');
 const appContainer = document.getElementById('app-container');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -645,7 +718,9 @@ function resetParallax() {
 appContainer.addEventListener('mousemove', handleParallax);
 appContainer.addEventListener('mouseleave', resetParallax);
 
-// Particles
+// ═══════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════
 function createParticles() {
   const pc = document.createElement('div');
   pc.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1';
@@ -660,7 +735,9 @@ function createParticles() {
 }
 createParticles();
 
-// Desktop Mode
+// ═══════════════════════════════════════════
+// DESKTOP MODE
+// ═══════════════════════════════════════════
 function toggleDesktopMode() {
     document.getElementById('mainWrap').style.transform = 'rotateY(0deg) rotateX(0deg)';
     const isDesktop = document.body.classList.toggle('desktop-mode');
@@ -687,7 +764,9 @@ window.addEventListener('load', function() {
     }
 });
 
-// Tech Metrics
+// ═══════════════════════════════════════════
+// TECH METRICS
+// ═══════════════════════════════════════════
 let techMetrics = {};
 db.ref('technicalMetrics').on('value', (snap) => {
     techMetrics = snap.val() || {};
@@ -695,7 +774,7 @@ db.ref('technicalMetrics').on('value', (snap) => {
 });
 
 // ═══════════════════════════════════════════
-// ✅ MINI CHART POPUP
+// MINI CHART POPUP
 // ═══════════════════════════════════════════
 let miniChartPopup = document.createElement('div');
 miniChartPopup.id = 'miniChartPopup';
@@ -733,21 +812,18 @@ function showMiniChart(pairName, event) {
     }
     ctx.stroke();
 
-    // Position popup near the clicked cell
     const rect = event.target.getBoundingClientRect();
     miniChartPopup.style.left = (rect.left + window.scrollX) + 'px';
     miniChartPopup.style.top = (rect.bottom + window.scrollY + 5) + 'px';
     miniChartPopup.style.display = 'block';
 }
 
-// Hide popup when clicking elsewhere
 document.addEventListener('click', (e) => {
     if (!miniChartPopup.contains(e.target) && !e.target.classList.contains('pn')) {
         miniChartPopup.style.display = 'none';
     }
 });
 
-// Firebase listener for mini chart data
 db.ref('miniChart').on('value', snap => {
     window.miniChartData = snap.val() || {};
 });
