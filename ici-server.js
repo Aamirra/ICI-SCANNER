@@ -23,14 +23,12 @@ if (!admin.apps.length) {
 // ═══════════════════════════════════════════
 // BACKGROUND PROCESSES
 // ═══════════════════════════════════════════
-// Python sentiment job
 const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], {
     stdio: 'inherit',
     detached: true
 });
 sentimentJob.unref();
 
-// Scanner
 const masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 
@@ -45,19 +43,17 @@ function firebaseGet(p) {
 })();
 
 // ═══════════════════════════════════════════
-// HTTP SERVER — Dashboard + /scan + /stocks
+// HTTP SERVER
 // ═══════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // ✅ /scan endpoint
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan.isBusy()) {
             res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
-            console.log('⚠️ /scan hit but scan already running — blocked');
         } else {
             res.end(JSON.stringify({ status: 'Scan started!' }));
             masterScan();
@@ -65,7 +61,7 @@ http.createServer((req, res) => {
         return;
     }
 
-    // ✅ /stocks route → serve stocks.html
+    // ✅ Stocks page
     if (safePath === '/stocks' || safePath === '/stocks.html') {
         const filePath = path.join(__dirname, 'stocks.html');
         fs.readFile(filePath, (err, data) => {
@@ -80,11 +76,10 @@ http.createServer((req, res) => {
         return;
     }
 
-    // Serve static files (dashboard, js, css)
+    // Serve static files
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
 
-    // Prevent directory traversal
     if (!filePath.startsWith(path.join(__dirname))) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -111,6 +106,4 @@ http.createServer((req, res) => {
     });
 }).listen(PORT, () => {
     console.log(`🚀 Server ready on port ${PORT}`);
-    console.log(`Dashboard: http://localhost:${PORT}/`);
-    console.log(`Stocks: http://localhost:${PORT}/stocks`);
 });
