@@ -288,12 +288,14 @@
         }
     }
 
+    // ✅ Fixed: reset pullback state when switching markets
     function setMarket(market) {
         currentMarket = market;
         document.getElementById('exnessBtn').classList.toggle('active', market === 'exness');
         document.getElementById('psxBtn').classList.toggle('active', market === 'psx');
         currentFilter = 'all';
         stockChartPairs = [];
+        stockPbState = {};   // ← clear old target list data
         attachListeners();
     }
 
