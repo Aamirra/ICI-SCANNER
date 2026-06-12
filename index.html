@@ -263,6 +263,12 @@ tr.golden-highlight {
     box-shadow: 0 0 12px #FFD700, inset 0 0 10px rgba(255,215,0,0.2);
 }
 
+/* ✅ Selected row highlight */
+tr.selected-row {
+    background: rgba(255,215,0,0.15) !important;
+    border: 1px solid #FFD700;
+}
+
 /* Minimal padding between sentiment & bell */
 th:nth-child(6), td:nth-child(6) { padding-right: 2px; }
 th:nth-child(7), td:nth-child(7) { padding-left: 2px; }
@@ -468,7 +474,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="js/firebase.js"></script>
 <script src="Alerts.js"></script>
 <script src="js/render.js"></script>
-<!-- ❌ External modal.js REMOVED – inline script handles target list -->
 <script src="js/chart.js?v=11"></script>
 <script>
 // ═══════════════════════════════════════════
@@ -673,6 +678,10 @@ function openChartFromModal(pairName, tf = '1h') {
     const pbIdx = chartPairs.findIndex(p => p.n === pairName);
     const interval = (tf === '4h') ? '240' : '60';
     openC(pbIdx !== -1 ? pbIdx : 0, interval);
+    // ✅ Reopen target list after a short delay
+    setTimeout(() => {
+        openM();
+    }, 400);
 }
 
 // ═══════════════════════════════════════════
