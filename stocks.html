@@ -20,6 +20,7 @@
             --nav-btn-bg:rgba(255,255,255,0.1); --nav-btn-color:#fff;
             --close-color:#ff4466;
             --chart-header:#0d1828; --chart-brd:#333;
+            --brand-color:#fff;
         }
         [data-theme="light"] {
             --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
@@ -32,6 +33,7 @@
             --nav-btn-bg:rgba(0,0,0,0.1); --nav-btn-color:#1a2a3a;
             --close-color:#cc2233;
             --chart-header:#c8dff5; --chart-brd:#aac4dc;
+            --brand-color:#0a1a2e;
         }
 
         body {
@@ -84,6 +86,7 @@
             border-collapse: collapse;
             table-layout: fixed;
         }
+        /* Column widths for 11 columns */
         th:nth-child(1) { width: 11%; }  /* Symbol */
         th:nth-child(2) { width: 5%; }   /* 1H */
         th:nth-child(3) { width: 5%; }   /* 4H */
@@ -144,8 +147,19 @@
             50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
         }
 
+        /* ✅ Selected row highlight */
+        tr.selected-row {
+            background: rgba(255,215,0,0.15) !important;
+            border: 1px solid #FFD700;
+        }
+
+        /* Desktop mode */
         body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-        body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:620px; overflow-y:auto; border-right:1px solid var(--brd); }
+        body.desktop-mode .wrap {
+            max-width:none; margin:0; padding:10px;
+            flex-shrink:0; width:620px; overflow-y:auto;
+            border-right:1px solid var(--brd);
+        }
         body.desktop-mode .tw { overflow:visible; }
         body.desktop-mode table { min-width:0; }
 
@@ -165,11 +179,28 @@
         #targetListContent { overflow-y: auto; flex: 1; padding-right: 8px; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
+        /* Chart overlay (desktop: relative inside sidebar, mobile: fixed) */
         #chartOverlay {
             position:fixed; inset:0; background:var(--bg); z-index:4000;
             display:none; flex-direction:column;
             animation: slideUp 0.3s ease;
         }
+        body.desktop-mode #chartOverlay {
+            position: relative !important; inset: auto !important;
+            flex: 1; height: 100vh;
+            display: flex !important; flex-direction: column; z-index: 1 !important;
+        }
+        body.desktop-mode #tv_chart_container { min-height: 0; }
+        body.desktop-mode #chartCloseBtn { display: none !important; }
+        body.desktop-mode #tv_chart_container:empty {
+            display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+        }
+        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::after {
+            content:'Select a pair to view chart'; font-family:'JetBrains Mono',monospace;
+            font-size:12px; color:var(--txt); opacity:0.3;
+        }
+
         .nav-btn {
             background:var(--nav-btn-bg); color:var(--nav-btn-color);
             border:none; padding:8px 15px; border-radius:8px;
@@ -260,6 +291,7 @@
     let currentFilter = 'all';
     let stockChartPairs = [];
     let stockCIdx = 0;
+    let selectedStockSymbol = null;   // ✅ for row highlight
 
     function attachListeners() {
         db.ref('stockMarketData').off();
@@ -288,18 +320,19 @@
         }
     }
 
-    // ✅ Fixed: reset pullback state when switching markets
     function setMarket(market) {
         currentMarket = market;
         document.getElementById('exnessBtn').classList.toggle('active', market === 'exness');
         document.getElementById('psxBtn').classList.toggle('active', market === 'psx');
         currentFilter = 'all';
         stockChartPairs = [];
-        stockPbState = {};   // ← clear old target list data
+        stockPbState = {};
+        selectedStockSymbol = null;
         attachListeners();
     }
 
     function openStockChartFromTable(symbol) {
+        selectedStockSymbol = symbol;         // ✅ highlight
         const filtered = getFilteredStocks();
         stockChartPairs = filtered.map(([sym, data]) => sym);
         stockCIdx = stockChartPairs.indexOf(symbol);
@@ -334,16 +367,23 @@
                 { "id": "WilliamFractal@tv-basicstudies" }
             ]
         });
+        // Re-apply highlight after render
+        setTimeout(highlightSelectedRow, 100);
     }
 
     function moveStockPair(step) {
         const newIdx = stockCIdx + step;
-        if (newIdx >= 0 && newIdx < stockChartPairs.length) openStockChart(newIdx);
+        if (newIdx >= 0 && newIdx < stockChartPairs.length) {
+            selectedStockSymbol = stockChartPairs[newIdx];
+            openStockChart(newIdx);
+        }
     }
 
     function closeStockChart() {
         document.getElementById('chartOverlay').style.display = 'none';
         document.getElementById('tv_chart_container').innerHTML = '';
+        selectedStockSymbol = null;
+        highlightSelectedRow();  // remove highlights
     }
 
     function getTheme() {
@@ -362,6 +402,22 @@
             if (currentFilter === 'bull') return isStrongTrend(sym, data, 'bull');
             if (currentFilter === 'bear') return isStrongTrend(sym, data, 'bear');
             return true;
+        });
+    }
+
+    // ✅ Apply row highlight
+    function highlightSelectedRow() {
+        const rows = document.querySelectorAll('#tb tr');
+        rows.forEach(row => {
+            const pairCell = row.querySelector('.pn');
+            if (pairCell) {
+                const symbol = pairCell.textContent.trim();
+                if (symbol === selectedStockSymbol) {
+                    row.classList.add('selected-row');
+                } else {
+                    row.classList.remove('selected-row');
+                }
+            }
         });
     }
 
@@ -388,7 +444,10 @@
             const isBear = isStrongTrend(symbol, data, 'bear');
             const blinkClass = isBull ? 'blink-pair-bull' : (isBear ? 'blink-pair-bear' : '');
 
-            return `<tr>
+            // ✅ Apply selected-row class if this is the selected stock
+            const selectedClass = (symbol === selectedStockSymbol) ? ' selected-row' : '';
+
+            return `<tr class="${selectedClass}">
                 <td class="pn ${blinkClass}" onclick="openStockChartFromTable('${symbol}')">${symbol}</td>
                 <td><div class="sig ${sig1h}"></div></td>
                 <td><div class="sig ${sig4h}"></div></td>
@@ -402,6 +461,8 @@
                 <td>${dollarVol}</td>
             </tr>`;
         }).join('');
+        // Re-apply highlight after render
+        setTimeout(highlightSelectedRow, 50);
     }
 
     function updateCounts() {
@@ -417,6 +478,9 @@
 
     function setFilter(f) { currentFilter = f; render(); }
 
+    // ═══════════════════════════════════════════
+    // TARGET LIST (with auto‑reopen)
+    // ═══════════════════════════════════════════
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     function openTargetList() {
         const targets = [];
@@ -430,12 +494,24 @@
                 const dirCol = t.dir === 'bull' ? '#00ff88' : '#ff4466';
                 const phaseLabel = t.phase === 'pullback' ? 'Pullback' : (t.phase === 'mark_high' || t.phase === 'mark_low') ? 'Ready — inside bar wait' : t.phase;
                 return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="color:var(--acc);font-weight:bold">${t.symbol}</span>
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openStockChartFromTarget('${t.symbol}')">${t.symbol}</span>
                     <span style="font-size:10px;color:#aaa">${phaseLabel}</span>
                     <span style="color:${dirCol};font-weight:bold">${t.dir.toUpperCase()}</span>
                 </div>`;
             }).join('') : `<div style="color:#888;text-align:center;padding:20px">No active pullback setups</div>`);
         document.getElementById('targetModal').classList.add('open');
+    }
+
+    // ✅ From target list: open chart, then reopen target list
+    function openStockChartFromTarget(symbol) {
+        document.getElementById('targetModal').classList.remove('open');
+        selectedStockSymbol = symbol;
+        const filtered = getFilteredStocks();
+        stockChartPairs = filtered.map(([sym, data]) => sym);
+        stockCIdx = stockChartPairs.indexOf(symbol);
+        if (stockCIdx === -1) stockCIdx = 0;
+        openStockChart(stockCIdx);
+        setTimeout(() => { openTargetList(); }, 400);
     }
 
     function toggleTheme() {
