@@ -21,6 +21,7 @@
             --close-color:#ff4466;
             --chart-header:#0d1828; --chart-brd:#333;
             --brand-color:#fff;
+            --modal-bg:rgba(0,0,0,0.9);
         }
         [data-theme="light"] {
             --bg:#f0f4f8; --sf:#ffffff; --sf2:#e8eef5;
@@ -34,6 +35,7 @@
             --close-color:#cc2233;
             --chart-header:#c8dff5; --chart-brd:#aac4dc;
             --brand-color:#0a1a2e;
+            --modal-bg:rgba(0,0,0,0.6);
         }
 
         body {
@@ -86,7 +88,6 @@
             border-collapse: collapse;
             table-layout: fixed;
         }
-        /* Column widths for 11 columns */
         th:nth-child(1) { width: 11%; }  /* Symbol */
         th:nth-child(2) { width: 5%; }   /* 1H */
         th:nth-child(3) { width: 5%; }   /* 4H */
@@ -163,23 +164,38 @@
         body.desktop-mode .tw { overflow:visible; }
         body.desktop-mode table { min-width:0; }
 
+        /* ── MODAL (Target List) ── */
         .modal {
-            position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:500;
-            display:none; align-items:flex-end; justify-content:center;
-            backdrop-filter: blur(3px);
+            position:fixed; inset:0; background:var(--modal-bg); z-index:500;
+            display:none; align-items:flex-end; justify-content:flex-start; padding:0;
+            backdrop-filter: none;
         }
         .modal.open { display:flex; }
         .m-card {
-            background:var(--sf2); border:1px solid var(--brd); border-radius:24px 24px 0 0;
+            background:var(--sf2); border:1px solid var(--brd); border-radius:24px;
             width:100%; max-width:400px; padding:22px; color:var(--txt);
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             animation: slideUp 0.3s ease;
+            margin: 10px;
             max-height: 80vh; display: flex; flex-direction: column;
         }
         #targetListContent { overflow-y: auto; flex: 1; padding-right: 8px; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* Chart overlay (desktop: relative inside sidebar, mobile: fixed) */
+        /* Desktop mode – modal left side, no blur */
+        body.desktop-mode .modal {
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 10px;
+        }
+        body.desktop-mode .m-card {
+            max-width: 380px;
+            margin-left: 10px;
+            border-radius: 24px;
+            height: fit-content;
+        }
+
+        /* Chart overlay */
         #chartOverlay {
             position:fixed; inset:0; background:var(--bg); z-index:4000;
             display:none; flex-direction:column;
@@ -291,7 +307,7 @@
     let currentFilter = 'all';
     let stockChartPairs = [];
     let stockCIdx = 0;
-    let selectedStockSymbol = null;   // ✅ for row highlight
+    let selectedStockSymbol = null;
 
     function attachListeners() {
         db.ref('stockMarketData').off();
@@ -332,7 +348,7 @@
     }
 
     function openStockChartFromTable(symbol) {
-        selectedStockSymbol = symbol;         // ✅ highlight
+        selectedStockSymbol = symbol;
         const filtered = getFilteredStocks();
         stockChartPairs = filtered.map(([sym, data]) => sym);
         stockCIdx = stockChartPairs.indexOf(symbol);
@@ -367,7 +383,6 @@
                 { "id": "WilliamFractal@tv-basicstudies" }
             ]
         });
-        // Re-apply highlight after render
         setTimeout(highlightSelectedRow, 100);
     }
 
@@ -383,7 +398,7 @@
         document.getElementById('chartOverlay').style.display = 'none';
         document.getElementById('tv_chart_container').innerHTML = '';
         selectedStockSymbol = null;
-        highlightSelectedRow();  // remove highlights
+        highlightSelectedRow();
     }
 
     function getTheme() {
@@ -405,7 +420,6 @@
         });
     }
 
-    // ✅ Apply row highlight
     function highlightSelectedRow() {
         const rows = document.querySelectorAll('#tb tr');
         rows.forEach(row => {
@@ -444,7 +458,6 @@
             const isBear = isStrongTrend(symbol, data, 'bear');
             const blinkClass = isBull ? 'blink-pair-bull' : (isBear ? 'blink-pair-bear' : '');
 
-            // ✅ Apply selected-row class if this is the selected stock
             const selectedClass = (symbol === selectedStockSymbol) ? ' selected-row' : '';
 
             return `<tr class="${selectedClass}">
@@ -461,7 +474,6 @@
                 <td>${dollarVol}</td>
             </tr>`;
         }).join('');
-        // Re-apply highlight after render
         setTimeout(highlightSelectedRow, 50);
     }
 
@@ -478,9 +490,6 @@
 
     function setFilter(f) { currentFilter = f; render(); }
 
-    // ═══════════════════════════════════════════
-    // TARGET LIST (with auto‑reopen)
-    // ═══════════════════════════════════════════
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     function openTargetList() {
         const targets = [];
@@ -502,7 +511,6 @@
         document.getElementById('targetModal').classList.add('open');
     }
 
-    // ✅ From target list: open chart, then reopen target list
     function openStockChartFromTarget(symbol) {
         document.getElementById('targetModal').classList.remove('open');
         selectedStockSymbol = symbol;
