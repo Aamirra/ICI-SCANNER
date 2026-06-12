@@ -76,16 +76,14 @@
 
         .tw {
             background:var(--sf); border-radius:16px;
-            border:1px solid var(--brd);
-            overflow-x: auto; overflow-y: hidden;
+            border:1px solid var(--brd); overflow-x: auto; overflow-y: hidden;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;  /* ✅ fixed layout for desktop balance */
+            table-layout: fixed;
         }
-        /* ✅ Column widths for 11 columns */
         th:nth-child(1) { width: 11%; }  /* Symbol */
         th:nth-child(2) { width: 5%; }   /* 1H */
         th:nth-child(3) { width: 5%; }   /* 4H */
@@ -146,20 +144,10 @@
             50% { color: #4d0000; text-shadow: 0 0 5px #ff2244; }
         }
 
-        /* ── DESKTOP MODE (Fixed spacing) ── */
         body.desktop-mode { display:flex; height:100vh; overflow:hidden; }
-        body.desktop-mode .wrap {
-            max-width:none; margin:0; padding:12px;
-            flex-shrink:0; width:620px; max-width:620px;
-            overflow-y:auto; border-right:1px solid var(--brd);
-        }
+        body.desktop-mode .wrap { max-width:none; margin:0; padding:10px; flex-shrink:0; width:620px; overflow-y:auto; border-right:1px solid var(--brd); }
         body.desktop-mode .tw { overflow:visible; }
         body.desktop-mode table { min-width:0; }
-        body.desktop-mode th { font-size:8px; padding:4px 2px; }
-        body.desktop-mode td { font-size:9px; padding:3px 2px; }
-        body.desktop-mode .pn { font-size:10px; }
-        body.desktop-mode .sig { width:8px; height:8px; }
-        body.desktop-mode .tech-cell { font-size:9px; }
 
         .modal {
             position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:500;
@@ -172,15 +160,9 @@
             width:100%; max-width:400px; padding:22px; color:var(--txt);
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             animation: slideUp 0.3s ease;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
+            max-height: 80vh; display: flex; flex-direction: column;
         }
-        #targetListContent {
-            overflow-y: auto;
-            flex: 1;
-            padding-right: 8px;
-        }
+        #targetListContent { overflow-y: auto; flex: 1; padding-right: 8px; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         #chartOverlay {
