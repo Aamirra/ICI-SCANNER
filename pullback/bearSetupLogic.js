@@ -1,5 +1,5 @@
-const calcEMA  = require('../utils/emaCalc');
-const calcSMA  = require('../utils/smaCalc');
+const calcEMA        = require('../utils/emaCalc');
+const calcSMA        = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 const {
     PB_STATE,
@@ -8,117 +8,152 @@ const {
 } = require('./tradeStateManager');
 const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
+// ─────────────────────────────────────────────
+//  Default state
+// ─────────────────────────────────────────────
 function defaultBearState() {
     return {
         dir:      'bear',
-        phase:    null,
-        refLow:   null,
+        phase:    null,   // null | watching | bounce | mark_low | fired
         firedAt:  0,
         reminded: false
     };
 }
 
+// ─────────────────────────────────────────────
+//  Main Function
+// ─────────────────────────────────────────────
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-    const cls  = raw.closes;
-    const highs = raw.highs || cls;
-    const lows  = raw.lows  || cls;
 
-    const lastClose = cls[cls.length - 1];
-    const lastHigh  = highs[highs.length - 1];
-    const lastLow   = lows[lows.length - 1];
-
-    const ema20 = calcEMA(cls, 20);
-    const sma50 = calcSMA(cls, 50);
-
-    if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
+    // Safety check — agar data hi nahi aaya toh crash nahi hoga
+    if (!raw.closes || raw.closes.length === 0) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // 1W+1D both bear
-    const higherTFValid = r['1week'] === 'bear' && r['1day'] === 'bear';
-    // 1H structure
+    const cls  = raw.closes;
+    const lows = raw.lows || cls;
+
+    const lastClose = cls[cls.length - 1];
+
+    // null check — 0 value pe galat return nahi hoga
+    const ema20 = calcEMA(cls, 20);
+    const sma50 = calcSMA(cls, 50);
+
+    if (ema20 == null || sma50 == null || isNaN(ema20) || isNaN(sma50)) {
+        return PB_STATE[stateKey] || defaultBearState();
+    }
+
+    // ─── Conditions ───────────────────────────
+    // 1W + 1D: dono bear hone chahiye (EMA20 ke neeche closed)
+    const higherTFValid    = r['1week'] === 'bear' && r['1day'] === 'bear';
+
+    // 1H: EMA20 < SMA50 hona chahiye (bearish structure)
     const h1StructureValid = ema20 < sma50;
+
     const trendValid = higherTFValid && h1StructureValid;
+    // ──────────────────────────────────────────
 
     let s = PB_STATE[stateKey] || defaultBearState();
 
-    // ❌ Invalid trend → reset
+    // Invalid trend → reset karo aur Firebase mein HAMESHA save karo
     if (!trendValid) {
-        if (s.phase !== null) {
-            s = defaultBearState();
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-            console.log(`[BEAR INVALID] ${p.n}`);
+        const wasActive = s.phase !== null;
+        s = defaultBearState();
+        PB_STATE[stateKey] = s;
+        await saveTargetList(PB_STATE, firebasePut); // hamesha save hoga
+        if (wasActive) {
+            console.log(`[BEAR INVALID] ${p.n} — setup reset`);
         }
         return s;
     }
 
-    // null → watching
+    // ─── Phase: null → Initial state set karo ───
+    // Scenario 1 aur Scenario 2 dono handle hote hain
     if (s.phase === null) {
-        s.phase = 'watching';
+        if (lastClose > ema20) {
+            // Scenario 2: Price pehle se upar hai → seedha bounce
+            s.phase = 'bounce';
+            console.log(`[BEAR BOUNCE-DIRECT] ${p.n}`);
+        } else {
+            // Scenario 1: Price neeche hai → watching, wait karo bounce ka
+            s.phase = 'watching';
+            console.log(`[BEAR WATCHING] ${p.n}`);
+        }
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
     }
 
-    // Price > EMA20 → PULLBACK
-    if (lastClose > ema20) {
-        if (s.phase !== 'pullback') {
-            s.phase  = 'pullback';
-            s.refLow = null;
+    // ─── Phase: watching ─────────────────────
+    // Intezaar: price 1H EMA20 ke UPAR close ho (bounce)
+    if (s.phase === 'watching') {
+        if (lastClose > ema20) {
+            s.phase = 'bounce';
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
-            console.log(`[BEAR PULLBACK] ${p.n}`);
+            console.log(`[BEAR BOUNCE] ${p.n}`);
         }
         return s;
     }
 
-    // Pullback ke baad price < EMA20 → MARK_LOW
-    if (s.phase === 'pullback' && lastClose < ema20) {
-        s.phase  = 'mark_low';
-        s.refLow = lastLow;
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        console.log(`[BEAR MARK_LOW] ${p.n} — refLow: ${lastLow}`);
+    // ─── Phase: bounce ───────────────────────
+    // Intezaar: price 1H EMA20 ke NEECHE close ho
+    if (s.phase === 'bounce') {
+        if (lastClose < ema20) {
+            s.phase = 'mark_low';
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BEAR MARK_LOW] ${p.n}`);
+        }
         return s;
     }
 
-    // Inside‑bar detection (strict)
+    // ─── Phase: mark_low ─────────────────────
+    // Intezaar: koi candle close ho jo pichli candle ka LOW break na kare
     if (s.phase === 'mark_low') {
-        if (highs.length < 2 || lows.length < 2) return s;
+        if (lows.length < 2) return s;
 
-        const prevHigh = highs[highs.length - 2];
-        const prevLow  = lows[lows.length - 2];
-        const currentHigh = highs[highs.length - 1];
-        const currentLow  = lows[lows.length - 1];
+        const prevLow    = lows[lows.length - 2]; // pichli candle ka low
+        const currentLow = lows[lows.length - 1]; // is candle ka low
 
-        // ✅ True inside bar: both high and low inside previous range
-        const isInsideBar = (currentHigh <= prevHigh) && (currentLow >= prevLow);
+        // Tumhari exact condition (ulti):
+        // Sirf LOW check — HIGH ki koi shart nahi
+        if (currentLow >= prevLow) {
 
-        if (isInsideBar) {
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
 
+            // Duplicate alert nahi aayega
             if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
 
-                await sendTG(buildICIAlertMsg(p.n, false));
-                console.log(`[BEAR ALERT] ${p.n} — inside bar`);
+                await sendTG(buildICIAlertMsg(p.n, false)); // false = bear alert
+                console.log(`[BEAR ALERT] ${p.n} — low break nahi hua`);
 
                 s.phase    = 'fired';
                 s.firedAt  = Date.now();
                 s.reminded = false;
-                s.refLow   = null;
                 PB_STATE[stateKey] = s;
                 await saveTargetList(PB_STATE, firebasePut);
             }
+
+        } else {
+            // Low break ho gayi — koi alert nahi, agli candle ka wait karenge
+            console.log(`[BEAR LOW BREAK] ${p.n} — ${prevLow} → ${currentLow}`);
+            // State wahi rehti hai (mark_low)
         }
-        // Low break – just update reference, no alert
-        else if (currentLow < s.refLow) {
-            console.log(`[BEAR LOW BREAK] ${p.n} — ${s.refLow} → ${currentLow}`);
-            s.refLow = currentLow;
+
+        return s;
+    }
+
+    // ─── Phase: fired ────────────────────────
+    // Alert ja chuka hai — ab intezaar karo agli bounce ka
+    if (s.phase === 'fired') {
+        if (lastClose > ema20) {
+            s.phase = 'bounce';
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
+            console.log(`[BEAR RE-BOUNCE] ${p.n} — nayi setup shuru`);
         }
     }
 
