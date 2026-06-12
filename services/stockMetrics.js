@@ -2,8 +2,8 @@ const https = require('https');
 const firebasePut = require('./database');
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
-const stockList = require('../stockList');           // Exness stocks
-const psxStockList = require('../psxStockList');     // PSX stocks
+const stockList = require('../stockList');
+const psxStockList = require('../psxStockList');
 
 // ── Fetch Yahoo candles (generic) ──
 function fetchYahooCandles(symbol, range = '1y', interval = '1d') {
@@ -32,9 +32,7 @@ function fetchYahooCandles(symbol, range = '1y', interval = '1d') {
 function aggregateTo4Hour(hourlyCloses) {
     if (!hourlyCloses || hourlyCloses.length === 0) return [];
     const agg = [];
-    for (let i = 3; i < hourlyCloses.length; i += 4) {
-        agg.push(hourlyCloses[i]);
-    }
+    for (let i = 3; i < hourlyCloses.length; i += 4) agg.push(hourlyCloses[i]);
     return agg;
 }
 
@@ -46,7 +44,7 @@ function formatDollarVolume(volume, price) {
     return total.toFixed(2);
 }
 
-// ── Pullback Detection (weekly REQUIRED, minimum 20 candles for accurate EMA) ──
+// ── Pullback Detection (weekly required, min 20 candles) ──
 const MIN_WEEKLY_CANDLES = 20;
 
 function detectStockPullback(symbol, hourlyCloses, dailySignal, weeklySignal) {
@@ -55,23 +53,19 @@ function detectStockPullback(symbol, hourlyCloses, dailySignal, weeklySignal) {
     const sma50 = calcSMA(hourlyCloses, 50);
     if (!ema20 || !sma50) return null;
 
-    // Weekly must be present and match daily
     if (!weeklySignal || !dailySignal) return null;
     if (dailySignal !== weeklySignal) return null;
     const direction = dailySignal;
 
-    // 1H structure valid
     const structureValid = direction === 'bull' ? ema20 > sma50 : ema20 < sma50;
     if (!structureValid) return null;
 
     const lastClose = hourlyCloses[hourlyCloses.length - 1];
     let phase = null;
     if (direction === 'bull') {
-        if (lastClose < ema20) phase = 'pullback';
-        else phase = 'mark_high';
+        phase = lastClose < ema20 ? 'pullback' : 'mark_high';
     } else {
-        if (lastClose > ema20) phase = 'pullback';
-        else phase = 'mark_low';
+        phase = lastClose > ema20 ? 'pullback' : 'mark_low';
     }
 
     return {
@@ -110,19 +104,13 @@ async function processStockList(list, firebaseNode, prefix = '') {
             const ema20d = calcEMA(dailyCloses, 20);
             const signal1d = ema20d && currentPrice > ema20d ? 'bull' : 'bear';
 
-            // Weekly signal (minimum MIN_WEEKLY_CANDLES = 20 weeks)
             let signal1w = null;
             if (weeklyData && weeklyData.closes.length >= MIN_WEEKLY_CANDLES) {
                 const weeklyCloses = weeklyData.closes.slice(-200);
                 const ema20w = calcEMA(weeklyCloses, 20);
-                if (ema20w) {
-                    signal1w = weeklyCloses[weeklyCloses.length - 1] > ema20w ? 'bull' : 'bear';
-                }
-            } else {
-                console.warn(`[Stocks] Insufficient weekly data for ${symbol} (got ${weeklyData?.closes?.length || 0} weeks, need ${MIN_WEEKLY_CANDLES})`);
+                if (ema20w) signal1w = weeklyCloses[weeklyCloses.length - 1] > ema20w ? 'bull' : 'bear';
             }
 
-            // Hourly signals (relaxed thresholds)
             let signal1h = null, signal4h = null, microMomentum = null;
             let hourlyCloses = [];
             const MIN_HOURLY_FOR_1H = 50;
@@ -130,7 +118,6 @@ async function processStockList(list, firebaseNode, prefix = '') {
             if (hourlyRaw && hourlyRaw.closes.length >= MIN_HOURLY_FOR_1H) {
                 hourlyCloses = hourlyRaw.closes;
                 const currentHourly = hourlyCloses[hourlyCloses.length - 1];
-
                 const ema20h = calcEMA(hourlyCloses, 20);
                 if (ema20h) signal1h = currentHourly > ema20h ? 'bull' : 'bear';
 
@@ -144,11 +131,8 @@ async function processStockList(list, firebaseNode, prefix = '') {
                     const close10h = hourlyCloses[hourlyCloses.length - 11];
                     microMomentum = ((currentHourly - close10h) / close10h) * 100;
                 }
-            } else {
-                console.warn(`[Stocks] Insufficient hourly data for ${symbol}`);
             }
 
-            // Candle change metrics
             const close200Ago = dailyCloses[0];
             const longTermTrend = ((currentPrice - close200Ago) / close200Ago) * 100;
             const close10D = dailyCloses.length > 10 ? dailyCloses[dailyCloses.length - 11] : dailyCloses[0];
@@ -174,11 +158,8 @@ async function processStockList(list, firebaseNode, prefix = '') {
             await firebasePut(`${firebaseNode}/${symbol}`, metric);
             results.push(metric);
 
-            // Pullback detection
             const pbState = detectStockPullback(symbol, hourlyCloses, signal1d, signal1w);
-            if (pbState) {
-                pbStates[symbol] = pbState;
-            }
+            if (pbState) pbStates[symbol] = pbState;
 
             console.log(`[Stocks] ${symbol} saved (1H:${signal1h}, 4H:${signal4h}, 1D:${signal1d}, 1W:${signal1w})`);
         } catch (err) {
@@ -195,7 +176,7 @@ async function processStockList(list, firebaseNode, prefix = '') {
 }
 
 async function calculateAndUpdateStockMetrics() {
-    console.log('[Stocks] Starting Exness + PSX stock metrics (min weekly candles = 20)...');
+    console.log('[Stocks] Starting Exness + PSX stock metrics...');
     await processStockList(stockList, 'stockMarketData');
     await processStockList(psxStockList, 'psxStockMarketData', 'KA');
     console.log('[Stocks] All stock metrics completed.');
