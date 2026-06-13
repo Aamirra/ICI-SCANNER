@@ -14,6 +14,7 @@ function openCFromTable(i) {
     openC(i);
 }
 
+// ✅ Now accepts optional interval (e.g., "240" for 4H, "60" for 1H)
 function openC(i, interval = null) {
     if (interval) currentChartInterval = interval;
 
@@ -25,8 +26,8 @@ function openC(i, interval = null) {
     document.getElementById('tv_chart_container').innerHTML = '';
     new TradingView.widget({
         "autosize": true,
-        "symbol": p.n,                        // ← original, p.n (works for forex & crypto like "BTCUSDT")
-        "interval": currentChartInterval,
+        "symbol": p.n,
+        "interval": currentChartInterval,   // dynamic interval
         "theme": getTheme(),
         "container_id": "tv_chart_container",
         "studies_overrides": {
