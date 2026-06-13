@@ -17,7 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let MARKET_DATA = {}, PB_STATE = {};
-let techMetrics = {};                          // ✅ ADD THIS
+let techMetrics = {};
 window.sentimentData = {};
 
 db.ref('marketData').on('value', (snap) => {
@@ -56,7 +56,6 @@ db.ref('pb_state').on('value', (snap) => {
     if (typeof updateBadge === 'function') updateBadge();
 });
 
-// Sentiment Listener
 db.ref('sentiment').on('value', function(snap) {
     const data = snap.val();
     if (data) {
@@ -70,7 +69,6 @@ db.ref('sentiment').on('value', function(snap) {
     }
 });
 
-// ✅ Technical Metrics Listener (ADD THIS AT END)
 db.ref('techMetrics').on('value', (snap) => {
     techMetrics = snap.val() || {};
     if (typeof render === 'function') {
