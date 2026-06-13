@@ -465,4 +465,110 @@
                 <td><div class="sig ${sig1h}"></div></td>
                 <td><div class="sig ${sig4h}"></div></td>
                 <td><div class="sig ${sig1d}"></div></td>
-                <td><div class="sig $
+                <td><div class="sig ${sig1w}"></div></td>
+                <td>${price}</td>
+                <td class="${longColor}">${long}</td>
+                <td class="${shortColor}">${short}</td>
+                <td class="${microColor}">${micro}</td>
+                <td>${vol7d}</td>
+                <td>${dollarVol}</td>
+            </tr>`;
+        }).join('');
+        setTimeout(highlightSelectedRow, 50);
+    }
+
+    function updateCounts() {
+        let bullCount = 0, bearCount = 0;
+        for (const [sym, data] of Object.entries(stockData)) {
+            if (isStrongTrend(sym, data, 'bull')) bullCount++;
+            if (isStrongTrend(sym, data, 'bear')) bearCount++;
+        }
+        document.getElementById('bc').textContent = bullCount;
+        document.getElementById('rc').textContent = bearCount;
+        document.getElementById('allCount').textContent = Object.keys(stockData).length;
+    }
+
+    function setFilter(f) { currentFilter = f; render(); }
+
+    const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
+    function openTargetList() {
+        const targets = [];
+        for (const [symbol, state] of Object.entries(stockPbState)) {
+            if (state && TARGET_PHASES.includes(state.phase)) {
+                targets.push({ symbol, dir: state.dir, phase: state.phase });
+            }
+        }
+        const div = document.getElementById('targetListContent');
+        div.innerHTML = (targets.length ? targets.map(t => {
+                const dirCol = t.dir === 'bull' ? '#00ff88' : '#ff4466';
+                const phaseLabel = t.phase === 'pullback' ? 'Pullback' : (t.phase === 'mark_high' || t.phase === 'mark_low') ? 'Ready — inside bar wait' : t.phase;
+                return `<div style="padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <span style="color:var(--acc);font-weight:bold;cursor:pointer" onclick="openStockChartFromTarget('${t.symbol}')">${t.symbol}</span>
+                    <span style="font-size:10px;color:#aaa">${phaseLabel}</span>
+                    <span style="color:${dirCol};font-weight:bold">${t.dir.toUpperCase()}</span>
+                </div>`;
+            }).join('') : `<div style="color:#888;text-align:center;padding:20px">No active pullback setups</div>`);
+        document.getElementById('targetModal').classList.add('open');
+    }
+
+    function openStockChartFromTarget(symbol) {
+        document.getElementById('targetModal').classList.remove('open');
+        selectedStockSymbol = symbol;
+        const filtered = getFilteredStocks();
+        stockChartPairs = filtered.map(([sym, data]) => sym);
+        stockCIdx = stockChartPairs.indexOf(symbol);
+        if (stockCIdx === -1) stockCIdx = 0;
+        openStockChart(stockCIdx);
+        setTimeout(() => { openTargetList(); }, 400);
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+        localStorage.setItem('ici-stocks-theme', newTheme);
+    }
+    (function() {
+        const saved = localStorage.getItem('ici-stocks-theme');
+        if (saved) {
+            document.documentElement.setAttribute('data-theme', saved);
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('themeBtn').textContent = saved === 'light' ? '🌙' : '☀️';
+            });
+        }
+    })();
+
+    function manualScan() {
+        const btn = document.querySelector('.scan-btn');
+        btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+        fetch('/scan')
+            .then(() => {
+                btn.textContent = '✅ Started!';
+                setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+            })
+            .catch(() => {
+                btn.textContent = '❌ Error';
+                setTimeout(() => { btn.textContent = '🔄 SCAN'; btn.disabled = false; }, 3000);
+            });
+    }
+
+    function toggleDesktopMode() {
+        const isDesktop = document.body.classList.toggle('desktop-mode');
+        const btn = document.getElementById('desktopBtn');
+        if (isDesktop) { btn.textContent = '📱'; btn.title = 'Switch to Mobile'; }
+        else { btn.textContent = '🖥️'; btn.title = 'Switch to Desktop'; }
+        localStorage.setItem('ici-stocks-desktop', isDesktop ? 'desktop' : 'mobile');
+    }
+    (function() {
+        if (localStorage.getItem('ici-stocks-desktop') === 'desktop') {
+            document.body.classList.add('desktop-mode');
+            document.getElementById('desktopBtn').textContent = '📱';
+        }
+    })();
+
+    attachListeners();
+</script>
+</body>
+</html>
