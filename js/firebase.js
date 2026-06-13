@@ -17,6 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let MARKET_DATA = {}, PB_STATE = {};
+let techMetrics = {};
 window.sentimentData = {};
 
 db.ref('marketData').on('value', (snap) => {
@@ -27,7 +28,6 @@ db.ref('marketData').on('value', (snap) => {
     }
     document.getElementById('st').textContent = "✅ Cloud Synced";
 
-    // ✅ Alert check — naya data aate hi fire karo
     if (typeof checkAllAlerts === 'function') {
         const pairs = PAIRS.map(p => {
             const d = MARKET_DATA[p.n] || {};
@@ -45,7 +45,6 @@ db.ref('marketData').on('value', (snap) => {
         });
         checkAllAlerts(pairs);
 
-        // ✅ Android background worker ke liye bhi save karo
         if (window.Android) {
             window.Android.saveLatestData(JSON.stringify(pairs));
         }
@@ -57,7 +56,6 @@ db.ref('pb_state').on('value', (snap) => {
     if (typeof updateBadge === 'function') updateBadge();
 });
 
-// Sentiment Listener
 db.ref('sentiment').on('value', function(snap) {
     const data = snap.val();
     if (data) {
@@ -66,6 +64,13 @@ db.ref('sentiment').on('value', function(snap) {
         window.sentimentData = {};
     }
 
+    if (typeof render === 'function') {
+        render();
+    }
+});
+
+db.ref('techMetrics').on('value', (snap) => {
+    techMetrics = snap.val() || {};
     if (typeof render === 'function') {
         render();
     }
