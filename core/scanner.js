@@ -36,7 +36,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
-let RAW_4H = {};            // 4H raw candles
+let RAW_4H = {};
 let RAW_DAILY = {};
 let keyUsage = {};
 let keyCallTimes = {};
@@ -338,10 +338,7 @@ async function masterScan() {
     isScanning = true;
     try {
         maybeResetDaily();
-        const jobs = config.PAIRS
-            .filter(p => !shouldSkip(p.n))
-            .filter(p => !p.isCrypto)        // ✅ Skip crypto pairs – Binance handles them
-            .flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
+        const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
         let failed = await fetchBatch(jobs);
 
         fetchMentFXSentiment();
