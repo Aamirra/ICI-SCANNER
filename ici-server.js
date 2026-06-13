@@ -107,8 +107,3 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
     console.log(`🚀 Server ready on port ${PORT}`);
 });
-
-// ═══════════════════════════════════════════
-// ✅ CRYPTO LIVE SERVICE (Binance)
-// ═══════════════════════════════════════════
-require('./cryptoServer');
