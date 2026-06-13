@@ -26,8 +26,8 @@ function openC(i, interval = null) {
     document.getElementById('tv_chart_container').innerHTML = '';
     new TradingView.widget({
         "autosize": true,
-        "symbol": p.n,
-        "interval": currentChartInterval,   // dynamic interval
+        "symbol": p.s,                        // ✅ Uses BINANCE:XXX or TwelveData symbol
+        "interval": currentChartInterval,
         "theme": getTheme(),
         "container_id": "tv_chart_container",
         "studies_overrides": {
