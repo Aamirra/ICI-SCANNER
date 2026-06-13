@@ -492,10 +492,43 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="Alerts.js"></script>
 <script src="js/render.js"></script>
 <script src="js/chart.js?v=11"></script>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- THEME & DESKTOP MODE TOGGLES -->
+<!-- ═══════════════════════════════════════════ -->
 <script>
-// ═══════════════════════════════════════════
-// COLUMN RESIZE ENGINE
-// ═══════════════════════════════════════════
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('ici_theme', next);
+}
+
+function toggleDesktopMode() {
+    document.body.classList.toggle('desktop-mode');
+    const isDesktop = document.body.classList.contains('desktop-mode');
+    document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '🖥️';
+    localStorage.setItem('ici_desktop_mode', isDesktop ? 'on' : 'off');
+}
+
+(function() {
+    const savedTheme = localStorage.getItem('ici_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.getElementById('themeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+    if (localStorage.getItem('ici_desktop_mode') === 'on') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('desktopBtn').textContent = '📱';
+    }
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- COLUMN RESIZE ENGINE -->
+<!-- ═══════════════════════════════════════════ -->
+<script>
 (function() {
   const STORAGE_KEY = 'ici_table_col_widths';
   const COLUMN_COUNT = 12;
