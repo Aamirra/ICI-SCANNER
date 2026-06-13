@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+// Required variables check
 function requireEnv(name) {
     const val = process.env[name];
     if (!val) {
@@ -48,6 +49,7 @@ const PAIRS = [
     { n: 'ETHUSD',  s: 'ETH/USD', isCrypto: true },
 ];
 
+// CRYPTO_PAIRS ko derive karo config se
 const CRYPTO_PAIRS = PAIRS.filter(p => p.isCrypto).map(p => p.n);
 
 const KEYS = [
