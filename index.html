@@ -443,9 +443,6 @@ body.desktop-mode .tech-cell { font-size: 9px; }
         <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
         <a href="/stocks" class="theme-btn" style="text-decoration:none; font-size:14px;">📈 Stocks</a>
         <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
-        <!-- ✅ Crypto filter buttons -->
-        <button class="theme-btn" style="background:rgba(0,170,255,0.15); color:var(--acc); border:1px solid var(--acc);" id="allBtn" onclick="setCryptoFilter(false)">🌐 All</button>
-        <button class="theme-btn" style="background:rgba(255,255,255,0.1); color:#ffcc00; border:1px solid #ffcc00;" id="cryptoBtn" onclick="setCryptoFilter(true)">₿ Crypto</button>
       </div>
     </div>
     <div class="sbar" onclick="openM()"><span id="st">Connecting...</span><span id="pb" style="color:var(--gold)">👁 Target List ❯</span></div>
@@ -493,8 +490,7 @@ body.desktop-mode .tech-cell { font-size: 9px; }
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="js/firebase.js"></script>
 <script src="Alerts.js"></script>
-<script src="js/render.js"></script>        <!-- original render.js -->
-<script src="js/cryptoFilter.js"></script>  <!-- nayi crypto filter file -->
+<script src="js/render.js"></script>
 <script src="js/chart.js?v=11"></script>
 <script>
 // ═══════════════════════════════════════════
