@@ -1,12 +1,32 @@
 let curF = 'all', fPairs = [];
+let cryptoOnly = false;                             // ✅ Crypto tab flag
+const CRYPTO_LIST = [                               // ✅ All 100 crypto pairs (same as config)
+    'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT', 'TRXUSDT', 'MATICUSDT', 
+    'LTCUSDT', 'TONUSDT', 'BCHUSDT', 'UNIUSDT', 'ATOMUSDT', 'XLMUSDT', 'ETCUSDT', 'NEARUSDT', 'FETUSDT', 'RNDRUSDT', 
+    'TAOUSDT', 'GRTUSDT', 'ARKMUSDT', 'AGIXUSDT', 'OCEANUSDT', 'WLDUSDT', 'AKTUSDT', 'NMRUSDT', 'PHBUSDT', 'CQTUSDT', 
+    'ORAIUSDT', 'VRAUSDT', 'ONDOUSDT', 'PENDLEUSDT', 'MKRUSDT', 'AAVEUSDT', 'COMPUSDT', 'CRVUSDT', 'SNXUSDT', 'LDOUSDT', 
+    'GMXUSDT', 'CFGUSDT', 'MNTUSDT', 'RSRUSDT', 'STXUSDT', 'PYTHUSDT', 'JUPUSDT', 'IMXUSDT', 'SANDUSDT', 'MANAUSDT', 
+    'AXSUSDT', 'GALAUSDT', 'BEAMUSDT', 'YGGUSDT', 'ILVUSDT', 'BIGTIMEUSDT', 'PYRUSDT', 'ENJUSDT', 'VOXELUSDT', 'APEUSDT', 
+    'TIAUSDT', 'SEIUSDT', 'SUIUSDT', 'APTUSDT', 'ARBUSDT', 'OPUSDT', 'STRKUSDT', 'KASUSDT', 'XMRUSDT', 'EOSUSDT', 
+    'FTMUSDT', 'HBARUSDT', 'FILUSDT', 'DASHUSDT', 'ZECUSDT', 'THETAUSDT', 'KLAYUSDT', 'EGLDUSDT', 'NEOUSDT', 'QTUMUSDT', 
+    'IOTAUSDT', 'KAVAUSDT', 'MINAUSDT', 'ROSEUSDT', 'CFXUSDT', 'LPTUSDT', 'RUNEUSDT', 'FLOWUSDT', 'CHZUSDT', 'SNXUSDT',
+    'DYDXUSDT', 'GLMRUSDT', 'ENSUSDT', 'GALUSDT', 'ANKRUSDT', 'SKLUSDT', 'IOTXUSDT', 'LQTYUSDT', 'API3USDT', 'QNTUSDT'
+];
 
 function render() {
     const tbody = document.getElementById('tb');
-    fPairs = PAIRS.filter(p => {
+
+    // ── Apply Crypto / All filter ──
+    let sourcePairs = PAIRS;
+    if (cryptoOnly) {
+        sourcePairs = PAIRS.filter(p => CRYPTO_LIST.includes(p.n));
+    }
+
+    fPairs = sourcePairs.filter(p => {
         if (curF === 'all') return true;
         return ['4h','1day','1week'].every(tf => (MARKET_DATA[p.n]||{})[tf] === curF);
     });
-    
+
     tbody.innerHTML = fPairs.map((p, idx) => {
         const t = techMetrics ? (techMetrics[p.n] || {}) : {};
         const s = window.sentimentData ? (window.sentimentData[p.n] || {}) : {};
@@ -41,7 +61,7 @@ function render() {
                 `<td><div class="sig ${(m[tf] || '')}"></div></td>`
             ).join('')}
             ${getSentimentCell(p.n)}
-            <td class="alert-cell">${typeof getBellHtml === 'function' ? getBellHtml(p.n) : ''}</td>
+            <td class="alert-cell">${(!cryptoOnly && typeof getBellHtml === 'function') ? getBellHtml(p.n) : ''}</td>
             <td class="tech-cell" style="color:${longColor}">${longTerm}</td>
             <td class="tech-cell" style="color:${shortColor}">${shortTerm}</td>
             <td class="tech-cell" style="color:${microColor}">${micro}</td>
@@ -123,5 +143,21 @@ function updateCounts() {
 
 function setFilter(f) {
     curF = f;
+    render();
+}
+
+// ✅ Crypto filter handler
+function setCryptoFilter(val) {
+    cryptoOnly = val;
+    const allBtn = document.getElementById('allBtn');
+    const cryptoBtn = document.getElementById('cryptoBtn');
+    if (val) {
+        cryptoBtn.style.background = 'rgba(255,204,0,0.25)';
+        allBtn.style.background = 'rgba(0,170,255,0.15)';
+    } else {
+        allBtn.style.background = 'rgba(0,170,255,0.25)';
+        cryptoBtn.style.background = 'rgba(255,255,255,0.1)';
+    }
+    curF = 'all';   // reset active signal filter
     render();
 }
