@@ -36,7 +36,7 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 
 let DATA_STORE = {};
 let RAW_1H = {};
-let RAW_4H = {};
+let RAW_4H = {};            // 4H raw candles
 let RAW_DAILY = {};
 let keyUsage = {};
 let keyCallTimes = {};
