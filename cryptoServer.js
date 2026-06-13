@@ -9,7 +9,7 @@ const firebasePut = require('./services/database');
 
 // ── Firebase Init (if not already initialized) ──
 if (!admin.apps.length) {
-    // Agar aapki service account file hai to yahan set karein:
+    // Agar aapki service account file hai to yahan path do, warna applicationDefault() se Render pe chal jayega
     // admin.initializeApp({ credential: admin.credential.cert(require('./serviceAccount.json')), databaseURL: config.FIREBASE_URL });
     admin.initializeApp({
         credential: admin.credential.applicationDefault(),
@@ -104,8 +104,7 @@ async function updateMarketData(pair) {
     const signal1h = ema1h !== null ? (currentPrice > ema1h ? 'bull' : 'bear') : null;
     const signal4h = ema4h !== null ? (currentPrice > ema4h ? 'bull' : 'bear') : null;
     const signal1d = emaDaily !== null ? (currentPrice > emaDaily ? 'bull' : 'bear') : null;
-    // 1W is unavailable; set to null
-    const signal1w = null;
+    const signal1w = null; // 1W is unavailable; set to null
 
     const marketData = {
         currentPrice,
