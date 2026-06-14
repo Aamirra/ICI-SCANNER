@@ -31,16 +31,22 @@ async function restoreState(firebaseGet) {
                 const isNewFormat = key.endsWith('_1h_bull') || key.endsWith('_1h_bear');
                 const isOldFormat = key.endsWith('_1h') && !key.endsWith('_bull') && !key.endsWith('_bear');
 
-                if (!isNewFormat && !isOldFormat) continue; // purani entries skip
+                if (!isNewFormat && !isOldFormat) continue;
 
                 const entry = saved[key];
                 const restored = {
-                    dir:        entry.dir        || null,
-                    phase:      entry.phase      || null,
-                    firedAt:    entry.firedAt    || entry.timestamp || 0,
-                    reminded:   entry.reminded   || false,
-                    refHigh:    entry.refHigh    ?? null,
-                    refLow:     entry.refLow     ?? null
+                    dir:         entry.dir         || null,
+                    phase:       entry.phase       || null,
+                    firedAt:     entry.firedAt     || entry.timestamp || 0,
+                    reminded:    entry.reminded    || false,
+
+                    // ✅ Bull fields — sahi naam se load
+                    runningHigh: entry.runningHigh ?? null,
+                    lowestLow:   entry.lowestLow   ?? null,
+
+                    // ✅ Bear fields — sahi naam se load
+                    runningLow:  entry.runningLow  ?? null,
+                    highestHigh: entry.highestHigh ?? null,
                 };
 
                 // Purana _1h key mila to migrate karo
