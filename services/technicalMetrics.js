@@ -6,8 +6,14 @@ const calcSMA = require('../utils/smaCalc');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
-// ── Twelve Data keys ──
-const TD_KEYS = (process.env.TWELVE_DATA_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
+// ── Twelve Data keys (load from individual TD_KEY_1, TD_KEY_2, ..., TD_KEY_16) ──
+const TD_KEYS = [];
+for (let i = 1; i <= 16; i++) {
+    const key = process.env[`TD_KEY_${i}`];
+    if (key && key.trim().length > 0) {
+        TD_KEYS.push(key.trim());
+    }
+}
 const TD_DAILY_LIMIT_PER_KEY = 800;
 
 // ── Alpha Vantage keys ──
@@ -26,17 +32,16 @@ function getTwelveDataSymbol(pairName) {
         'GER40': 'DAX',
         'UK100': 'UKX',
         'JPN225': 'N225',
-        // Add any other indices/commodities you need
     };
     if (map[pairName]) return map[pairName];
     // Default forex: EURUSD -> EUR/USD
     if (/^[A-Z]{6}$/.test(pairName)) {
         return pairName.slice(0, 3) + '/' + pairName.slice(3);
     }
-    return pairName; // fallback (probably won't work but safe)
+    return pairName;
 }
 
-// ── Firebase counter helpers (same pattern for any key set) ──
+// ── Firebase counter helpers ──
 async function getKeyUsage(counterPath, keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -47,7 +52,7 @@ async function getKeyUsage(counterPath, keyIndex) {
 
 async function setKeyExhausted(counterPath, keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
-    await admin.database().ref(`${counterPath}/${today}/${keyIndex}`).set(9999); // mark as exhausted
+    await admin.database().ref(`${counterPath}/${today}/${keyIndex}`).set(9999);
 }
 
 async function incrementKeyUsage(counterPath, keyIndex, limit) {
