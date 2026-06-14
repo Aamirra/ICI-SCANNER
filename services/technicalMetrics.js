@@ -5,11 +5,69 @@ const firebasePut = require('./database');
 const calcSMA = require('../utils/smaCalc');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
-const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+// ── Twelve Data keys ──
+const TD_KEYS = (process.env.TWELVE_DATA_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
+const TD_DAILY_LIMIT_PER_KEY = 800;
 
 // ── Alpha Vantage keys ──
 const AV_KEYS = (process.env.ALPHA_VANTAGE_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
 const AV_DAILY_LIMIT_PER_KEY = 25;
+
+// ── Twelve Data symbol mapping ──
+function getTwelveDataSymbol(pairName) {
+    const map = {
+        'XAUUSD': 'XAU/USD',
+        'BTCUSD': 'BTC/USD',
+        'ETHUSD': 'ETH/USD',
+        'US500': 'SPX',
+        'US100': 'NDX',
+        'US30': 'DJI',
+        'GER40': 'DAX',
+        'UK100': 'UKX',
+        'JPN225': 'N225',
+        // Add any other indices/commodities you need
+    };
+    if (map[pairName]) return map[pairName];
+    // Default forex: EURUSD -> EUR/USD
+    if (/^[A-Z]{6}$/.test(pairName)) {
+        return pairName.slice(0, 3) + '/' + pairName.slice(3);
+    }
+    return pairName; // fallback (probably won't work but safe)
+}
+
+// ── Firebase counter helpers (same pattern for any key set) ──
+async function getKeyUsage(counterPath, keyIndex) {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+        const snap = await admin.database().ref(`${counterPath}/${today}/${keyIndex}`).once('value');
+        return snap.val() || 0;
+    } catch (e) { return 0; }
+}
+
+async function setKeyExhausted(counterPath, keyIndex) {
+    const today = new Date().toISOString().slice(0, 10);
+    await admin.database().ref(`${counterPath}/${today}/${keyIndex}`).set(9999); // mark as exhausted
+}
+
+async function incrementKeyUsage(counterPath, keyIndex, limit) {
+    const today = new Date().toISOString().slice(0, 10);
+    const ref = admin.database().ref(`${counterPath}/${today}/${keyIndex}`);
+    const snap = await ref.once('value');
+    const current = snap.val() || 0;
+    if (current >= limit) return current;
+    const newVal = current + 1;
+    await ref.set(newVal);
+    return newVal;
+}
+
+async function getAvailableKeyIndex(keys, counterPath, limit) {
+    for (let i = 0; i < keys.length; i++) {
+        const used = await getKeyUsage(counterPath, i);
+        if (used < limit) return i;
+    }
+    return -1;
+}
 
 // ═══════════════════════════════════════════
 // 1. BINANCE (CRYPTO)
@@ -34,7 +92,7 @@ function fetchBinanceDailyCandles(symbol) {
 }
 
 // ═══════════════════════════════════════════
-// 2. YAHOO FINANCE (GOLD & INDICES)
+// 2. YAHOO FINANCE (FALLBACK)
 // ═══════════════════════════════════════════
 function fetchYahooDailyCandles(yahooSymbol) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
@@ -59,44 +117,76 @@ function fetchYahooDailyCandles(yahooSymbol) {
 }
 
 // ═══════════════════════════════════════════
-// 3. ALPHA VANTAGE (FOREX ONLY)
+// 3. TWELVE DATA (PRIMARY FOREX, GOLD, INDICES, CRYPTO FALLBACK)
 // ═══════════════════════════════════════════
-async function getKeyUsage(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-        const snap = await admin.database().ref(`av_counter/${today}/${keyIndex}`).once('value');
-        return snap.val() || 0;
-    } catch (e) { return 0; }
-}
-
-async function setKeyExhausted(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    await admin.database().ref(`av_counter/${today}/${keyIndex}`).set(AV_DAILY_LIMIT_PER_KEY);
-}
-
-async function incrementKeyUsage(keyIndex) {
-    const today = new Date().toISOString().slice(0, 10);
-    const ref = admin.database().ref(`av_counter/${today}/${keyIndex}`);
-    const snap = await ref.once('value');
-    const current = snap.val() || 0;
-    if (current >= AV_DAILY_LIMIT_PER_KEY) return current;
-    const newVal = current + 1;
-    await ref.set(newVal);
-    return newVal;
-}
-
-async function getAvailableKeyIndex() {
-    for (let i = 0; i < AV_KEYS.length; i++) {
-        const used = await getKeyUsage(i);
-        if (used < AV_DAILY_LIMIT_PER_KEY) return i;
+async function fetchTwelveDataVolume(pairName) {
+    const keyIndex = await getAvailableKeyIndex(TD_KEYS, 'td_counter', TD_DAILY_LIMIT_PER_KEY);
+    if (keyIndex === -1) {
+        console.warn(`[TwelveData] All keys exhausted for today`);
+        return null;
     }
-    return -1;
+
+    const apiKey = TD_KEYS[keyIndex];
+    const symbol = getTwelveDataSymbol(pairName);
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=200&apikey=${apiKey}`;
+
+    console.log(`[TwelveData] Fetching ${pairName} (${symbol}) with key index ${keyIndex}...`);
+
+    // Increment usage before call
+    const newCount = await incrementKeyUsage('td_counter', keyIndex, TD_DAILY_LIMIT_PER_KEY);
+    if (newCount >= TD_DAILY_LIMIT_PER_KEY) {
+        console.warn(`[TwelveData] Key index ${keyIndex} reached limit, exhausting.`);
+        await setKeyExhausted('td_counter', keyIndex);
+        // Immediately try next key recursively
+        return fetchTwelveDataVolume(pairName);
+    }
+
+    return new Promise((resolve) => {
+        const req = https.get(url, { agent }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', async () => {
+                try {
+                    const json = JSON.parse(data);
+                    if (json.code === 429 || (json.status === 'error' && json.message?.includes('rate limit'))) {
+                        console.warn(`[TwelveData] Rate limit hit for key ${keyIndex}, exhausting.`);
+                        await setKeyExhausted('td_counter', keyIndex);
+                        // Retry with fresh key
+                        resolve(await fetchTwelveDataVolume(pairName));
+                        return;
+                    }
+                    if (json.status === 'error') {
+                        console.warn(`[TwelveData] API error for ${pairName}: ${json.message}`);
+                        resolve(null);
+                        return;
+                    }
+                    const values = json.values;
+                    if (!values || values.length < 200) {
+                        console.warn(`[TwelveData] Only ${values ? values.length : 0} candles for ${pairName}`);
+                        resolve(null);
+                        return;
+                    }
+                    const sorted = values.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+                    const closes = sorted.map(v => parseFloat(v.close));
+                    const volumes = sorted.map(v => parseInt(v.volume) || 0);
+                    console.log(`[TwelveData] Success for ${pairName}: ${sorted.length} candles`);
+                    resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'TwelveData' });
+                } catch (e) {
+                    console.error(`[TwelveData] Parse error for ${pairName}:`, e.message);
+                    resolve(null);
+                }
+            });
+        });
+        req.setTimeout(15000, () => { req.destroy(); console.warn(`[TwelveData] Timeout for ${pairName}`); resolve(null); });
+        req.on('error', () => resolve(null));
+    });
 }
 
+// ═══════════════════════════════════════════
+// 4. ALPHA VANTAGE (FOREX FALLBACK)
+// ═══════════════════════════════════════════
 async function fetchAlphaVantageVolume(pairName) {
-    if (AV_KEYS.length === 0) return null;
-
-    const keyIndex = await getAvailableKeyIndex();
+    const keyIndex = await getAvailableKeyIndex(AV_KEYS, 'av_counter', AV_DAILY_LIMIT_PER_KEY);
     if (keyIndex === -1) {
         console.warn(`[Alpha Vantage] All keys exhausted for today`);
         return null;
@@ -109,8 +199,7 @@ async function fetchAlphaVantageVolume(pairName) {
 
     console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
 
-    // Increment immediately (call counts regardless of outcome)
-    const newCount = await incrementKeyUsage(keyIndex);
+    const newCount = await incrementKeyUsage('av_counter', keyIndex, AV_DAILY_LIMIT_PER_KEY);
     console.log(`[Alpha Vantage] Key index ${keyIndex} usage incremented to ${newCount}`);
 
     return new Promise((resolve) => {
@@ -120,15 +209,12 @@ async function fetchAlphaVantageVolume(pairName) {
             res.on('end', async () => {
                 try {
                     const json = JSON.parse(data);
-
-                    // Auto-exhaust if rate limit message
                     if (json.Information && json.Information.includes('standard API rate limit is 25 requests per day')) {
                         console.warn(`[Alpha Vantage] Rate limit detected for key ${keyIndex}, exhausting it.`);
-                        await setKeyExhausted(keyIndex);
+                        await setKeyExhausted('av_counter', keyIndex);
                         resolve(null);
                         return;
                     }
-
                     if (json['Time Series FX (Daily)']) {
                         const ts = json['Time Series FX (Daily)'];
                         const entries = Object.entries(ts)
@@ -171,7 +257,7 @@ function formatDollarVolume(volume, price) {
 
 // ── Main ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting (Hybrid: Binance + Yahoo Gold + AV Forex)...');
+    console.log('[Metrics] Starting (Hybrid: Binance + TwelveData + AV fallback + Yahoo)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -190,25 +276,29 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             console.log(`[Metrics] Fetching volume for ${pair.n}...`);
             let volumeData = null;
 
-            // Determine source
             const isCrypto = pair.n === 'BTCUSD' || pair.n === 'ETHUSD' || pair.isCrypto;
             const isGold = pair.n === 'XAUUSD';
 
             if (isCrypto) {
+                // 1. Binance (fast, unlimited)
                 const binanceSymbol = pair.n.replace('USD', 'USDT');
                 volumeData = await fetchBinanceDailyCandles(binanceSymbol);
-            } else if (isGold) {
-                volumeData = await fetchYahooDailyCandles('GC=F');
-                if (!volumeData) volumeData = await fetchYahooDailyCandles('XAUUSD=X');
+                // Fallback Twelve Data
+                if (!volumeData) volumeData = await fetchTwelveDataVolume(pair.n);
+                // Final Yahoo
+                if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
             } else {
-                // Forex pairs → Alpha Vantage
-                volumeData = await fetchAlphaVantageVolume(pair.n);
-                // Fallback to Yahoo (volume 0) agar AV fail ho, taake technical metrics phir bhi calculate ho (volume 0)
+                // 2. Twelve Data primary (forex, gold, indices, etc.)
+                volumeData = await fetchTwelveDataVolume(pair.n);
+                // Fallback Alpha Vantage (forex only)
+                if (!volumeData && !isGold && !['US500','US100','US30','GER40','UK100','JPN225'].includes(pair.n)) {
+                    volumeData = await fetchAlphaVantageVolume(pair.n);
+                }
+                // Final Yahoo fallback (may have 0 volume)
                 if (!volumeData) {
-                    volumeData = await fetchYahooDailyCandles(pair.n + '=X');
-                    if (volumeData) {
-                        console.log(`[Metrics] AV failed for ${pair.n}, using Yahoo (volume may be 0)`);
-                    }
+                    const yahooSymbol = isGold ? 'GC=F' : (pair.n.includes('USD') ? pair.n + '=X' : pair.n);
+                    volumeData = await fetchYahooDailyCandles(yahooSymbol);
+                    if (volumeData) console.log(`[Metrics] Using Yahoo fallback for ${pair.n} (volume may be 0)`);
                 }
             }
 
@@ -218,7 +308,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                     volumes: volumeData.volumes,
                     time: new Date().toISOString()
                 };
-                console.log(`[Metrics] Volume fetched for ${pair.n}`);
+                console.log(`[Metrics] Volume fetched for ${pair.n} (source: ${volumeData.source || 'unknown'})`);
             } else {
                 console.warn(`[Metrics] Could not obtain volume for ${pair.n}, skipping`);
                 continue;
