@@ -125,21 +125,69 @@ body { color:var(--txt); font-family:'JetBrains Mono',monospace; }
   0% { text-shadow: 0 0 5px var(--acc); }
   100% { text-shadow: 0 0 15px var(--acc), 0 0 25px var(--acc); }
 }
+
+/* ── Action Buttons (Stocks & Scan) ── */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, rgba(0,170,255,0.2), rgba(0,170,255,0.05));
+  color: var(--acc);
+  box-shadow: 0 2px 8px rgba(0,170,255,0.15);
+}
+.action-btn:hover {
+  background: linear-gradient(135deg, var(--acc), #0077cc);
+  color: #fff;
+  border-color: var(--acc);
+  box-shadow: 0 6px 20px rgba(0,170,255,0.4);
+  transform: translateY(-2px);
+}
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0,170,255,0.2);
+}
+
+/* Scan button (primary) */
 .scan-btn {
-  background:rgba(0,170,255,0.15); color:var(--acc);
-  border:1px solid var(--acc); padding:6px 12px;
-  border-radius:8px; cursor:pointer; font-size:10px;
-  font-family:'JetBrains Mono',monospace; font-weight:bold;
-  transition: all 0.2s;
+  background: linear-gradient(135deg, #00aaff, #0066cc);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,170,255,0.3);
 }
-.scan-btn:hover { background:rgba(0,170,255,0.25); transform: scale(1.05); }
-.scan-btn:active { transform: scale(0.95); }
+.scan-btn:hover {
+  background: linear-gradient(135deg, #0088dd, #0044aa);
+}
+
+/* Theme & Desktop buttons (clean tiles) */
 .theme-btn, .desktop-btn {
-  background:none; border:1px solid var(--brd); border-radius:8px;
-  padding:5px 9px; cursor:pointer; font-size:14px; line-height:1;
-  transition: transform 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--brd);
+  font-size: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
 }
-.theme-btn:hover, .desktop-btn:hover { transform: scale(1.1); }
+.theme-btn:hover, .desktop-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: var(--acc);
+  transform: scale(1.08);
+}
 
 /* Summary Cards */
 .sum { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -440,8 +488,8 @@ body.desktop-mode .tech-cell { font-size: 9px; }
       <div style="display:flex; align-items:center; gap:8px;">
         <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
         <button class="desktop-btn" onclick="toggleDesktopMode()" id="desktopBtn" title="Desktop Mode">🖥️</button>
-        <button class="scan-btn" onclick="manualScan()">🔄 SCAN</button>
-        <a href="/stocks" class="theme-btn" style="text-decoration:none; font-size:14px;">📈 Stocks</a>
+        <a href="/stocks" class="action-btn">📈 Stocks</a>
+        <button class="action-btn scan-btn" onclick="manualScan()">🔄 SCAN</button>
         <div style="font-size:10px; color:var(--cloud-color)">CLOUD ACTIVE</div>
       </div>
     </div>
@@ -621,7 +669,7 @@ function setFilter(f) {
 }
 
 // ═══════════════════════════════════════════
-// ARRAY‑BASED TARGET LIST (1H + 4H) – NOW INCLUDES ALL ACTIVE PHASES
+// ARRAY‑BASED TARGET LIST (1H + 4H) – NOW EXCLUDES 'watching'
 // ═══════════════════════════════════════════
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
@@ -638,8 +686,8 @@ function phaseLabel(phase) {
 }
 
 function isTarget(s) {
-    // ✅ Sirf yeh ke entry mojood ho aur phase koi bhi truthy value ho
-    return s && s.phase;
+    // ✅ Exclude 'watching' so modal doesn't show those pairs
+    return s && s.phase && s.phase !== 'watching';
 }
 
 function collectTargets() {
