@@ -159,7 +159,8 @@ async function fetchTiingoVolume(pairName) {
     const symbol = getTiingoSymbol(pairName);
     const endDate = new Date().toISOString().slice(0, 10);
     const startDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const url = `https://api.tiingo.com/tiingo/fx/${symbol}/prices?startDate=${startDate}&endDate=${endDate}&resampleFreq=daily&token=${apiKey}`;
+    // 🔥 Fix: 'daily' ki jagah strictly '1day' kar diya hai taake error na aaye
+    const url = `https://api.tiingo.com/tiingo/fx/${symbol}/prices?startDate=${startDate}&endDate=${endDate}&resampleFreq=1day&token=${apiKey}`;
 
     console.log(`[Tiingo] Fetching ${pairName} (${symbol})...`);
     return new Promise((resolve) => {
@@ -329,23 +330,30 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             if (isCrypto) {
                 // 1. Binance (fast, unlimited)
                 volumeData = await fetchBinanceDailyCandles(pair.n.replace('USD', 'USDT'));
-                // 2. Tiingo
-                if (!volumeData) volumeData = await fetchTiingoVolume(pair.n);
-                // 3. Yahoo
-                if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
+                // 2. Tiingo Fallback (volume check ke sath)
+                if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchTiingoVolume(pair.n);
+                // 3. Yahoo Fallback
+                if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
             } else if (isIndex) {
                 // Indices: Yahoo only
                 volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
             } else {
-                // ✅ Forex & Gold: Tiingo primary
+                // ✅ Forex & Gold: Full Check Logic with Volume Validation
                 volumeData = await fetchTiingoVolume(pair.n);
-                // Finnhub
-                if (!volumeData) volumeData = await fetchFinnhubForexVolume(pair.n);
-                // Twelve Data
-                if (!volumeData) volumeData = await fetchTwelveDataVolume(pair.n);
-                // Yahoo
-                if (!volumeData) {
+                
+                // Agar Tiingo fail ho ya volume zero ho, to Finnhub par jaye
+                if (!volumeData || !hasValidVolume(volumeData.volumes)) {
+                    volumeData = await fetchFinnhubForexVolume(pair.n);
+                }
+                
+                // Agar Finnhub fail ho ya volume zero ho, to Twelve Data par jaye
+                if (!volumeData || !hasValidVolume(volumeData.volumes)) {
+                    volumeData = await fetchTwelveDataVolume(pair.n);
+                }
+                
+                // Final Fallback: Yahoo Finance
+                if (!volumeData || !hasValidVolume(volumeData.volumes)) {
                     volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                     if (volumeData) console.log(`[Metrics] Using Yahoo fallback for ${pair.n} (volume may be 0)`);
                 }
