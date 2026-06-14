@@ -14,9 +14,9 @@ const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 function defaultBullState() {
     return {
         dir:         'bull',
-        phase:       null,      // null | watching | pullback | mark_high | fired
-        runningHigh: null,      // Impulse High (Phase 0)
-        lowestLow:   null,      // Pullback Low (Phase 1)
+        phase:       null,
+        runningHigh: null,
+        lowestLow:   null,
         firedAt:     0,
         reminded:    false
     };
@@ -30,8 +30,8 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
 
     const cls   = raw.closes;
     const highs = raw.highs || cls;
-    const lows  = raw.lows || cls;
-    
+    const lows  = raw.lows  || cls;
+
     const lastClose = cls[cls.length - 1];
     const lastHigh  = highs[highs.length - 1];
     const lastLow   = lows[lows.length - 1];
@@ -43,7 +43,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
-    // 1. Trend Filters (Invalidation Rule 1 & 2)
+    // 1. Trend Filters
     const trendValid = (r['1week'] === 'bull' && r['1day'] === 'bull') && (ema20 > sma50);
     let s = PB_STATE[stateKey] || defaultBullState();
 
@@ -57,7 +57,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     // 2. Phase 0: Watching (Impulse High Tracking)
     if (s.phase === null || s.phase === 'watching') {
         s.phase = 'watching';
-        
+
         // Track Impulse High
         if (lastClose > ema20) {
             if (s.runningHigh === null || lastHigh > s.runningHigh) {
@@ -65,9 +65,12 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             }
         }
 
+        // ✅ Memory mein save karo (Target List ke liye)
+        PB_STATE[stateKey] = s;
+
         // Trigger Pullback
         if (lastClose < ema20) {
-            s.phase = 'pullback';
+            s.phase     = 'pullback';
             s.lowestLow = lastLow;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
@@ -89,17 +92,17 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 4. Invalidation Logic (Rules 3 & 4: Breach Checks)
+    // 4. Invalidation Logic
     if (s.phase === 'mark_high' || s.phase === 'fired') {
-        // Low Breach: Wapas Pullback mein bhejo
+        // Low Breach
         if (s.lowestLow !== null && lastClose < s.lowestLow) {
-            s.phase = 'pullback';
+            s.phase     = 'pullback';
             s.lowestLow = lastLow;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-        // Impulse High Breach: Poora Setup Reset
+        // Impulse High Breach
         if (s.runningHigh !== null && lastClose > s.runningHigh) {
             s = defaultBullState();
             PB_STATE[stateKey] = s;
@@ -122,9 +125,9 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
                 await sendTG(buildICIAlertMsg(p.n, true));
-                
-                s.phase    = 'fired';
-                s.firedAt  = Date.now();
+
+                s.phase   = 'fired';
+                s.firedAt = Date.now();
                 PB_STATE[stateKey] = s;
                 await saveTargetList(PB_STATE, firebasePut);
             }
