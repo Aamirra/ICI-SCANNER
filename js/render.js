@@ -51,12 +51,12 @@ function render() {
     }).join('');
 }
 
-// Helper: check if pair is currently in active pullback target list
+// ✅ FIXED: Ab har active setup (kisi bhi phase ke saath) target list mein aayega
 function isPairInTargetList(pairName) {
-    const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
-        if (s && TARGET_PHASES.includes(s.phase)) {
+        // Agar entry mojood hai aur uska phase koi bhi truthy value hai
+        if (s && s.phase) {
             const name = key.replace(/_1h_(bull|bear)$/, '');
             if (name === pairName) return true;
         }
