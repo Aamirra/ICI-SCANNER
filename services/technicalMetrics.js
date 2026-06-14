@@ -5,24 +5,36 @@ const firebasePut = require('./database');
 const calcSMA = require('../utils/smaCalc');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-// ── Twelve Data keys (for gold, crypto fallback) ──
+// ── Tiingo keys (TIINGO_KEY_1, TIINGO_KEY_2, ...) ──
+const TIINGO_KEYS = [];
+for (let i = 1; i <= 16; i++) {
+    const key = process.env[`TIINGO_KEY_${i}`];
+    if (key && key.trim().length > 0) TIINGO_KEYS.push(key.trim());
+}
+let tiingoIndex = 0;
+
+// ── Twelve Data keys (TD_KEY_1, TD_KEY_2, ...) ──
 const TD_KEYS = [];
 for (let i = 1; i <= 16; i++) {
     const key = process.env[`TD_KEY_${i}`];
-    if (key && key.trim().length > 0) {
-        TD_KEYS.push(key.trim());
-    }
+    if (key && key.trim().length > 0) TD_KEYS.push(key.trim());
 }
 const TD_DAILY_LIMIT_PER_KEY = 800;
 
 // ── Finnhub key ──
 const FINNHUB_KEY = process.env.FINNHUB_KEY || '';
 
-// ── Indices jinko Twelve Data free plan support nahi karta ──
+// ── Indices (only Yahoo) ──
 const TD_UNSUPPORTED_INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
 
-// ── Symbol mappings ──
+// ── Symbol mapping ──
+function getTiingoSymbol(pairName) {
+    // Tiingo lowercase without slash
+    return pairName.toLowerCase();
+}
+
 function getFinnhubSymbol(pairName) {
     const from = pairName.slice(0, 3);
     const to = pairName.slice(3);
@@ -36,9 +48,7 @@ function getTwelveDataSymbol(pairName) {
         'ETHUSD': 'ETH/USD',
     };
     if (map[pairName]) return map[pairName];
-    if (/^[A-Z]{6}$/.test(pairName)) {
-        return pairName.slice(0, 3) + '/' + pairName.slice(3);
-    }
+    if (/^[A-Z]{6}$/.test(pairName)) return pairName.slice(0, 3) + '/' + pairName.slice(3);
     return pairName;
 }
 
@@ -57,7 +67,7 @@ function getYahooSymbol(pairName) {
     return pairName;
 }
 
-// ── Firebase counter helpers (for Twelve Data) ──
+// ── Firebase counter (for Twelve Data only) ──
 async function getKeyUsage(counterPath, keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -91,7 +101,7 @@ async function getAvailableKeyIndex(keys, counterPath, limit) {
 }
 
 // ═══════════════════════════════════════════
-// 1. BINANCE (CRYPTO)
+// 1. BINANCE (CRYPTO – UNLIMITED)
 // ═══════════════════════════════════════════
 function fetchBinanceDailyCandles(symbol) {
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=200`;
@@ -113,7 +123,7 @@ function fetchBinanceDailyCandles(symbol) {
 }
 
 // ═══════════════════════════════════════════
-// 2. YAHOO FINANCE (FALLBACK & INDICES)
+// 2. YAHOO FINANCE (INDICES & FINAL FALLBACK)
 // ═══════════════════════════════════════════
 function fetchYahooDailyCandles(yahooSymbol) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
@@ -138,13 +148,51 @@ function fetchYahooDailyCandles(yahooSymbol) {
 }
 
 // ═══════════════════════════════════════════
-// 3. FINNHUB (PRIMARY FOREX)
+// 3. TIINGO (PRIMARY FOREX, GOLD, CRYPTO FALLBACK)
+// ═══════════════════════════════════════════
+async function fetchTiingoVolume(pairName) {
+    if (TIINGO_KEYS.length === 0) return null;
+
+    const apiKey = TIINGO_KEYS[tiingoIndex % TIINGO_KEYS.length];
+    tiingoIndex++;
+
+    const symbol = getTiingoSymbol(pairName);
+    const endDate = new Date().toISOString().slice(0, 10);
+    const startDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const url = `https://api.tiingo.com/tiingo/fx/${symbol}/prices?startDate=${startDate}&endDate=${endDate}&resampleFreq=daily&token=${apiKey}`;
+
+    console.log(`[Tiingo] Fetching ${pairName} (${symbol})...`);
+    return new Promise((resolve) => {
+        https.get(url, { agent }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    if (!Array.isArray(json) || json.length < 200) {
+                        console.warn(`[Tiingo] Only ${json.length} candles for ${pairName}`);
+                        resolve(null);
+                        return;
+                    }
+                    const closes = json.map(d => d.close);
+                    const volumes = json.map(d => d.volume || 0);
+                    console.log(`[Tiingo] Success for ${pairName}: ${closes.length} candles`);
+                    resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'Tiingo' });
+                } catch (e) {
+                    console.error(`[Tiingo] Parse error for ${pairName}:`, e.message);
+                    resolve(null);
+                }
+            });
+        }).on('error', () => resolve(null));
+    });
+}
+
+// ═══════════════════════════════════════════
+// 4. FINNHUB (FOREX FALLBACK)
 // ═══════════════════════════════════════════
 function fetchFinnhubForexVolume(pairName) {
-    if (!FINNHUB_KEY) {
-        console.warn('[Finnhub] No API key set');
-        return null;
-    }
+    if (!FINNHUB_KEY) return null;
+
     const symbol = getFinnhubSymbol(pairName);
     const to = Math.floor(Date.now() / 1000);
     const from = to - (200 * 24 * 60 * 60);
@@ -177,7 +225,7 @@ function fetchFinnhubForexVolume(pairName) {
 }
 
 // ═══════════════════════════════════════════
-// 4. TWELVE DATA (GOLD, CRYPTO FALLBACK)
+// 5. TWELVE DATA (GOLD, CRYPTO FALLBACK)
 // ═══════════════════════════════════════════
 async function fetchTwelveDataVolume(pairName) {
     const keyIndex = await getAvailableKeyIndex(TD_KEYS, 'td_counter', TD_DAILY_LIMIT_PER_KEY);
@@ -255,7 +303,7 @@ function formatDollarVolume(volume, price) {
 
 // ── Main ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting (Hybrid: Finnhub + TwelveData + Binance + Yahoo)...');
+    console.log('[Metrics] Starting (All APIs: Tiingo + Finnhub + TwelveData + Binance + Yahoo)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -280,31 +328,23 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
 
             if (isCrypto) {
                 // 1. Binance (fast, unlimited)
-                const binanceSymbol = pair.n.replace('USD', 'USDT');
-                volumeData = await fetchBinanceDailyCandles(binanceSymbol);
-                // Fallback Twelve Data
-                if (!volumeData) volumeData = await fetchTwelveDataVolume(pair.n);
-                // Final Yahoo
+                volumeData = await fetchBinanceDailyCandles(pair.n.replace('USD', 'USDT'));
+                // 2. Tiingo
+                if (!volumeData) volumeData = await fetchTiingoVolume(pair.n);
+                // 3. Yahoo
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
             } else if (isIndex) {
-                // Indices: direct Yahoo
-                console.log(`[Metrics] Index ${pair.n} – using Yahoo directly.`);
+                // Indices: Yahoo only
                 volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
-            } else if (isGold) {
-                // Gold: Twelve Data primary, Yahoo fallback
-                volumeData = await fetchTwelveDataVolume(pair.n);
-                if (!volumeData) volumeData = await fetchYahooDailyCandles('GC=F');
-                if (!volumeData) volumeData = await fetchYahooDailyCandles('XAUUSD=X');
             } else {
-                // ✅ Forex: Finnhub primary
-                volumeData = await fetchFinnhubForexVolume(pair.n);
-                // Fallback Twelve Data (volume 0, but better than nothing)
-                if (!volumeData) {
-                    console.log(`[Metrics] Finnhub failed for ${pair.n}, trying Twelve Data...`);
-                    volumeData = await fetchTwelveDataVolume(pair.n);
-                }
-                // Final Yahoo
+                // ✅ Forex & Gold: Tiingo primary
+                volumeData = await fetchTiingoVolume(pair.n);
+                // Finnhub
+                if (!volumeData) volumeData = await fetchFinnhubForexVolume(pair.n);
+                // Twelve Data
+                if (!volumeData) volumeData = await fetchTwelveDataVolume(pair.n);
+                // Yahoo
                 if (!volumeData) {
                     volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                     if (volumeData) console.log(`[Metrics] Using Yahoo fallback for ${pair.n} (volume may be 0)`);
@@ -355,6 +395,9 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             volume7dAvg: volume7dAvg !== null ? Math.round(volume7dAvg) : null,
             dollarVolume1d
         });
+
+        // 🔥 100ms delay to avoid burst limits (Tiingo, etc.)
+        await sleep(100);
     }
 
     for (const metric of results) {
@@ -372,7 +415,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
         }
     }
 
-    console.log(`[Metrics] Updated ${results.length}/${allPairs.length} pairs.`);
+    console.log(`[Metrics] ✅ All pairs processed: ${results.length}/${allPairs.length} pairs updated.`);
 }
 
 module.exports = { calculateAndUpdateTechnicalMetrics };
