@@ -35,6 +35,7 @@ function getTiingoSymbol(pairName) {
     return pairName.toLowerCase();
 }
 
+// OANDA format for Finnhub
 function getFinnhubSymbol(pairName) {
     const from = pairName.slice(0, 3);
     const to = pairName.slice(3);
@@ -159,7 +160,7 @@ async function fetchTiingoVolume(pairName) {
     const symbol = getTiingoSymbol(pairName);
     const endDate = new Date().toISOString().slice(0, 10);
     const startDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    // 🔥 Fix: 'daily' ki jagah strictly '1day' kar diya hai taake error na aaye
+    // Fix: 'daily' ki jagah strictly '1day' kar diya hai
     const url = `https://api.tiingo.com/tiingo/fx/${symbol}/prices?startDate=${startDate}&endDate=${endDate}&resampleFreq=1day&token=${apiKey}`;
 
     console.log(`[Tiingo] Fetching ${pairName} (${symbol})...`);
@@ -171,7 +172,8 @@ async function fetchTiingoVolume(pairName) {
                 try {
                     const json = JSON.parse(data);
                     if (!Array.isArray(json) || json.length < 200) {
-                        console.warn(`[Tiingo] Only ${json.length} candles for ${pairName}`);
+                        // 🔥 Naya Debug Log: Yeh bataye ga ke Tiingo se asli error kya aa raha hai
+                        console.warn(`[Tiingo] Response Error/Incomplete for ${pairName}:`, JSON.stringify(json));
                         resolve(null);
                         return;
                     }
@@ -294,6 +296,7 @@ function hasValidVolume(volumes) {
     return volumes.reduce((a, b) => a + b, 0) > 0;
 }
 
+// Format total dollar volume scannable format (M, B, K)
 function formatDollarVolume(volume, price) {
     const total = volume * price;
     if (total >= 1e9) return (total / 1e9).toFixed(2) + ' B';
@@ -302,7 +305,7 @@ function formatDollarVolume(volume, price) {
     return total.toFixed(2);
 }
 
-// ── Main ──
+// ── Main Pipeline ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
     console.log('[Metrics] Starting (All APIs: Tiingo + Finnhub + TwelveData + Binance + Yahoo)...');
     const allPairs = config.PAIRS;
@@ -330,7 +333,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             if (isCrypto) {
                 // 1. Binance (fast, unlimited)
                 volumeData = await fetchBinanceDailyCandles(pair.n.replace('USD', 'USDT'));
-                // 2. Tiingo Fallback (volume check ke sath)
+                // 2. Tiingo Fallback
                 if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchTiingoVolume(pair.n);
                 // 3. Yahoo Fallback
                 if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
@@ -339,15 +342,15 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                 volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
             } else {
-                // ✅ Forex & Gold: Full Check Logic with Volume Validation
+                // ✅ Forex & Gold: Tiingo primary with sequential fallback loops
                 volumeData = await fetchTiingoVolume(pair.n);
                 
-                // Agar Tiingo fail ho ya volume zero ho, to Finnhub par jaye
+                // Tiingo fail ho ya volume zero ho -> Finnhub
                 if (!volumeData || !hasValidVolume(volumeData.volumes)) {
                     volumeData = await fetchFinnhubForexVolume(pair.n);
                 }
                 
-                // Agar Finnhub fail ho ya volume zero ho, to Twelve Data par jaye
+                // Finnhub fail ho ya volume zero ho -> Twelve Data
                 if (!volumeData || !hasValidVolume(volumeData.volumes)) {
                     volumeData = await fetchTwelveDataVolume(pair.n);
                 }
@@ -404,7 +407,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
             dollarVolume1d
         });
 
-        // 🔥 100ms delay to avoid burst limits (Tiingo, etc.)
+        // 100ms delay to prevent token threshold spikes
         await sleep(100);
     }
 
