@@ -17,9 +17,9 @@ function render() {
         const isStrongBear = checkStrongTrend(p.n, 'bear', m, t, s);
         const blinkClass = isStrongBull ? 'blink-pair-bull' : (isStrongBear ? 'blink-pair-bear' : '');
 
-        // ✅ Golden highlight for Blink + Pullback combo
+        // ✅ FIX: Golden highlight ab sirf active pullback/target list ki vajah se
         const inTargetList = isPairInTargetList(p.n);
-        const goldenClass = (blinkClass && inTargetList) ? 'golden-highlight' : '';
+        const goldenClass = inTargetList ? 'golden-highlight' : '';
 
         // 200D trend
         const longTerm = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '—';
