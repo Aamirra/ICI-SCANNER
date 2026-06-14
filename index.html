@@ -800,6 +800,14 @@ db.ref('technicalMetrics').on('value', (snap) => {
 });
 
 // ═══════════════════════════════════════════
+// PULLBACK STATE (TARGET LIST)
+// ═══════════════════════════════════════════
+db.ref('pb_state').on('value', (snap) => {
+    PB_STATE = snap.val() || {};
+    if (typeof render === 'function') render();
+});
+
+// ═══════════════════════════════════════════
 // MINI CHART POPUP
 // ═══════════════════════════════════════════
 let miniChartPopup = document.createElement('div');
