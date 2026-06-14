@@ -34,6 +34,23 @@ const TD_DAILY_LIMIT_PER_KEY = 800;
 // ── Unsupported Indices for Twelve Data ──
 const TD_UNSUPPORTED_INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
 
+// ── Yahoo Futures Mapping for Forex (volume proxy, no API key needed) ──
+const yahooFuturesMap = {
+    'EURUSD': '6E=F',
+    'GBPUSD': '6B=F',
+    'USDJPY': '6J=F',
+    'USDCHF': '6S=F',
+    'USDCAD': '6C=F',
+    'AUDUSD': '6A=F',
+    'NZDUSD': '6N=F',
+    'EURJPY': 'E7=F',
+    // crosses will use spot
+};
+
+function getYahooForexSymbol(pairName) {
+    return yahooFuturesMap[pairName] || (pairName + '=X');
+}
+
 // ── Symbol Mappings ──
 function getTiingoSymbol(pairName) {
     return pairName.toLowerCase();
@@ -61,7 +78,8 @@ function getYahooSymbol(pairName) {
         'JPN225': '^N225',
     };
     if (map[pairName]) return map[pairName];
-    if (pairName.includes('USD')) return pairName + '=X';
+    // for forex, route to futures mapping
+    if (/^[A-Z]{6}$/.test(pairName)) return getYahooForexSymbol(pairName);
     return pairName;
 }
 
@@ -359,12 +377,25 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
             } else {
                 // Main Sequence for Forex & Gold
+                // 1. Tiingo primary
                 volumeData = await fetchTiingoVolume(pair.n);
                 
+                // 2. Yahoo Futures (free, no key) – only for forex
+                if ((!volumeData || !hasValidVolume(volumeData.volumes)) && isForex) {
+                    const futuresSymbol = getYahooForexSymbol(pair.n);
+                    console.log(`[Yahoo Futures] Trying futures volume for ${pair.n} -> ${futuresSymbol}`);
+                    const futuresData = await fetchYahooDailyCandles(futuresSymbol);
+                    if (futuresData && hasValidVolume(futuresData.volumes)) {
+                        volumeData = { ...futuresData, source: 'YahooFutures' };
+                    }
+                }
+
+                // 3. Twelve Data
                 if (!volumeData || (!hasValidVolume(volumeData.volumes) && isGold)) {
                     volumeData = await fetchTwelveDataVolume(pair.n);
                 }
                 
+                // 4. Yahoo spot fallback
                 if (!volumeData) {
                     volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 }
