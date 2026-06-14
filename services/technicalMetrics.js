@@ -6,7 +6,7 @@ const calcSMA = require('../utils/smaCalc');
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
-// ── Twelve Data keys (load from individual TD_KEY_1, TD_KEY_2, ..., TD_KEY_16) ──
+// ── Twelve Data keys (for gold, crypto fallback) ──
 const TD_KEYS = [];
 for (let i = 1; i <= 16; i++) {
     const key = process.env[`TD_KEY_${i}`];
@@ -16,32 +16,48 @@ for (let i = 1; i <= 16; i++) {
 }
 const TD_DAILY_LIMIT_PER_KEY = 800;
 
-// ── Alpha Vantage keys ──
-const AV_KEYS = (process.env.ALPHA_VANTAGE_KEYS || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
-const AV_DAILY_LIMIT_PER_KEY = 25;
+// ── Finnhub key ──
+const FINNHUB_KEY = process.env.FINNHUB_KEY || '';
 
-// ── Twelve Data symbol mapping ──
+// ── Indices jinko Twelve Data free plan support nahi karta ──
+const TD_UNSUPPORTED_INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
+
+// ── Symbol mappings ──
+function getFinnhubSymbol(pairName) {
+    const from = pairName.slice(0, 3);
+    const to = pairName.slice(3);
+    return `OANDA:${from}_${to}`;
+}
+
 function getTwelveDataSymbol(pairName) {
     const map = {
         'XAUUSD': 'XAU/USD',
         'BTCUSD': 'BTC/USD',
         'ETHUSD': 'ETH/USD',
-        'US500': 'SPX',
-        'US100': 'NDX',
-        'US30': 'DJI',
-        'GER40': 'DAX',
-        'UK100': 'UKX',
-        'JPN225': 'N225',
     };
     if (map[pairName]) return map[pairName];
-    // Default forex: EURUSD -> EUR/USD
     if (/^[A-Z]{6}$/.test(pairName)) {
         return pairName.slice(0, 3) + '/' + pairName.slice(3);
     }
     return pairName;
 }
 
-// ── Firebase counter helpers ──
+function getYahooSymbol(pairName) {
+    const map = {
+        'XAUUSD': 'GC=F',
+        'US500': '^GSPC',
+        'US100': '^NDX',
+        'US30': '^DJI',
+        'GER40': '^GDAXI',
+        'UK100': '^FTSE',
+        'JPN225': '^N225',
+    };
+    if (map[pairName]) return map[pairName];
+    if (pairName.includes('USD')) return pairName + '=X';
+    return pairName;
+}
+
+// ── Firebase counter helpers (for Twelve Data) ──
 async function getKeyUsage(counterPath, keyIndex) {
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -97,7 +113,7 @@ function fetchBinanceDailyCandles(symbol) {
 }
 
 // ═══════════════════════════════════════════
-// 2. YAHOO FINANCE (FALLBACK)
+// 2. YAHOO FINANCE (FALLBACK & INDICES)
 // ═══════════════════════════════════════════
 function fetchYahooDailyCandles(yahooSymbol) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
@@ -122,7 +138,46 @@ function fetchYahooDailyCandles(yahooSymbol) {
 }
 
 // ═══════════════════════════════════════════
-// 3. TWELVE DATA (PRIMARY FOREX, GOLD, INDICES, CRYPTO FALLBACK)
+// 3. FINNHUB (PRIMARY FOREX)
+// ═══════════════════════════════════════════
+function fetchFinnhubForexVolume(pairName) {
+    if (!FINNHUB_KEY) {
+        console.warn('[Finnhub] No API key set');
+        return null;
+    }
+    const symbol = getFinnhubSymbol(pairName);
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - (200 * 24 * 60 * 60);
+    const url = `https://finnhub.io/api/v1/forex/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
+
+    console.log(`[Finnhub] Fetching ${pairName} (${symbol})...`);
+    return new Promise((resolve) => {
+        https.get(url, { agent }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    if (json.s !== 'ok' || !json.c || json.c.length < 200) {
+                        console.warn(`[Finnhub] Incomplete data for ${pairName}: ${JSON.stringify(json).slice(0, 200)}`);
+                        resolve(null);
+                        return;
+                    }
+                    const closes = json.c;
+                    const volumes = json.v.map(v => v || 0);
+                    console.log(`[Finnhub] Success for ${pairName}: ${closes.length} candles`);
+                    resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'Finnhub' });
+                } catch (e) {
+                    console.error(`[Finnhub] Parse error for ${pairName}:`, e.message);
+                    resolve(null);
+                }
+            });
+        }).on('error', () => resolve(null));
+    });
+}
+
+// ═══════════════════════════════════════════
+// 4. TWELVE DATA (GOLD, CRYPTO FALLBACK)
 // ═══════════════════════════════════════════
 async function fetchTwelveDataVolume(pairName) {
     const keyIndex = await getAvailableKeyIndex(TD_KEYS, 'td_counter', TD_DAILY_LIMIT_PER_KEY);
@@ -137,12 +192,10 @@ async function fetchTwelveDataVolume(pairName) {
 
     console.log(`[TwelveData] Fetching ${pairName} (${symbol}) with key index ${keyIndex}...`);
 
-    // Increment usage before call
     const newCount = await incrementKeyUsage('td_counter', keyIndex, TD_DAILY_LIMIT_PER_KEY);
     if (newCount >= TD_DAILY_LIMIT_PER_KEY) {
         console.warn(`[TwelveData] Key index ${keyIndex} reached limit, exhausting.`);
         await setKeyExhausted('td_counter', keyIndex);
-        // Immediately try next key recursively
         return fetchTwelveDataVolume(pairName);
     }
 
@@ -156,7 +209,6 @@ async function fetchTwelveDataVolume(pairName) {
                     if (json.code === 429 || (json.status === 'error' && json.message?.includes('rate limit'))) {
                         console.warn(`[TwelveData] Rate limit hit for key ${keyIndex}, exhausting.`);
                         await setKeyExhausted('td_counter', keyIndex);
-                        // Retry with fresh key
                         resolve(await fetchTwelveDataVolume(pairName));
                         return;
                     }
@@ -187,65 +239,6 @@ async function fetchTwelveDataVolume(pairName) {
     });
 }
 
-// ═══════════════════════════════════════════
-// 4. ALPHA VANTAGE (FOREX FALLBACK)
-// ═══════════════════════════════════════════
-async function fetchAlphaVantageVolume(pairName) {
-    const keyIndex = await getAvailableKeyIndex(AV_KEYS, 'av_counter', AV_DAILY_LIMIT_PER_KEY);
-    if (keyIndex === -1) {
-        console.warn(`[Alpha Vantage] All keys exhausted for today`);
-        return null;
-    }
-
-    const apiKey = AV_KEYS[keyIndex];
-    const from = pairName.substring(0, 3);
-    const to = pairName.substring(3);
-    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${from}&to_symbol=${to}&outputsize=full&apikey=${apiKey}`;
-
-    console.log(`[Alpha Vantage] Fetching ${pairName} using key index ${keyIndex}...`);
-
-    const newCount = await incrementKeyUsage('av_counter', keyIndex, AV_DAILY_LIMIT_PER_KEY);
-    console.log(`[Alpha Vantage] Key index ${keyIndex} usage incremented to ${newCount}`);
-
-    return new Promise((resolve) => {
-        const req = https.get(url, { agent }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', async () => {
-                try {
-                    const json = JSON.parse(data);
-                    if (json.Information && json.Information.includes('standard API rate limit is 25 requests per day')) {
-                        console.warn(`[Alpha Vantage] Rate limit detected for key ${keyIndex}, exhausting it.`);
-                        await setKeyExhausted('av_counter', keyIndex);
-                        resolve(null);
-                        return;
-                    }
-                    if (json['Time Series FX (Daily)']) {
-                        const ts = json['Time Series FX (Daily)'];
-                        const entries = Object.entries(ts)
-                            .sort(([a], [b]) => new Date(a) - new Date(b))
-                            .slice(-200);
-                        if (entries.length < 200) {
-                            console.warn(`[Alpha Vantage] Only ${entries.length} daily entries for ${pairName}`);
-                            resolve(null);
-                            return;
-                        }
-                        const closes = entries.map(([_, v]) => parseFloat(v['4. close']));
-                        const volumes = entries.map(([_, v]) => parseInt(v['5. volume'] || '0'));
-                        console.log(`[Alpha Vantage] Success for ${pairName}: ${entries.length} candles`);
-                        resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'AlphaVantage' });
-                    } else {
-                        console.warn(`[Alpha Vantage] No daily data for ${pairName}: ${JSON.stringify(json).slice(0, 200)}`);
-                        resolve(null);
-                    }
-                } catch (e) { resolve(null); }
-            });
-        });
-        req.setTimeout(15000, () => { req.destroy(); console.warn(`[Alpha Vantage] Timeout for ${pairName}`); resolve(null); });
-        req.on('error', () => resolve(null));
-    });
-}
-
 // ── Helpers ──
 function hasValidVolume(volumes) {
     if (!volumes || volumes.length === 0) return false;
@@ -262,7 +255,7 @@ function formatDollarVolume(volume, price) {
 
 // ── Main ──
 async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
-    console.log('[Metrics] Starting (Hybrid: Binance + TwelveData + AV fallback + Yahoo)...');
+    console.log('[Metrics] Starting (Hybrid: Finnhub + TwelveData + Binance + Yahoo)...');
     const allPairs = config.PAIRS;
     const results = [];
 
@@ -283,6 +276,7 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
 
             const isCrypto = pair.n === 'BTCUSD' || pair.n === 'ETHUSD' || pair.isCrypto;
             const isGold = pair.n === 'XAUUSD';
+            const isIndex = TD_UNSUPPORTED_INDICES.includes(pair.n);
 
             if (isCrypto) {
                 // 1. Binance (fast, unlimited)
@@ -292,17 +286,27 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                 if (!volumeData) volumeData = await fetchTwelveDataVolume(pair.n);
                 // Final Yahoo
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
-            } else {
-                // 2. Twelve Data primary (forex, gold, indices, etc.)
+            } else if (isIndex) {
+                // Indices: direct Yahoo
+                console.log(`[Metrics] Index ${pair.n} – using Yahoo directly.`);
+                volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
+                if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
+            } else if (isGold) {
+                // Gold: Twelve Data primary, Yahoo fallback
                 volumeData = await fetchTwelveDataVolume(pair.n);
-                // Fallback Alpha Vantage (forex only)
-                if (!volumeData && !isGold && !['US500','US100','US30','GER40','UK100','JPN225'].includes(pair.n)) {
-                    volumeData = await fetchAlphaVantageVolume(pair.n);
-                }
-                // Final Yahoo fallback (may have 0 volume)
+                if (!volumeData) volumeData = await fetchYahooDailyCandles('GC=F');
+                if (!volumeData) volumeData = await fetchYahooDailyCandles('XAUUSD=X');
+            } else {
+                // ✅ Forex: Finnhub primary
+                volumeData = await fetchFinnhubForexVolume(pair.n);
+                // Fallback Twelve Data (volume 0, but better than nothing)
                 if (!volumeData) {
-                    const yahooSymbol = isGold ? 'GC=F' : (pair.n.includes('USD') ? pair.n + '=X' : pair.n);
-                    volumeData = await fetchYahooDailyCandles(yahooSymbol);
+                    console.log(`[Metrics] Finnhub failed for ${pair.n}, trying Twelve Data...`);
+                    volumeData = await fetchTwelveDataVolume(pair.n);
+                }
+                // Final Yahoo
+                if (!volumeData) {
+                    volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                     if (volumeData) console.log(`[Metrics] Using Yahoo fallback for ${pair.n} (volume may be 0)`);
                 }
             }
