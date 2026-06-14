@@ -806,6 +806,10 @@ db.ref('pb_state').on('value', (snap) => {
     PB_STATE = snap.val() || {};
     if (typeof render === 'function') render();
 });
+// ✅ Agar PB_STATE pehle se available ho (cache / sync), tab bhi render karo
+if (typeof PB_STATE !== 'undefined' && Object.keys(PB_STATE).length > 0) {
+    if (typeof render === 'function') render();
+}
 
 // ═══════════════════════════════════════════
 // MINI CHART POPUP
