@@ -14,9 +14,9 @@ const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 function defaultBearState() {
     return {
         dir:         'bear',
-        phase:       null,      // null | watching | pullback | mark_low | fired
-        runningLow:  null,      // Impulse Low (Phase 0)
-        highestHigh: null,      // Pullback High (Phase 1)
+        phase:       null,
+        runningLow:  null,
+        highestHigh: null,
         firedAt:     0,
         reminded:    false
     };
@@ -30,7 +30,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
 
     const cls   = raw.closes;
     const highs = raw.highs || cls;
-    const lows  = raw.lows || cls;
+    const lows  = raw.lows  || cls;
 
     const lastClose = cls[cls.length - 1];
     const lastHigh  = highs[highs.length - 1];
@@ -43,7 +43,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // 1. Trend Filters (W1 + D1 bear AND EMA20 < SMA50)
+    // 1. Trend Filters
     const trendValid = (r['1week'] === 'bear' && r['1day'] === 'bear') && (ema20 < sma50);
     let s = PB_STATE[stateKey] || defaultBearState();
 
@@ -64,6 +64,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 s.runningLow = lastLow;
             }
         }
+
+        // ✅ Memory mein save karo (Target List ke liye)
+        PB_STATE[stateKey] = s;
 
         // Trigger Pullback
         if (lastClose > ema20) {
@@ -89,9 +92,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 4. Invalidation Logic (Breach Checks)
+    // 4. Invalidation Logic
     if (s.phase === 'mark_low' || s.phase === 'fired') {
-        // High Breach: Wapas Pullback mein bhejo
+        // High Breach
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
             s.phase       = 'pullback';
             s.highestHigh = lastHigh;
@@ -99,7 +102,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-        // Impulse Low Breach: Poora Setup Reset
+        // Impulse Low Breach
         if (s.runningLow !== null && lastClose < s.runningLow) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
