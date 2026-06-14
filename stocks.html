@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <!-- PSX stock list for chart symbol mapping -->
+    <script src="psxStockList.js"></script>
     <style>
         /* ── Dark & Light Mode ── */
         [data-theme="dark"] {
@@ -356,19 +358,15 @@
         openStockChart(stockCIdx);
     }
 
-    function openStockChart(idx) {
-        stockCIdx = idx;
-        const symbol = stockChartPairs[idx];
-        if (!symbol) return;
-        document.getElementById('cp').textContent = symbol;
-        document.getElementById('chartOverlay').style.display = 'flex';
-        document.getElementById('tv_chart_container').innerHTML = '';
+    // 🧠 Widget creation function with symbol handling
+    function createStockChartWidget(symbol, chartContainerId) {
+        document.getElementById(chartContainerId).innerHTML = '';
         new TradingView.widget({
             "autosize": true,
             "symbol": symbol,
             "interval": "60",
             "theme": getTheme(),
-            "container_id": "tv_chart_container",
+            "container_id": chartContainerId,
             "studies_overrides": {
                 "moving average exponential.plot.color": "#2962FF",
                 "moving average exponential.plot.linewidth": 1,
@@ -383,6 +381,32 @@
                 { "id": "WilliamFractal@tv-basicstudies" }
             ]
         });
+    }
+
+    function openStockChart(idx) {
+        stockCIdx = idx;
+        const symbol = stockChartPairs[idx];
+        if (!symbol) return;
+        document.getElementById('cp').textContent = symbol;
+        document.getElementById('chartOverlay').style.display = 'flex';
+
+        // ── Smart symbol mapping for PSX stocks ──
+        const isPSX = (typeof psxStockList !== 'undefined' && psxStockList.includes(symbol));
+
+        if (isPSX) {
+            // Try KSE first, fallback to PSX after 2 seconds if chart empty
+            createStockChartWidget('KSE:' + symbol, 'tv_chart_container');
+            setTimeout(() => {
+                const container = document.getElementById('tv_chart_container');
+                if (container && container.children.length === 0) {
+                    createStockChartWidget('PSX:' + symbol, 'tv_chart_container');
+                }
+            }, 2000);
+        } else {
+            // Exness / forex / others — no prefix
+            createStockChartWidget(symbol, 'tv_chart_container');
+        }
+
         setTimeout(highlightSelectedRow, 100);
     }
 
