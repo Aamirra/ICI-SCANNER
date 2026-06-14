@@ -1,6 +1,4 @@
-console.log('modal.js v11 loaded');
-
-const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
+console.log('modal.js v12 loaded');
 
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
@@ -9,14 +7,16 @@ function pairNameFromKey(key) {
 }
 
 function phaseLabel(phase) {
-    if (phase === 'pullback')  return 'Pullback';
-    if (phase === 'mark_high') return 'Ready — inside bar wait';
-    if (phase === 'mark_low')  return 'Ready — inside bar wait';
+    if (phase === 'watching')  return 'Watching 👀';
+    if (phase === 'pullback')  return 'Pullback 📉';
+    if (phase === 'mark_high') return 'Ready — inside bar wait 📈';
+    if (phase === 'mark_low')  return 'Ready — inside bar wait 📉';
+    if (phase === 'fired')     return 'Alert Fired 🔔';
     return phase || '';
 }
 
 function isTarget(s) {
-    return s && TARGET_PHASES.includes(s.phase);
+    return s && s.phase !== null;
 }
 
 // ✅ Returns array so 1H/4H entries appear separately
