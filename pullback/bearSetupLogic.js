@@ -130,6 +130,16 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             }
         }
 
+        // 🔁 NEW: Agar fired phase mein price wapas EMA20 ke upar aaye → dobara pullback
+        if (s.phase === 'fired' && lastClose > ema20) {
+            s.phase       = 'pullback';
+            s.highestHigh = lastHigh;
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            if (i === totalCandles - 1) return s;
+            continue;
+        }
+
         // 5. Phase 2: Fractal Alert Logic
         if (s.phase === 'mark_low') {
             if (lows.length < 2) {
