@@ -4,13 +4,20 @@ function saveTargetList(PB_STATE, firebasePut) {
         const s = PB_STATE[pName];
         if (s.dir !== null) {
             targets[pName] = {
-                dir: s.dir,
-                phase: s.phase,
-                refHigh: s.refHigh ?? null,
-                refLow: s.refLow ?? null,
-                reminded: s.reminded || false,  // Fix #3: reminded bhi save karo
-                firedAt: s.firedAt || 0,
-                timestamp: s.firedAt || Date.now()
+                dir:         s.dir,
+                phase:       s.phase,
+
+                // Bull fields
+                runningHigh: s.runningHigh  ?? null,
+                lowestLow:   s.lowestLow    ?? null,
+
+                // Bear fields
+                runningLow:  s.runningLow   ?? null,
+                highestHigh: s.highestHigh  ?? null,
+
+                reminded:    s.reminded  || false,
+                firedAt:     s.firedAt   || 0,
+                timestamp:   s.firedAt   || Date.now()
             };
         }
     }
