@@ -621,10 +621,8 @@ function setFilter(f) {
 }
 
 // ═══════════════════════════════════════════
-// ARRAY‑BASED TARGET LIST (1H + 4H)
+// ARRAY‑BASED TARGET LIST (1H + 4H) – NOW INCLUDES ALL ACTIVE PHASES
 // ═══════════════════════════════════════════
-const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
-
 function pairNameFromKey(key) {
     if (!key) return 'Unknown';
     const parts = key.split('_');
@@ -635,11 +633,13 @@ function phaseLabel(phase) {
     if (phase === 'pullback')  return 'Pullback';
     if (phase === 'mark_high') return 'Ready — inside bar wait';
     if (phase === 'mark_low')  return 'Ready — inside bar wait';
-    return phase || '';
+    // Baaki kisi bhi phase ko simply capitalise karke dikhao
+    return phase ? phase.charAt(0).toUpperCase() + phase.slice(1) : '';
 }
 
 function isTarget(s) {
-    return s && TARGET_PHASES.includes(s.phase);
+    // ✅ Sirf yeh ke entry mojood ho aur phase koi bhi truthy value ho
+    return s && s.phase;
 }
 
 function collectTargets() {
