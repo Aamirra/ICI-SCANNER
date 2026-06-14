@@ -10,68 +10,90 @@ function getTheme() {
 function openCFromTable(i) {
     chartPairs = [...fPairs];
     fromModal = false;
-    currentChartInterval = "60"; // reset to 1h when coming from table
+    currentChartInterval = "60";
     openC(i);
 }
 
-// ✅ Now accepts optional interval (e.g., "240" for 4H, "60" for 1H)
 function openC(i, interval = null) {
     if (interval) currentChartInterval = interval;
 
     cIdx = i;
     const p = chartPairs[cIdx];
     if (!p) return;
+
     document.getElementById('cp').textContent = p.n;
     document.getElementById('chartOverlay').style.display = 'flex';
-    document.getElementById('tv_chart_container').innerHTML = '';
-    new TradingView.widget({
-        "autosize": true,
-        "symbol": p.n,
-        "interval": currentChartInterval,   // dynamic interval
-        "theme": getTheme(),
-        "container_id": "tv_chart_container",
-        "studies_overrides": {
-            "moving average exponential.plot.color": "#2962FF",
-            "moving average exponential.plot.linewidth": 1,
-            "moving average.plot.color": "#9E9E9E",
-            "moving average.plot.linewidth": 1
-        },
-        "overrides": {
-            "scalesProperties.showStudyLastValue": false
-        },
-        "studies": [
-            {
-                "id": "MAExp@tv-basicstudies",
-                "inputs": { "length": 10 },
-                "overrides": {
-                    "Plot.color": "#2962FF",
-                    "Plot.linewidth": 1,
-                    "Plot.visible": true
-                }
+
+    // ── Smart symbol selection with fallback ──
+    const isPSX = (typeof psxStockList !== 'undefined' && psxStockList.includes(p.n));
+
+    function createWidget(symbol) {
+        document.getElementById('tv_chart_container').innerHTML = '';
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": symbol,
+            "interval": currentChartInterval,
+            "theme": getTheme(),
+            "container_id": "tv_chart_container",
+            "studies_overrides": {
+                "moving average exponential.plot.color": "#2962FF",
+                "moving average exponential.plot.linewidth": 1,
+                "moving average.plot.color": "#9E9E9E",
+                "moving average.plot.linewidth": 1
             },
-            {
-                "id": "MAExp@tv-basicstudies",
-                "inputs": { "length": 20 },
-                "overrides": {
-                    "Plot.color": "#F44336",
-                    "Plot.linewidth": 1,
-                    "Plot.visible": true
-                }
+            "overrides": {
+                "scalesProperties.showStudyLastValue": false
             },
-            {
-                "id": "MASimple@tv-basicstudies",
-                "inputs": { "length": 50 },
-                "overrides": {
-                    "Plot.color": "#9E9E9E",
-                    "Plot.linewidth": 1,
-                    "Plot.visible": true
+            "studies": [
+                {
+                    "id": "MAExp@tv-basicstudies",
+                    "inputs": { "length": 10 },
+                    "overrides": {
+                        "Plot.color": "#2962FF",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "MAExp@tv-basicstudies",
+                    "inputs": { "length": 20 },
+                    "overrides": {
+                        "Plot.color": "#F44336",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "MASimple@tv-basicstudies",
+                    "inputs": { "length": 50 },
+                    "overrides": {
+                        "Plot.color": "#9E9E9E",
+                        "Plot.linewidth": 1,
+                        "Plot.visible": true
+                    }
+                },
+                {
+                    "id": "WilliamFractal@tv-basicstudies"
                 }
-            },
-            {
-                "id": "WilliamFractal@tv-basicstudies"
+            ]
+        });
+    }
+
+    if (isPSX) {
+        // Try KSE first, then fallback to PSX if chart remains empty
+        createWidget('KSE:' + p.n);
+        // Check after 2 seconds if chart loaded (container has iframe)
+        setTimeout(() => {
+            const container = document.getElementById('tv_chart_container');
+            if (container && container.children.length === 0) {
+                // Fallback to PSX
+                createWidget('PSX:' + p.n);
             }
-        ]
-    });
+        }, 2000);
+    } else {
+        // Forex / crypto / others — try without prefix
+        createWidget(p.n);
+    }
 }
 
 function movePair(step) {
