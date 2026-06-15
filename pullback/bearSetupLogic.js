@@ -15,19 +15,19 @@ function defaultBearState() {
     return {
         dir:         'bear',
         phase:       null,
-        runningLow:  null, // Bull ke runningHigh ka mirror
-        highestHigh: null, // Bull ke lowestLow ka mirror
+        runningLow:  null, 
+        highestHigh: null, 
         firedAt:     0,
         reminded:    false
     };
 }
 
 // ─────────────────────────────────────────────
-//  Main Bear Logic Function
+//  Main Bear Logic Function (Fixed for Closed Candles)
 // ─────────────────────────────────────────────
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-    // Safety Check
-    if (!raw.closes || raw.closes.length === 0) {
+    // Safety Check: Data arrays check ho rahe hain
+    if (!raw.closes || raw.closes.length < 3) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
@@ -43,7 +43,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     const highs = raw.highs || cls;
     const lows  = raw.lows  || cls;
 
-    // Latest Candle Data
+    // High/Low tracking ke liye latest data bilkul perfect kaam karega
     const lastClose = cls[cls.length - 1];
     const lastHigh  = highs[highs.length - 1];
     const lastLow   = lows[lows.length - 1];
@@ -56,7 +56,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // Moving Average Filter (Bear trend mein EMA 20 strictly SMA 50 ke NICHE hona chahiye)
+    // Moving Average Filter (EMA 20 strictly SMA 50 ke NICHE hona chahiye)
     if (ema20 >= sma50) {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
@@ -98,6 +98,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         // Wapas EMA20 ke NICHE close hone par Alert zone mein dakhil
         if (lastClose < ema20) {
             s.phase = 'mark_low';
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+            return s; // 🎯 FIX: Yahan se return lazmi hai taaki jhatke mein live candle par alert na jaye
         }
 
         PB_STATE[stateKey] = s;
@@ -105,9 +108,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 4. Invalidation Logic (Sirf 'mark_low' ya 'fired' phases ke liye)
+    // 4. Invalidation Logic
     if (s.phase === 'mark_low' || s.phase === 'fired') {
-        // High Breach: Agar price pullback wale highest high se upar nikal jaye (Bounce Extended)
+        // High Breach: Agar price pullback wale highest high se upar nikal jaye
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
             s.phase       = 'pullback';
             s.highestHigh = lastHigh;
@@ -134,15 +137,14 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         }
     }
 
-    // 5. Phase 2: Bearish Fractal Alert Logic
+    // 5. Phase 2: Alert Logic (🎯 FIXED: Sirf CLOSED candles check hongi)
     if (s.phase === 'mark_low') {
-        if (lows.length < 2) return s;
+        // length - 1 live candle ko chhor kar pichli do closed candles ka low nikal rahe hain
+        const completedLow = lows[lows.length - 2]; // Jo abhi abhi CLOSE hui hai
+        const previousLow  = lows[lows.length - 3]; // Us se pichli CLOSED candle
 
-        const prevLow    = lows[lows.length - 2];
-        const currentLow = lows[lows.length - 1];
-
-        // Fractal Condition: Jab current low pichle low se ZYADA ya BARABAR ho (Higher Low Fractal for Short)
-        if (currentLow >= prevLow) {
+        // Aapka Rule: Current Closed Low >= Previous Closed Low
+        if (completedLow >= previousLow) {
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
 
@@ -151,7 +153,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
 
-                // 🚀 Telegram Notification Send (`false` pass kiya hai short/bear alert ke liye)
+                // Telegram Notification Send
                 await sendTG(buildICIAlertMsg(p.n, false));
 
                 s.phase   = 'fired';
