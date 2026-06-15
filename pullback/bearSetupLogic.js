@@ -8,30 +8,26 @@ const {
 } = require('./tradeStateManager');
 const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
-// ─────────────────────────────────────────────
-//  Default Bear State Structure (Mirrored)
-// ─────────────────────────────────────────────
+// ─────────── DEFAULT BEAR STATE ───────────
 function defaultBearState() {
     return {
         dir:         'bear',
-        phase:       null,
-        runningLow:  null, 
-        highestHigh: null, 
+        phase:       null,          // null, 'monitoring', 'correction', 'impulse', 'alerted'
+        runningLow:  null,          // lowest low during monitoring (impulse low)
+        highestHigh: null,          // highest high during correction (pullback)
+        markLow:     null,          // only used in 'impulse' phase (the low to break)
         firedAt:     0,
         reminded:    false
     };
 }
 
-// ─────────────────────────────────────────────
-//  Main Bear Logic Function (Fixed for Closed Candles)
-// ─────────────────────────────────────────────
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-    // Safety Check: Data arrays check ho rahe hain
+    // Safety: need at least 3 candles so that index -2 is valid
     if (!raw.closes || raw.closes.length < 3) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // 1. Trend Filters (High Timeframe Bear Check)
+    // 1. High timeframe trend filter (must be bear on both)
     if (r['1week'] !== 'bear' || r['1day'] !== 'bear') {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
@@ -43,12 +39,11 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     const highs = raw.highs || cls;
     const lows  = raw.lows  || cls;
 
-    // High/Low tracking ke liye latest data bilkul perfect kaam karega
-    const lastClose = cls[cls.length - 1];
-    const lastHigh  = highs[highs.length - 1];
-    const lastLow   = lows[lows.length - 1];
+    // ✅ ONLY closed candle data (last completed candle = index -2)
+    const lastClose = cls[cls.length - 2];
+    const lastHigh  = highs[highs.length - 2];
+    const lastLow   = lows[lows.length - 2];
 
-    // Indicators Calculation
     const ema20 = calcEMA(cls, 20);
     const sma50 = calcSMA(cls, 50);
 
@@ -56,7 +51,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // Moving Average Filter (EMA 20 strictly SMA 50 ke NICHE hona chahiye)
+    // Bearish trend filter: EMA20 must be strictly BELOW SMA50
     if (ema20 >= sma50) {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
@@ -64,23 +59,22 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // Load State
     let s = PB_STATE[stateKey] || defaultBearState();
 
-    // 2. Phase 0: Watching (Impulse Low Tracking)
-    if (s.phase === null || s.phase === 'watching') {
-        s.phase = 'watching';
+    // ────────────── PHASE 0: monitoring ──────────────
+    if (s.phase === null || s.phase === 'monitoring') {
+        s.phase = 'monitoring';
 
-        // Track Impulse Low
+        // Track impulse low (lowest low while price stays below EMA20)
         if (lastClose < ema20) {
             if (s.runningLow === null || lastLow < s.runningLow) {
                 s.runningLow = lastLow;
             }
         }
 
-        // Trigger Pullback / Retracement (Jaise hi price EMA20 ke UPAR close ho)
+        // Price closes above EMA20 → enter correction (pullback)
         if (lastClose > ema20) {
-            s.phase       = 'pullback';
+            s.phase       = 'correction';
             s.highestHigh = lastHigh;
         }
 
@@ -89,18 +83,20 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 3. Phase 1: Pullback / Retracement (Highest High Tracking)
-    if (s.phase === 'pullback') {
+    // ────────────── PHASE 1: correction ──────────────
+    if (s.phase === 'correction') {
+        // Track highest high during this pullback
         if (s.highestHigh === null || lastHigh > s.highestHigh) {
             s.highestHigh = lastHigh;
         }
 
-        // Wapas EMA20 ke NICHE close hone par Alert zone mein dakhil
+        // Price closes back below EMA20 → impulse phase starts
         if (lastClose < ema20) {
-            s.phase = 'mark_low';
+            s.phase   = 'impulse';
+            s.markLow = lows[lows.length - 2];   // mark low of this first closed candle below EMA20
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
-            return s; // 🎯 FIX: Yahan se return lazmi hai taaki jhatke mein live candle par alert na jaye
+            return s;   // do NOT alert yet
         }
 
         PB_STATE[stateKey] = s;
@@ -108,18 +104,18 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 4. Invalidation Logic
-    if (s.phase === 'mark_low' || s.phase === 'fired') {
-        // High Breach: Agar price pullback wale highest high se upar nikal jaye
+    // ─── INVALIDATIONS (impulse / alerted) ───
+    if (s.phase === 'impulse' || s.phase === 'alerted') {
+        // Stop hit: price breaks above highestHigh of correction
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
-            s.phase       = 'pullback';
+            s.phase       = 'correction';
             s.highestHigh = lastHigh;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
 
-        // Impulse Low Breach: Agar naya breakdown downward ho jaye bina setup complete hue -> Reset to watching
+        // Impulse low broken: full breakdown → reset to monitoring
         if (s.runningLow !== null && lastClose < s.runningLow) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
@@ -127,9 +123,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             return s;
         }
 
-        // Fired state fallback: Agar alert fire hone ke baad price wapas EMA20 ke upar close ho jaye
-        if (s.phase === 'fired' && lastClose > ema20) {
-            s.phase       = 'pullback';
+        // After alert, price goes back above EMA20 → back to correction
+        if (s.phase === 'alerted' && lastClose > ema20) {
+            s.phase       = 'correction';
             s.highestHigh = lastHigh;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
@@ -137,31 +133,35 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         }
     }
 
-    // 5. Phase 2: Alert Logic (🎯 FIXED: Sirf CLOSED candles check hongi)
-    if (s.phase === 'mark_low') {
-        // length - 1 live candle ko chhor kar pichli do closed candles ka low nikal rahe hain
-        const completedLow = lows[lows.length - 2]; // Jo abhi abhi CLOSE hui hai
-        const previousLow  = lows[lows.length - 3]; // Us se pichli CLOSED candle
+    // ────────────── PHASE 2: impulse (alert logic) ──────────────
+    if (s.phase === 'impulse') {
+        if (s.markLow === null) {
+            s.markLow = lastLow;   // fallback
+        }
 
-        // Aapka Rule: Current Closed Low >= Previous Closed Low
-        if (completedLow >= previousLow) {
+        const justClosedLow = lows[lows.length - 2];
+
+        if (justClosedLow < s.markLow) {
+            // Mark low broken to the downside → update markLow, continue waiting
+            s.markLow = justClosedLow;
+        } else {
+            // Mark low NOT broken → ALERT!
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
 
-            // Duplicate Alert Protection Check
             if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
 
-                // Telegram Notification Send
-                await sendTG(buildICIAlertMsg(p.n, false));
+                await sendTG(buildICIAlertMsg(p.n, false));   // false = bearish alert
 
-                s.phase   = 'fired';
+                s.phase   = 'alerted';
                 s.firedAt = Date.now();
-                PB_STATE[stateKey] = s;
-                await saveTargetList(PB_STATE, firebasePut);
             }
         }
+
+        PB_STATE[stateKey] = s;
+        await saveTargetList(PB_STATE, firebasePut);
         return s;
     }
 
