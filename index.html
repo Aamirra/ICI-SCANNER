@@ -35,7 +35,7 @@
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
         .row-pair { width:25%; } .row-timeframes { width:30%; text-align:center; } .row-sentiment { width:25%; text-align:center; } .row-change { width:20%; text-align:right; }
         .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px; cursor:pointer; transition:background 0.2s; }
+        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
         .item-main:hover { background:var(--pill-bg); }
         .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
@@ -46,14 +46,65 @@
         .sent-red { background:var(--red); } .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
         .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
-        .item-details { max-height:0; overflow:hidden; transition:max-height 0.25s ease-out; background:var(--pill-bg); border-radius:8px; }
-        .details-inner { padding:12px; display:grid; grid-template-columns:repeat(2,1fr); gap:12px; font-size:12px; border-top:1px dashed var(--border); }
-        .detail-block { display:flex; flex-direction:column; gap:2px; }
-        .detail-lbl { color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; }
-        .detail-txt { font-weight:600; font-size:13px; color:var(--txt); }
+
+        /* ═══════════════════════════════════════════
+           COMPACT DETAILS STRIP (ALWAYS VISIBLE)
+           ═══════════════════════════════════════════ */
+        .compact-details {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:4px 8px 10px 8px;
+            font-size:10px;
+            color:var(--muted);
+            gap:6px;
+            flex-wrap:wrap;
+            background:transparent;
+        }
+        .compact-metric {
+            display:flex;
+            align-items:center;
+            gap:3px;
+            white-space:nowrap;
+        }
+        .compact-metric .lbl {
+            text-transform:uppercase;
+            font-weight:500;
+            color:var(--muted);
+        }
+        .compact-metric .val {
+            font-weight:600;
+            color:var(--txt);
+        }
+        .compact-metric .val.up { color:var(--green); }
+        .compact-metric .val.down { color:var(--red); }
+
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
+
+        /* ═══════════════════════════════════════════
+           DESKTOP MODE
+           ═══════════════════════════════════════════ */
+        body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
+        body.desktop-mode .phone-container {
+            max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0;
+            box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border);
+        }
+        body.desktop-mode #chartOverlay {
+            position:relative !important; display:flex !important; flex:1; height:100vh;
+            z-index:1 !important; background:var(--bg);
+        }
+        body.desktop-mode #tv_chart_container { min-height:0; }
+        body.desktop-mode #chartCloseBtn { display:none !important; }
+        body.desktop-mode #tv_chart_container:empty {
+            display:flex !important; align-items:center; justify-content:center; gap:12px;
+        }
+        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::after {
+            content:'Select a pair to view chart'; font-family:'Inter',sans-serif;
+            font-size:12px; color:var(--muted); opacity:0.5;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +170,7 @@
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
-        <button onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
@@ -130,7 +181,7 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-// ── Static Pair List (36 forex + indices + crypto + gold) ──
+// ── Static Pair List ──
 const PAIRS = [
     {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
     {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
@@ -140,7 +191,6 @@ const PAIRS = [
     {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
 ];
 
-// ── Global State ──
 let MARKET_DATA = {};
 let techMetrics = {};
 let sentimentData = {};
@@ -150,7 +200,6 @@ let filteredPairs = [...PAIRS];
 let chartPairs = [];
 let chartIdx = 0;
 
-// ── Theme / Desktop ──
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
@@ -158,20 +207,29 @@ function toggleTheme() {
     document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-theme', html.getAttribute('data-theme'));
 }
+
 function toggleDesktopMode() {
-    document.body.classList.toggle('desktop-mode');
-    localStorage.setItem('desktop-mode', document.body.classList.contains('desktop-mode'));
+    const isDesktop = document.body.classList.toggle('desktop-mode');
+    const overlay = document.getElementById('chartOverlay');
+    const btn = document.getElementById('desktopBtn');
+    if (isDesktop) {
+        overlay.style.display = 'flex';
+        btn.textContent = '📱';
+        btn.title = 'Switch to Mobile';
+    } else {
+        overlay.style.display = 'none';
+        btn.textContent = '💻';
+        btn.title = 'Desktop Mode';
+    }
+    localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
 }
 
-// ── Filter & Search ──
 function setFilter(f) { curF = f; render(); }
 function filterPairs(searchText) {
-    if (!searchText) { filteredPairs = [...PAIRS]; }
-    else { filteredPairs = PAIRS.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase())); }
+    filteredPairs = searchText ? PAIRS.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase())) : [...PAIRS];
     render();
 }
 
-// ── Counts ──
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => {
@@ -185,7 +243,6 @@ function updateCounts() {
     document.getElementById('targetCount').textContent = Object.values(PB_STATE).filter(s => s && s.phase && s.phase!=='watching').length;
 }
 
-// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     const filtered = curF === 'all' ? currentPairs : currentPairs.filter(p => {
@@ -212,8 +269,14 @@ function render() {
         const signals = ['1h','4h','1day','1week'].map(tf => m[tf] || '');
         const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
 
+        // Compact metrics in one line
+        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum>0?'+':'') + t.shortTermMomentum.toFixed(2)+'%' : '—';
+        const microVal = t.microMomentum != null ? (t.microMomentum>0?'+':'') + t.microMomentum.toFixed(2)+'%' : '—';
+        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
+        const dollarVolVal = t.dollarVolume1d || '—';
+
         return `<div class="item-row">
-            <div class="item-main" onclick="toggleRow(this); openChartForPair('${p.n}')">
+            <div class="item-main" onclick="openChartForPair('${p.n}')">
                 <div class="row-pair pair-title"><span style="color:${starColor}">${star}</span> ${p.n}</div>
                 <div class="row-timeframes dots-container">${dots}</div>
                 <div class="row-sentiment sentiment-wrapper">
@@ -224,30 +287,17 @@ function render() {
                 </div>
                 <div class="row-change change-val ${changeClass}">${change}</div>
             </div>
-            <div class="item-details">
-                <div class="details-inner">
-                    <div class="detail-block"><span class="detail-lbl">10 Candle Change</span><span class="detail-txt" style="color:${t.shortTermMomentum>=0?'var(--green)':'var(--red)'}">${t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—'}</span></div>
-                    <div class="detail-block"><span class="detail-lbl">1H Momentum</span><span class="detail-txt" style="color:${t.microMomentum>=0?'var(--green)':'var(--red)'}">${t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—'}</span></div>
-                    <div class="detail-block"><span class="detail-lbl">Volume 7D</span><span class="detail-txt">${t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—'}</span></div>
-                    <div class="detail-block"><span class="detail-lbl">Dollar Volume</span><span class="detail-txt">${t.dollarVolume1d || '—'}</span></div>
-                </div>
+            <div class="compact-details">
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
             </div>
         </div>`;
     }).join('');
     updateCounts();
 }
 
-function toggleRow(element) {
-    const details = element.nextElementSibling;
-    if (details.style.maxHeight && details.style.maxHeight !== "0px") {
-        details.style.maxHeight = "0px";
-    } else {
-        document.querySelectorAll('.item-details').forEach(d => d.style.maxHeight = "0px");
-        details.style.maxHeight = details.scrollHeight + "px";
-    }
-}
-
-// ── Chart ──
 function openChartForPair(pairName) {
     chartPairs = PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
@@ -276,9 +326,12 @@ function openChart(idx) {
     });
 }
 function movePair(step) { if (chartIdx+step >=0 && chartIdx+step < chartPairs.length) openChart(chartIdx+step); }
-function closeChart() { document.getElementById('chartOverlay').style.display = 'none'; }
+function closeChart() {
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+    }
+}
 
-// ── Target List Modal ──
 function openTargetModal() {
     const targets = Object.entries(PB_STATE).filter(([k,v]) => v && v.phase && v.phase!=='watching');
     const html = targets.length ? targets.map(([k,v]) => {
@@ -293,7 +346,6 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-// ── Manual Scan ──
 function manualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...'; btn.disabled = true;
@@ -307,31 +359,22 @@ function manualScan() {
 }
 
 // ── Firebase Listeners ──
-db.ref('technicalMetrics').on('value', snap => {
-    techMetrics = snap.val() || {};
-    render();
-});
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
+db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
-db.ref('sentiment').on('value', snap => {
-    sentimentData = snap.val() || {};
-    render();
-});
-
-db.ref('pb_state').on('value', snap => {
-    PB_STATE = snap.val() || {};
-    render();
-});
-
-db.ref('marketData').on('value', snap => {
-    MARKET_DATA = snap.val() || {};
-    render();
-});
-
-// ── Theme Restore ──
+// ── Restore theme & desktop mode ──
 (function() {
     const saved = localStorage.getItem('ici-theme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
     document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
+
+    if (localStorage.getItem('desktop-mode') === 'desktop') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('desktopBtn').textContent = '📱';
+        document.getElementById('chartOverlay').style.display = 'flex';
+    }
 })();
 </script>
 </body>
