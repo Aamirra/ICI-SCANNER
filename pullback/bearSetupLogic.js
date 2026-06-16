@@ -8,26 +8,23 @@ const {
 } = require('./tradeStateManager');
 const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
-// ─────────── DEFAULT BEAR STATE ───────────
 function defaultBearState() {
     return {
         dir:         'bear',
-        phase:       null,          // null, 'monitoring', 'correction', 'impulse', 'alerted'
-        runningLow:  null,          // lowest low during monitoring (impulse low)
-        highestHigh: null,          // highest high during correction (pullback)
-        markLow:     null,          // only used in 'impulse' phase (the low to break)
+        phase:       null,
+        runningLow:  null,
+        highestHigh: null,
+        markLow:     null,
         firedAt:     0,
         reminded:    false
     };
 }
 
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-    // Safety: need at least 3 candles so that index -2 is valid
-    if (!raw.closes || raw.closes.length < 3) {
+    if (!raw || !raw.closes || raw.closes.length < 3) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // 1. High timeframe trend filter (must be bear on both)
     if (r['1week'] !== 'bear' || r['1day'] !== 'bear') {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
@@ -35,45 +32,45 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    const cls   = raw.closes;
-    const highs = raw.highs || cls;
-    const lows  = raw.lows  || cls;
+    const closes = raw.closes;
+    const highs  = raw.highs || closes;
+    const lows   = raw.lows  || closes;
 
-    // ✅ ONLY closed candle data (last completed candle = index -2)
-    const lastClose = cls[cls.length - 2];
+    const lastClose = closes[closes.length - 2];
     const lastHigh  = highs[highs.length - 2];
     const lastLow   = lows[lows.length - 2];
 
-    const ema20 = calcEMA(cls, 20);
-    const sma50 = calcSMA(cls, 50);
+    const ema20 = calcEMA(closes, 20);
+    const sma50 = calcSMA(closes, 50);
 
-    if (ema20 == null || sma50 == null || isNaN(ema20) || isNaN(sma50)) {
+    if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // Bearish trend filter: EMA20 must be strictly BELOW SMA50
+    // Global invalidation for bear: EMA20 >= SMA50
     if (ema20 >= sma50) {
-        let s = defaultBearState();
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        return s;
+        if (PB_STATE[stateKey] && PB_STATE[stateKey].phase !== null) {
+            let s = defaultBearState();
+            PB_STATE[stateKey] = s;
+            await saveTargetList(PB_STATE, firebasePut);
+        }
+        return PB_STATE[stateKey] || defaultBearState();
     }
 
     let s = PB_STATE[stateKey] || defaultBearState();
 
-    // ────────────── PHASE 0: monitoring ──────────────
+    // 1. MONITORING
     if (s.phase === null || s.phase === 'monitoring') {
         s.phase = 'monitoring';
 
-        // Track impulse low (lowest low while price stays below EMA20)
         if (lastClose < ema20) {
             if (s.runningLow === null || lastLow < s.runningLow) {
                 s.runningLow = lastLow;
             }
         }
 
-        // Price closes above EMA20 → enter correction (pullback)
         if (lastClose > ema20) {
+            // Bounce (correction for bear)
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
         }
@@ -83,20 +80,19 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // ────────────── PHASE 1: correction ──────────────
+    // 2. CORRECTION
     if (s.phase === 'correction') {
-        // Track highest high during this pullback
         if (s.highestHigh === null || lastHigh > s.highestHigh) {
             s.highestHigh = lastHigh;
         }
 
-        // Price closes back below EMA20 → impulse phase starts
         if (lastClose < ema20) {
+            // Correction ended, back to impulse
             s.phase   = 'impulse';
-            s.markLow = lows[lows.length - 2];   // mark low of this first closed candle below EMA20
+            s.markLow = lastLow;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
-            return s;   // do NOT alert yet
+            return s;
         }
 
         PB_STATE[stateKey] = s;
@@ -104,9 +100,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // ─── INVALIDATIONS (impulse / alerted) ───
+    // 3. IMPULSE / ALERTED invalidation
     if (s.phase === 'impulse' || s.phase === 'alerted') {
-        // Stop hit: price breaks above highestHigh of correction
+        // High breach -> back to correction
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
@@ -115,7 +111,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             return s;
         }
 
-        // Impulse low broken: full breakdown → reset to monitoring
+        // Running low breach -> full reset
         if (s.runningLow !== null && lastClose < s.runningLow) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
@@ -123,7 +119,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             return s;
         }
 
-        // After alert, price goes back above EMA20 → back to correction
+        // Alerted specific: price breaks above EMA -> correction
         if (s.phase === 'alerted' && lastClose > ema20) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
@@ -133,19 +129,17 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         }
     }
 
-    // ────────────── PHASE 2: impulse (alert logic) ──────────────
+    // 4. IMPULSE (alert)
     if (s.phase === 'impulse') {
         if (s.markLow === null) {
-            s.markLow = lastLow;   // fallback
+            s.markLow = lastLow;
         }
 
-        const justClosedLow = lows[lows.length - 2];
+        const justClosedLow = lastLow;
 
         if (justClosedLow < s.markLow) {
-            // Mark low broken to the downside → update markLow, continue waiting
             s.markLow = justClosedLow;
         } else {
-            // Mark low NOT broken → ALERT!
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
 
@@ -153,7 +147,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
 
-                await sendTG(buildICIAlertMsg(p.n, false));   // false = bearish alert
+                await sendTG(buildICIAlertMsg(p.n, false));
 
                 s.phase   = 'alerted';
                 s.firedAt = Date.now();
