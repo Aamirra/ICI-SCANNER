@@ -158,7 +158,6 @@
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-// ── Firebase Init ──
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
@@ -311,7 +310,7 @@ function closeChart() {
     }
 }
 
-// ── Target List Modal (1H pehle, phir 4H, dono mein phase priority) ──
+// ── Target List Modal (Custom labels: impulse1, correction, impulse2) ──
 function openTargetModal() {
     const phasePriority = {
         'fired': 4,
@@ -322,6 +321,19 @@ function openTargetModal() {
         'mark_low': 1
     };
     
+    // 👇 Custom display labels
+    function phaseLabel(phase) {
+        const map = {
+            'fired': 'fired',
+            'watching': 'impulse1',
+            'pullback': 'correction',
+            'bounce': 'correction',
+            'mark_high': 'impulse2',
+            'mark_low': 'impulse2'
+        };
+        return map[phase] || phase;
+    }
+    
     const entries = [];
     for (const [key, s] of Object.entries(PB_STATE)) {
         if (!s || !s.phase) continue;
@@ -330,10 +342,10 @@ function openTargetModal() {
         const tf = key.includes('_4h_') ? '4H' : '1H';
         const tfOrder = tf === '1H' ? 1 : 2;
         const priority = phasePriority[s.phase] || 0;
-        entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority });
+        entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority, label: phaseLabel(s.phase) });
     }
     
-    // Sort: tfOrder first (1H then 4H), then phase priority desc, then pair name asc
+    // Sort: tfOrder (1H first) → phase priority desc → pair name asc
     entries.sort((a, b) => {
         if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
         if (a.priority !== b.priority) return b.priority - a.priority;
@@ -357,7 +369,7 @@ function openTargetModal() {
                 <span style="font-weight:600;font-size:14px;color:${dirCol}">${e.dir.toUpperCase()}</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:12px;color:var(--muted);min-width:60px;">${e.phase}</span>
+                <span style="font-size:12px;color:var(--muted);min-width:70px;">${e.label}</span>
                 <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
                     <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
                     <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
@@ -382,18 +394,15 @@ function manualScan() {
     });
 }
 
-// ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
 db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
-// ── Restore theme & desktop mode ──
 (function() {
     const saved = localStorage.getItem('ici-theme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
     document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
-
     if (localStorage.getItem('desktop-mode') === 'desktop') {
         document.body.classList.add('desktop-mode');
         document.getElementById('desktopBtn').textContent = '📱';
