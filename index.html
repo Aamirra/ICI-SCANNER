@@ -25,7 +25,7 @@
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
-        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; }
+        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; flex-wrap:wrap; }
         .counters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
         .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; text-align:center; cursor:pointer; }
         .count-card .num { font-size:22px; font-weight:700; margin-bottom:2px; color:var(--txt); }
@@ -108,8 +108,10 @@
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
-    <div class="sync-info" onclick="openTargetModal()">
-        ✔ Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ›</span>
+    <div class="sync-info">
+        ✔ Cloud synced
+        <span style="color:var(--acc);margin-left:6px;cursor:pointer" onclick="openTargetModal()">Target list: <span id="targetCount">0</span> ›</span>
+        <span style="margin-left:12px;color:var(--gold);cursor:pointer" onclick="openFractalModal()">Fractal wait: <span id="fractalCount">0</span> ›</span>
     </div>
 
     <div class="counters-grid">
@@ -143,6 +145,11 @@
 <!-- Target List Modal -->
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()" id="targetContent"></div>
+</div>
+
+<!-- Fractal Wait Modal -->
+<div class="modal" id="fractalModal" onclick="this.classList.remove('open')">
+    <div class="modal-content" onclick="event.stopPropagation()" id="fractalContent"></div>
 </div>
 
 <!-- Chart Overlay -->
@@ -179,8 +186,8 @@ let curF = 'all';
 let filteredPairs = [...PAIRS];
 let chartPairs = [];
 let chartIdx = 0;
-let currentDisplayPairs = [];   // ← added for filtered navigation
-let targetPairsList = [];       // ← added for target list navigation
+let currentDisplayPairs = [];
+let targetPairsList = [];
 
 function toggleTheme() {
     const html = document.documentElement;
@@ -223,6 +230,12 @@ function updateCounts() {
     document.getElementById('rc').textContent = r;
     document.getElementById('allCount').textContent = PAIRS.length;
     document.getElementById('targetCount').textContent = Object.values(PB_STATE).filter(s => s && s.phase).length;
+    // Fractal count
+    let fCount = 0;
+    for (const [k, s] of Object.entries(PB_STATE)) {
+        if (s && s.fractalWait === true && !k.includes('_4h_')) fCount++;
+    }
+    document.getElementById('fractalCount').textContent = fCount;
 }
 
 function render() {
@@ -232,7 +245,6 @@ function render() {
         return ['4h','1day','1week'].every(tf => d[tf] === curF);
     });
 
-    // Store the currently displayed symbols for chart navigation
     currentDisplayPairs = filtered.map(p => p.n);
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
@@ -282,9 +294,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart functions (fixed for filtered list) ──
 function openChartForPair(pairName) {
-    // Use the currently displayed table symbols
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
     if (chartIdx === -1) chartIdx = 0;
@@ -292,7 +302,6 @@ function openChartForPair(pairName) {
 }
 
 function openChartFromTarget(pairName) {
-    // Use the target list order
     chartPairs = targetPairsList.length ? targetPairsList : PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
     if (chartIdx === -1) chartIdx = 0;
@@ -328,7 +337,7 @@ function closeChart() {
     }
 }
 
-// ── Target List Modal (new backend phases: alerted, monitoring, correction, impulse) ──
+// ── Target List Modal (same as before, but now also update count) ──
 function openTargetModal() {
     const phasePriority = {
         'alerted': 4,
@@ -358,14 +367,12 @@ function openTargetModal() {
         entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority, label: phaseLabel(s.phase) });
     }
     
-    // Sort: 1H first, then 4H; within each, priority desc, then pair name asc
     entries.sort((a, b) => {
         if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
         if (a.priority !== b.priority) return b.priority - a.priority;
         return a.pair.localeCompare(b.pair);
     });
 
-    // Store for target navigation
     targetPairsList = entries.map(e => e.pair);
 
     const html = entries.length ? entries.map(e => {
@@ -396,6 +403,46 @@ function openTargetModal() {
     
     document.getElementById('targetContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">🎯 Target List</h3>${html}`;
     document.getElementById('targetModal').classList.add('open');
+    updateCounts(); // update counts when modal opens (optional)
+}
+
+// ── Fractal Wait Modal ──
+function openFractalModal() {
+    const entries = [];
+    for (const [key, s] of Object.entries(PB_STATE)) {
+        if (!s || !s.phase) continue;
+        if (key.includes('_4h_')) continue;          // only 1H
+        if (s.fractalWait !== true) continue;        // must have fractalWait flag
+        const pair = key.split('_')[0];
+        entries.push({ pair, dir: s.dir, phase: s.phase });
+    }
+    entries.sort((a,b) => a.pair.localeCompare(b.pair));
+    
+    const html = entries.length ? entries.map(e => {
+        const sd = sentimentData[e.pair] || {};
+        const bullPct = sd.bullish_pct || 0;
+        const bearPct = sd.bearish_pct || 0;
+        const total = bullPct + bearPct || 1;
+        const bearW = Math.round((bearPct/total)*100);
+        const bullW = 100 - bearW;
+        const dirCol = e.dir === 'bull' ? 'var(--green)' : 'var(--red)';
+        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartForPair('${e.pair}');document.getElementById('fractalModal').classList.remove('open')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-weight:700;font-size:15px;">${e.pair}</span>
+                <span style="font-weight:600;font-size:14px;color:${dirCol}">${e.dir.toUpperCase()}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:12px;color:var(--muted);min-width:70px;">fractal wait</span>
+                <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
+                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
+                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs in fractal wait</div>';
+    
+    document.getElementById('fractalContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">⚡ Fractal Wait (1H)</h3>${html}`;
+    document.getElementById('fractalModal').classList.add('open');
 }
 
 function manualScan() {
