@@ -47,7 +47,6 @@
         .change-val { font-size:13px; font-weight:600; }
         .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
 
-        /* Compact Details Strip */
         .compact-details {
             display:flex;
             justify-content:space-between;
@@ -68,7 +67,6 @@
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
 
-        /* Desktop Mode */
         body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
         body.desktop-mode .phone-container {
             max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0;
@@ -164,7 +162,6 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-// ── Static Pair List ──
 const PAIRS = [
     {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
     {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
@@ -223,7 +220,7 @@ function updateCounts() {
     document.getElementById('bc').textContent = b;
     document.getElementById('rc').textContent = r;
     document.getElementById('allCount').textContent = PAIRS.length;
-    document.getElementById('targetCount').textContent = Object.values(PB_STATE).filter(s => s && s.phase && s.phase!=='watching').length;
+    document.getElementById('targetCount').textContent = Object.values(PB_STATE).filter(s => s && s.phase).length;
 }
 
 function render() {
@@ -314,31 +311,53 @@ function closeChart() {
     }
 }
 
-// ── Target List Modal (with Sentiment Bar) ──
+// ── Target List Modal (1H pehle, phir 4H, dono mein phase priority) ──
 function openTargetModal() {
-    const targets = Object.entries(PB_STATE).filter(([k,v]) => v && v.phase && v.phase!=='watching');
-    const html = targets.length ? targets.map(([k,v]) => {
-        const parts = k.split('_');
+    const phasePriority = {
+        'fired': 4,
+        'watching': 3,
+        'pullback': 2,
+        'bounce': 2,
+        'mark_high': 1,
+        'mark_low': 1
+    };
+    
+    const entries = [];
+    for (const [key, s] of Object.entries(PB_STATE)) {
+        if (!s || !s.phase) continue;
+        const parts = key.split('_');
         const pair = parts[0];
-        const tf = parts[1] ? parts[1].toUpperCase() : ''; 
-        // Sentiment data for this pair
-        const sd = sentimentData[pair] || {};
+        const tf = key.includes('_4h_') ? '4H' : '1H';
+        const tfOrder = tf === '1H' ? 1 : 2;
+        const priority = phasePriority[s.phase] || 0;
+        entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority });
+    }
+    
+    // Sort: tfOrder first (1H then 4H), then phase priority desc, then pair name asc
+    entries.sort((a, b) => {
+        if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
+        if (a.priority !== b.priority) return b.priority - a.priority;
+        return a.pair.localeCompare(b.pair);
+    });
+
+    const html = entries.length ? entries.map(e => {
+        const sd = sentimentData[e.pair] || {};
         const bullPct = sd.bullish_pct || 0;
         const bearPct = sd.bearish_pct || 0;
         const total = bullPct + bearPct || 1;
         const bearW = Math.round((bearPct/total)*100);
         const bullW = 100 - bearW;
-        const dirCol = v.dir === 'bull' ? 'var(--green)' : 'var(--red)';
-        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartForPair('${pair}')">
+        const dirCol = e.dir === 'bull' ? 'var(--green)' : 'var(--red)';
+        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartForPair('${e.pair}')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-weight:700;font-size:15px;">${pair}</span>
-                    <span style="font-size:10px;background:var(--pill-bg);padding:2px 6px;border-radius:4px;color:var(--muted)">${tf}</span>
+                    <span style="font-weight:700;font-size:15px;">${e.pair}</span>
+                    <span style="font-size:10px;background:var(--pill-bg);padding:2px 6px;border-radius:4px;color:var(--muted)">${e.tf}</span>
                 </div>
-                <span style="font-weight:600;font-size:14px;color:${dirCol}">${v.dir.toUpperCase()}</span>
+                <span style="font-weight:600;font-size:14px;color:${dirCol}">${e.dir.toUpperCase()}</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:12px;color:var(--muted);min-width:60px;">${v.phase}</span>
+                <span style="font-size:12px;color:var(--muted);min-width:60px;">${e.phase}</span>
                 <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
                     <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
                     <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
@@ -346,6 +365,7 @@ function openTargetModal() {
             </div>
         </div>`;
     }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
+    
     document.getElementById('targetContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">🎯 Target List</h3>${html}`;
     document.getElementById('targetModal').classList.add('open');
 }
