@@ -10,13 +10,15 @@ const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
 function defaultBearState() {
     return {
-        dir:         'bear',
-        phase:       null,
-        runningLow:  null,
-        highestHigh: null,
-        markLow:     null,
-        firedAt:     0,
-        reminded:    false
+        dir:           'bear',
+        phase:         null,
+        runningLow:    null,
+        highestHigh:   null,
+        markLow:       null,
+        firedAt:       0,
+        reminded:      false,
+        fractalCandles: 0,
+        fractalWait:   false
     };
 }
 
@@ -47,34 +49,34 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
-    // Global invalidation for bear: EMA20 >= SMA50
+    // Global invalidation
     if (ema20 >= sma50) {
-        if (PB_STATE[stateKey] && PB_STATE[stateKey].phase !== null) {
-            let s = defaultBearState();
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-        }
-        return PB_STATE[stateKey] || defaultBearState();
+        let s = defaultBearState();
+        PB_STATE[stateKey] = s;
+        await saveTargetList(PB_STATE, firebasePut);
+        return s;
     }
 
     let s = PB_STATE[stateKey] || defaultBearState();
 
+    s.fractalCandles = s.fractalCandles || 0;
+    s.fractalWait    = s.fractalWait || false;
+
     // 1. MONITORING
     if (s.phase === null || s.phase === 'monitoring') {
         s.phase = 'monitoring';
+        s.fractalCandles = 0;
+        s.fractalWait    = false;
 
         if (lastClose < ema20) {
             if (s.runningLow === null || lastLow < s.runningLow) {
                 s.runningLow = lastLow;
             }
         }
-
         if (lastClose > ema20) {
-            // Bounce (correction for bear)
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
         }
-
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
         return s;
@@ -82,78 +84,87 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
 
     // 2. CORRECTION
     if (s.phase === 'correction') {
+        s.fractalCandles = 0;
+        s.fractalWait    = false;
+
         if (s.highestHigh === null || lastHigh > s.highestHigh) {
             s.highestHigh = lastHigh;
         }
-
         if (lastClose < ema20) {
-            // Correction ended, back to impulse
             s.phase   = 'impulse';
             s.markLow = lastLow;
+            s.fractalCandles = 1;
+            s.fractalWait    = false;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
         return s;
     }
 
-    // 3. IMPULSE / ALERTED invalidation
+    // 3. INVALIDATION (impulse/alerted)
     if (s.phase === 'impulse' || s.phase === 'alerted') {
-        // High breach -> back to correction
+        // high breach -> correction
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
+            s.fractalCandles = 0;
+            s.fractalWait    = false;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-
-        // Running low breach -> full reset
+        // running low breach -> reset
         if (s.runningLow !== null && lastClose < s.runningLow) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-
-        // Alerted specific: price breaks above EMA -> correction
+        // alerted specific: close > EMA20 -> correction
         if (s.phase === 'alerted' && lastClose > ema20) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
+            s.fractalCandles = 0;
+            s.fractalWait    = false;
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
     }
 
-    // 4. IMPULSE (alert)
+    // 4. IMPULSE (alert logic + fractal tracking)
     if (s.phase === 'impulse') {
+        // Fractal candle count (close below EMA for bear)
+        if (lastClose < ema20) {
+            s.fractalCandles = (s.fractalCandles || 0) + 1;
+            if (s.fractalCandles >= 2) {
+                s.fractalWait = true;
+            }
+        } else {
+            s.fractalCandles = 0;
+            s.fractalWait    = false;
+        }
+
         if (s.markLow === null) {
             s.markLow = lastLow;
         }
-
-        const justClosedLow = lastLow;
-
-        if (justClosedLow < s.markLow) {
-            s.markLow = justClosedLow;
+        if (lastLow < s.markLow) {
+            s.markLow = lastLow;
         } else {
             const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
             const alertKey   = `${stateKey}_bear_${candleTime}`;
-
             if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                 LAST_ALERT_TIME[stateKey] = alertKey;
                 trimAlertCache();
-
                 await sendTG(buildICIAlertMsg(p.n, false));
-
                 s.phase   = 'alerted';
                 s.firedAt = Date.now();
+                s.fractalWait = false;
             }
         }
-
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
         return s;
