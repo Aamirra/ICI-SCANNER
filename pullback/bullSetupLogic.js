@@ -14,7 +14,6 @@ function defaultBullState() {
         phase:         null,
         runningHigh:   null,
         lowestLow:     null,
-        markHigh:      null,
         firedAt:       0,
         reminded:      false,
         fractalCandles: 0,
@@ -49,7 +48,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
-    // Global invalidation
+    // Global invalidation: EMA20 <= SMA50 → reset
     if (ema20 <= sma50) {
         let s = defaultBullState();
         PB_STATE[stateKey] = s;
@@ -58,8 +57,6 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     }
 
     let s = PB_STATE[stateKey] || defaultBullState();
-
-    // Ensure fractal fields exist
     s.fractalCandles = s.fractalCandles || 0;
     s.fractalWait    = s.fractalWait || false;
 
@@ -83,31 +80,49 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 2. CORRECTION
+    // 2. CORRECTION (track 2 closes above EMA, then alert)
     if (s.phase === 'correction') {
-        s.fractalCandles = 0;
-        s.fractalWait    = false;
-
         if (s.lowestLow === null || lastLow < s.lowestLow) {
             s.lowestLow = lastLow;
         }
+
         if (lastClose > ema20) {
-            s.phase    = 'impulse';
-            s.markHigh = lastHigh;
-            s.fractalCandles = 1;          // first close above EMA after correction
-            s.fractalWait    = false;       // still need second
-            PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
-            return s;
+            // Close above EMA: increment counter
+            s.fractalCandles = (s.fractalCandles || 0) + 1;
+            if (s.fractalCandles >= 2) {
+                // 2nd close above EMA → alert
+                s.fractalWait = false;   // no longer waiting, alerting now
+                const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
+                const alertKey   = `${stateKey}_bull_${candleTime}`;
+                if (LAST_ALERT_TIME[stateKey] !== alertKey) {
+                    LAST_ALERT_TIME[stateKey] = alertKey;
+                    trimAlertCache();
+                    await sendTG(buildICIAlertMsg(p.n, true));
+                }
+                s.phase   = 'alerted';
+                s.firedAt = Date.now();
+                s.fractalCandles = 0;
+                PB_STATE[stateKey] = s;
+                await saveTargetList(PB_STATE, firebasePut);
+                return s;
+            } else {
+                // First close above: set fractalWait = true
+                s.fractalWait = true;
+            }
+        } else {
+            // Close ≤ EMA20: reset counter
+            s.fractalCandles = 0;
+            s.fractalWait    = false;
         }
+
         PB_STATE[stateKey] = s;
         await saveTargetList(PB_STATE, firebasePut);
         return s;
     }
 
-    // 3. INVALIDATION (impulse/alerted)
-    if (s.phase === 'impulse' || s.phase === 'alerted') {
-        // low breach -> correction
+    // 3. INVALIDATION (alerted)
+    if (s.phase === 'alerted') {
+        // low breach → back to correction
         if (s.lowestLow !== null && lastClose < s.lowestLow) {
             s.phase     = 'correction';
             s.lowestLow = lastLow;
@@ -117,15 +132,15 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-        // running high breach -> full reset
+        // running high breach → full reset
         if (s.runningHigh !== null && lastClose > s.runningHigh) {
             s = defaultBullState();
             PB_STATE[stateKey] = s;
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-        // alerted specific: close < EMA20 -> correction
-        if (s.phase === 'alerted' && lastClose < ema20) {
+        // price drops back below EMA → correction
+        if (lastClose < ema20) {
             s.phase     = 'correction';
             s.lowestLow = lastLow;
             s.fractalCandles = 0;
@@ -134,42 +149,6 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-    }
-
-    // 4. IMPULSE (alert logic + fractal tracking)
-    if (s.phase === 'impulse') {
-        // Fractal candle count
-        if (lastClose > ema20) {
-            s.fractalCandles = (s.fractalCandles || 0) + 1;
-            if (s.fractalCandles >= 2) {
-                s.fractalWait = true;
-            }
-        } else {
-            s.fractalCandles = 0;
-            s.fractalWait    = false;
-        }
-
-        if (s.markHigh === null) {
-            s.markHigh = lastHigh;
-        }
-        if (lastHigh > s.markHigh) {
-            s.markHigh = lastHigh;   // update mark high
-        } else {
-            // inside bar / fractal alert
-            const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
-            const alertKey   = `${stateKey}_bull_${candleTime}`;
-            if (LAST_ALERT_TIME[stateKey] !== alertKey) {
-                LAST_ALERT_TIME[stateKey] = alertKey;
-                trimAlertCache();
-                await sendTG(buildICIAlertMsg(p.n, true));
-                s.phase   = 'alerted';
-                s.firedAt = Date.now();
-                s.fractalWait = false;   // no longer fractal wait after fired
-            }
-        }
-        PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
-        return s;
     }
 
     return s;
