@@ -158,6 +158,7 @@
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
+// ── Firebase Init ──
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
@@ -178,6 +179,8 @@ let curF = 'all';
 let filteredPairs = [...PAIRS];
 let chartPairs = [];
 let chartIdx = 0;
+let currentDisplayPairs = [];   // ← added for filtered navigation
+let targetPairsList = [];       // ← added for target list navigation
 
 function toggleTheme() {
     const html = document.documentElement;
@@ -229,6 +232,9 @@ function render() {
         return ['4h','1day','1week'].every(tf => d[tf] === curF);
     });
 
+    // Store the currently displayed symbols for chart navigation
+    currentDisplayPairs = filtered.map(p => p.n);
+
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
         const t = techMetrics[p.n] || {};
         const s = sentimentData[p.n] || {};
@@ -276,12 +282,24 @@ function render() {
     updateCounts();
 }
 
+// ── Chart functions (fixed for filtered list) ──
 function openChartForPair(pairName) {
-    chartPairs = PAIRS.map(p => p.n);
+    // Use the currently displayed table symbols
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
-    if (chartIdx===-1) chartIdx=0;
+    if (chartIdx === -1) chartIdx = 0;
     openChart(chartIdx);
 }
+
+function openChartFromTarget(pairName) {
+    // Use the target list order
+    chartPairs = targetPairsList.length ? targetPairsList : PAIRS.map(p => p.n);
+    chartIdx = chartPairs.indexOf(pairName);
+    if (chartIdx === -1) chartIdx = 0;
+    openChart(chartIdx);
+    document.getElementById('targetModal').classList.remove('open');
+}
+
 function openChart(idx) {
     chartIdx = idx;
     const symbol = chartPairs[idx];
@@ -310,26 +328,21 @@ function closeChart() {
     }
 }
 
-// ── Target List Modal (Custom labels: impulse1, correction, impulse2) ──
+// ── Target List Modal (new backend phases: alerted, monitoring, correction, impulse) ──
 function openTargetModal() {
     const phasePriority = {
-        'fired': 4,
-        'watching': 3,
-        'pullback': 2,
-        'bounce': 2,
-        'mark_high': 1,
-        'mark_low': 1
+        'alerted': 4,
+        'monitoring': 3,
+        'correction': 2,
+        'impulse': 1
     };
     
-    // 👇 Custom display labels
     function phaseLabel(phase) {
         const map = {
-            'fired': 'fired',
-            'watching': 'impulse1',
-            'pullback': 'correction',
-            'bounce': 'correction',
-            'mark_high': 'impulse2',
-            'mark_low': 'impulse2'
+            'alerted': 'fired',
+            'monitoring': 'impulse1',
+            'correction': 'correction',
+            'impulse': 'impulse2'
         };
         return map[phase] || phase;
     }
@@ -345,12 +358,15 @@ function openTargetModal() {
         entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority, label: phaseLabel(s.phase) });
     }
     
-    // Sort: tfOrder (1H first) → phase priority desc → pair name asc
+    // Sort: 1H first, then 4H; within each, priority desc, then pair name asc
     entries.sort((a, b) => {
         if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
         if (a.priority !== b.priority) return b.priority - a.priority;
         return a.pair.localeCompare(b.pair);
     });
+
+    // Store for target navigation
+    targetPairsList = entries.map(e => e.pair);
 
     const html = entries.length ? entries.map(e => {
         const sd = sentimentData[e.pair] || {};
@@ -360,7 +376,7 @@ function openTargetModal() {
         const bearW = Math.round((bearPct/total)*100);
         const bullW = 100 - bearW;
         const dirCol = e.dir === 'bull' ? 'var(--green)' : 'var(--red)';
-        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartForPair('${e.pair}')">
+        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartFromTarget('${e.pair}')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span style="font-weight:700;font-size:15px;">${e.pair}</span>
@@ -394,15 +410,18 @@ function manualScan() {
     });
 }
 
+// ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
 db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
+// ── Restore theme & desktop mode ──
 (function() {
     const saved = localStorage.getItem('ici-theme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
     document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
+
     if (localStorage.getItem('desktop-mode') === 'desktop') {
         document.body.classList.add('desktop-mode');
         document.getElementById('desktopBtn').textContent = '📱';
