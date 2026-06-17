@@ -5,6 +5,9 @@ const admin = require('firebase-admin');
 const config = require('./config');
 const { spawn } = require('child_process');
 
+// Scanner variable ko pehle declare kr rhy hain taake HTTP server isay use kr sakay
+let masterScan;
+
 // ═══════════════════════════════════════════
 // FIREBASE INIT (only once)
 // ═══════════════════════════════════════════
@@ -20,33 +23,8 @@ if (!admin.apps.length) {
     });
 }
 
-// 🔥 WHATSAPP BOT (Firebase initialize hone k baad yahan load hoga)
-require('./services/whatsapp');
-
 // ═══════════════════════════════════════════
-// BACKGROUND PROCESSES
-// ═══════════════════════════════════════════
-const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], {
-    stdio: 'inherit',
-    detached: true
-});
-sentimentJob.unref();
-
-const masterScan = require('./core/scanner');
-const { restoreState } = require('./pullback/setupScanner');
-
-function firebaseGet(p) {
-    return admin.database().ref(p).once('value').then(snap => snap.val());
-}
-
-(async () => {
-    await restoreState(firebaseGet);
-    masterScan();
-    console.log('✅ Scanner & Sentiment job started');
-})();
-
-// ═══════════════════════════════════════════
-// HTTP SERVER
+// HTTP SERVER (Render k liye pehle start kr rhy hain taake port foran open ho)
 // ═══════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 
@@ -55,11 +33,11 @@ http.createServer((req, res) => {
 
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        if (masterScan.isBusy()) {
+        if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
             res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
         } else {
             res.end(JSON.stringify({ status: 'Scan started!' }));
-            masterScan();
+            if (masterScan) masterScan();
         }
         return;
     }
@@ -107,6 +85,31 @@ http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
     });
-}).listen(PORT, () => {
-    console.log(`🚀 Server ready on port ${PORT}`);
+}).listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
+
+// 🔥 WHATSAPP BOT (Server open hone k baad background me chalta rahe ga)
+require('./services/whatsapp');
+
+// ═══════════════════════════════════════════
+// BACKGROUND PROCESSES
+// ═══════════════════════════════════════════
+const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], {
+    stdio: 'inherit',
+    detached: true
+});
+sentimentJob.unref();
+
+masterScan = require('./core/scanner');
+const { restoreState } = require('./pullback/setupScanner');
+
+function firebaseGet(p) {
+    return admin.database().ref(p).once('value').then(snap => snap.val());
+}
+
+(async () => {
+    await restoreState(firebaseGet);
+    if (typeof masterScan === 'function') masterScan();
+    console.log('✅ Scanner & Sentiment job started');
+})();
