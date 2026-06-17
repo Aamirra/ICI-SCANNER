@@ -1,4 +1,3 @@
-require('./services/whatsapp'); // WhatsApp bot ko server boot hotay hi start krny k liye
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -20,6 +19,9 @@ if (!admin.apps.length) {
         databaseURL: config.FIREBASE_URL
     });
 }
+
+// 🔥 WHATSAPP BOT (Firebase initialize hone k baad yahan load hoga)
+require('./services/whatsapp');
 
 // ═══════════════════════════════════════════
 // BACKGROUND PROCESSES
