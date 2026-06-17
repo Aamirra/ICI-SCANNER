@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
+        /* ── same clean CSS (no changes) ── */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -20,6 +21,20 @@
         .brand-text span { font-size:12px; color:var(--muted); }
         .header-actions { display:flex; gap:8px; }
         .icon-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--txt); }
+        .logout-btn {
+            padding:4px 10px;
+            border-radius:12px;
+            border:1px solid var(--red);
+            background:rgba(255,0,0,0.1);
+            color:var(--red);
+            font-size:12px;
+            font-weight:600;
+            cursor:pointer;
+            margin-left:4px;
+            display:none;
+        }
+        .logout-btn.visible { display:inline-block; }
+
         .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
         .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
@@ -117,6 +132,7 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <button class="logout-btn" id="logoutBtn" onclick="performLogout()">🚪 Logout</button>
         </div>
     </div>
 
@@ -210,34 +226,32 @@ let currentDisplayPairs = [];
 let targetPairsList = [];
 let show4H = true;
 
-// ── Admin State (Hashed Password) ──
+// ── Admin State (Permanent session) ──
 let isAdmin = false;
 const ADMIN_SESSION_KEY = 'ici_admin_session';
-const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
-
-function checkAdminSession() {
-    const session = localStorage.getItem(ADMIN_SESSION_KEY);
-    if (session) {
-        const data = JSON.parse(session);
-        if (data.expires > Date.now()) {
-            isAdmin = true;
-        } else {
-            localStorage.removeItem(ADMIN_SESSION_KEY);
-        }
-    }
-}
-checkAdminSession();
 
 function updateAdminUI() {
     const watchlistBtn = document.getElementById('watchlistBtnWrapper');
+    const logoutBtn = document.getElementById('logoutBtn');
     if (watchlistBtn) {
         if (isAdmin) watchlistBtn.classList.add('visible');
         else watchlistBtn.classList.remove('visible');
     }
+    if (logoutBtn) {
+        if (isAdmin) logoutBtn.classList.add('visible');
+        else logoutBtn.classList.remove('visible');
+    }
+    render(); // re-render to update star icons
 }
-updateAdminUI();
 
-// SHA‑256 helper
+// Restore admin state on page load
+(function() {
+    if (localStorage.getItem(ADMIN_SESSION_KEY) === 'true') {
+        isAdmin = true;
+    }
+    updateAdminUI();
+})();
+
 async function sha256(message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
@@ -246,12 +260,14 @@ async function sha256(message) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Admin Authentication Wrapper ──
 async function requireAdmin(callback) {
     if (isAdmin) {
         callback();
         return;
     }
+
+    const userInput = prompt('🔒 Enter Admin Password:');
+    if (!userInput) return;
 
     try {
         const snap = await db.ref('password_hash').once('value');
@@ -269,14 +285,10 @@ async function requireAdmin(callback) {
             }
         }
 
-        const userInput = prompt('🔒 Enter Admin Password:');
-        if (!userInput) return;
-
         const inputHash = await sha256(userInput);
         if (inputHash === actualHash) {
             isAdmin = true;
-            const session = { expires: Date.now() + SESSION_DURATION_MS };
-            localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+            localStorage.setItem(ADMIN_SESSION_KEY, 'true');
             updateAdminUI();
             callback();
         } else {
@@ -288,7 +300,13 @@ async function requireAdmin(callback) {
     }
 }
 
-// ── Handlers for buttons (so that event listeners work properly) ──
+function performLogout() {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    isAdmin = false;
+    updateAdminUI();
+    alert('✅ Logged out successfully. Admin features hidden.');
+}
+
 function handleScanClick() {
     requireAdmin(actualScan);
 }
@@ -297,7 +315,6 @@ function handleWatchlistClick() {
     requireAdmin(openWatchlistModal);
 }
 
-// ── Actual Scan Function ──
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...'; btn.disabled = true;
@@ -310,7 +327,7 @@ function actualScan() {
     });
 }
 
-// ── Watchlist ──
+// ── Manual Watchlist ──
 let watchlistSet = new Set();
 db.ref('manualWatchlist').on('value', snap => {
     const val = snap.val() || {};
@@ -358,8 +375,8 @@ function openWatchlistModal() {
                 </div>
             </div>
         </div>`;
-    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs added yet.</div>';
-    document.getElementById('watchlistContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">📌 My Trades</h3>${html}`;
+    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs added yet. Use the star icons on the main table to add pairs.</div>';
+    document.getElementById('watchlistContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">📌 My Trades (Manual Watchlist)</h3>${html}`;
     document.getElementById('watchlistModal').classList.add('open');
 }
 
@@ -416,7 +433,7 @@ function updateCounts() {
     document.getElementById('watchlistCount').textContent = watchlistSet.size;
 }
 
-// ── Render (with watchlist stars) ──
+// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     const filtered = curF === 'all' ? currentPairs : currentPairs.filter(p => {
@@ -514,7 +531,7 @@ function closeChart() {
     }
 }
 
-// ── Target List Modal (with 4H toggle) ──
+// ── Target List Modal ──
 function openTargetModal() {
     const phasePriority = {
         'alerted': 4,
@@ -594,13 +611,13 @@ function toggle4H() {
     if (document.getElementById('targetModal').classList.contains('open')) openTargetModal();
 }
 
-// Firebase Listeners
+// ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
 db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
-// Restore theme & desktop mode
+// ── Restore theme & desktop mode ──
 (function() {
     const saved = localStorage.getItem('ici-theme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
