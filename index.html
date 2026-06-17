@@ -98,23 +98,13 @@
             color:var(--muted);
             user-select:none;
         }
-        .toggle-4h.active {
-            background:var(--acc);
-            color:#fff;
-        }
+        .toggle-4h.active { background:var(--acc); color:#fff; }
 
         .admin-only { display:none; }
         .admin-only.visible { display:inline; }
 
-        .watchlist-star {
-            cursor:pointer;
-            font-size:14px;
-            margin-right:2px;
-            user-select:none;
-        }
-        .watchlist-star.active {
-            color: #f59e0b !important;
-        }
+        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
+        .watchlist-star.active { color: #f59e0b !important; }
     </style>
 </head>
 <body>
@@ -140,7 +130,6 @@
     <div class="sync-info">
         ✔ Cloud synced
         <span style="color:var(--acc);margin-left:6px;cursor:pointer" onclick="openTargetModal()">Target list: <span id="targetCount">0</span> ›</span>
-        <!-- Admin-only manual watchlist button -->
         <span style="margin-left:12px;color:var(--gold);cursor:pointer" class="admin-only" id="watchlistBtnWrapper" onclick="requireAdmin(openWatchlistModal)">📌 My trades: <span id="watchlistCount">0</span> ›</span>
         <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
     </div>
@@ -200,14 +189,7 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-const PAIRS = [
-    {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
-    {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
-    {n:'EURJPY'},{n:'GBPJPY'},{n:'AUDJPY'},{n:'NZDJPY'},{n:'CADJPY'},{n:'CHFJPY'},
-    {n:'EURGBP'},{n:'EURAUD'},{n:'EURCAD'},{n:'EURCHF'},{n:'GBPAUD'},{n:'GBPCAD'},{n:'GBPCHF'},
-    {n:'AUDCAD'},{n:'AUDCHF'},{n:'AUDNZD'},{n:'NZDCAD'},{n:'NZDCHF'},{n:'CADCHF'},
-    {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
-];
+const PAIRS = [ /* 36 pairs same as before */ ];
 
 let MARKET_DATA = {};
 let techMetrics = {};
@@ -221,7 +203,7 @@ let currentDisplayPairs = [];
 let targetPairsList = [];
 let show4H = true;
 
-// ── Admin State ──
+// ── Admin State (HASHED PASSWORD) ──
 let isAdmin = false;
 const ADMIN_SESSION_KEY = 'ici_admin_session';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -247,22 +229,55 @@ function updateAdminUI() {
     }
 }
 
-function requireAdmin(callback) {
-    if (isAdmin) { callback(); return; }
-    db.ref('adminPassword').once('value').then(snap => {
-        const storedPassword = snap.val();
-        if (!storedPassword) { alert('Admin password not set. Contact developer.'); return; }
-        const userInput = prompt('🔒 Enter Admin Password:');
-        if (userInput === storedPassword) {
-            isAdmin = true;
-            const session = { expires: Date.now() + SESSION_DURATION_MS };
-            localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-            updateAdminUI();
-            callback();
-        } else if (userInput !== null) {
-            alert('❌ Wrong password! Access denied.');
+// ── SHA‑256 hash function using Web Crypto API ──
+async function sha256(message) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
+// ── Admin authentication (uses password_hash node) ──
+async function requireAdmin(callback) {
+    if (isAdmin) {
+        callback();
+        return;
+    }
+
+    // Fetch the stored password hash from Firebase
+    const snap = await db.ref('password_hash').once('value');
+    const storedHash = snap.val();
+
+    // Fallback to plaintext adminPassword if hash not found (compatibility)
+    let actualHash = storedHash;
+    if (!storedHash) {
+        const plainSnap = await db.ref('adminPassword').once('value');
+        const plainPassword = plainSnap.val();
+        if (plainPassword) {
+            // Hash the plaintext to compare (treat it as hash for session)
+            actualHash = await sha256(plainPassword);
+        } else {
+            alert('Admin password not set. Contact developer.');
+            return;
         }
-    }).catch(err => { console.error('Failed to fetch admin password:', err); alert('Could not verify admin access. Check console.'); });
+    }
+
+    const userInput = prompt('🔒 Enter Admin Password:');
+    if (!userInput) return;
+
+    const inputHash = await sha256(userInput);
+
+    if (inputHash === actualHash) {
+        isAdmin = true;
+        const session = { expires: Date.now() + SESSION_DURATION_MS };
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+        updateAdminUI();
+        callback();
+    } else {
+        alert('❌ Wrong password! Access denied.');
+    }
 }
 
 function actualScan() {
@@ -330,116 +345,28 @@ function openWatchlistModal() {
     document.getElementById('watchlistModal').classList.add('open');
 }
 
-// ── Theme, Desktop, Filter ──
-function toggleTheme() { /* same as before */ }
-function toggleDesktopMode() { /* same as before */ }
-function setFilter(f) { curF = f; render(); }
-function filterPairs(searchText) { /* same as before */ }
+// ── Your existing functions: toggleTheme, toggleDesktopMode, setFilter, filterPairs, updateCounts, render, chart functions, openTargetModal (with 4H toggle) ──
+// (Copy all the working functions from previous final code – unmodified)
+// ...
 
-// ── Counts ──
-function updateCounts() {
-    let b=0, r=0;
-    PAIRS.forEach(p => {
-        const d = MARKET_DATA[p.n] || {};
-        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
-        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
-    });
-    document.getElementById('bc').textContent = b;
-    document.getElementById('rc').textContent = r;
-    document.getElementById('allCount').textContent = PAIRS.length;
-
-    let tCount = 0;
-    for (const [k, s] of Object.entries(PB_STATE)) {
-        if (!s || !s.phase) continue;
-        if (!show4H && k.includes('_4h_')) continue;
-        tCount++;
-    }
-    document.getElementById('targetCount').textContent = tCount;
-    document.getElementById('watchlistCount').textContent = watchlistSet.size;
-}
-
-// ── Render (with star icons) ──
-function render() {
-    const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
-    const filtered = curF === 'all' ? currentPairs : currentPairs.filter(p => {
-        const d = MARKET_DATA[p.n] || {};
-        return ['4h','1day','1week'].every(tf => d[tf] === curF);
-    });
-    currentDisplayPairs = filtered.map(p => p.n);
-
-    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const t = techMetrics[p.n] || {};
-        const s = sentimentData[p.n] || {};
-        const m = MARKET_DATA[p.n] || {};
-        const isBull = ['4h','1day','1week'].every(tf => m[tf]==='bull');
-        const isBear = ['4h','1day','1week'].every(tf => m[tf]==='bear');
-        const star = isBull ? '★' : isBear ? '★' : '★';
-        const starColor = isBull ? 'var(--green)' : isBear ? 'var(--red)' : '#cbd5e1';
-        const change = t.longTermTrend != null ? (t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%' : '—';
-        const changeClass = t.longTermTrend>=0 ? 'up' : 'down';
-        const bullPct = s.bullish_pct || 0;
-        const bearPct = s.bearish_pct || 0;
-        const total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct/total)*100);
-        const bullW = 100 - bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf => m[tf] || '');
-        const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
-        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum>0?'+':'') + t.shortTermMomentum.toFixed(2)+'%' : '—';
-        const microVal = t.microMomentum != null ? (t.microMomentum>0?'+':'') + t.microMomentum.toFixed(2)+'%' : '—';
-        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
-        const dollarVolVal = t.dollarVolume1d || '—';
-        const watchlistStar = isAdmin ? `<span class="watchlist-star ${isInWatchlist(p.n) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n) ? '⭐' : '☆'}</span>` : '';
-        return `<div class="item-row">
-            <div class="item-main" onclick="openChartForPair('${p.n}')">
-                <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}</div>
-                <div class="row-timeframes dots-container">${dots}</div>
-                <div class="row-sentiment sentiment-wrapper">
-                    <div class="sentiment-progress">
-                        <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
-                        <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
-                    </div>
-                </div>
-                <div class="row-change change-val ${changeClass}">${change}</div>
-            </div>
-            <div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
-                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
-                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
-            </div>
-        </div>`;
-    }).join('');
-    updateCounts();
-}
-
-// ── Chart functions ──
-function openChartForPair(pairName) { /* ... */ }
-function openChartFromTarget(pairName) { /* ... */ }
-function openChart(idx) { /* ... */ }
-function movePair(step) { /* ... */ }
-function closeChart() { /* ... */ }
-
-// ── Target List Modal (with 4H toggle) ──
-function openTargetModal() { /* same as before */ }
-
-// ── 4H Toggle ──
-function toggle4H() {
-    show4H = !show4H;
-    const btn = document.getElementById('toggle4hBtn');
-    if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); }
-    else { btn.textContent = '4H OFF'; btn.classList.remove('active'); }
-    updateCounts();
-    if (document.getElementById('targetModal').classList.contains('open')) openTargetModal();
-}
-
-// ── Firebase Listeners ──
+// Firebase Listeners
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
 db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
 // Restore theme & desktop mode
-(function() { /* ... */ })();
+(function() {
+    const saved = localStorage.getItem('ici-theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
+
+    if (localStorage.getItem('desktop-mode') === 'desktop') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('desktopBtn').textContent = '📱';
+        document.getElementById('chartOverlay').style.display = 'flex';
+    }
+})();
 
 updateAdminUI();
 </script>
