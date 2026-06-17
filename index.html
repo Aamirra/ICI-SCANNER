@@ -123,14 +123,14 @@
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
-        <button class="pill scan-btn" onclick="requireAdmin(actualScan)">🔍 Scan</button>
+        <button class="pill scan-btn" onclick="handleScanClick()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
     <div class="sync-info">
         ✔ Cloud synced
         <span style="color:var(--acc);margin-left:6px;cursor:pointer" onclick="openTargetModal()">Target list: <span id="targetCount">0</span> ›</span>
-        <span style="margin-left:12px;color:var(--gold);cursor:pointer" class="admin-only" id="watchlistBtnWrapper" onclick="requireAdmin(openWatchlistModal)">📌 My trades: <span id="watchlistCount">0</span> ›</span>
+        <span style="margin-left:12px;color:var(--gold);cursor:pointer" class="admin-only" id="watchlistBtnWrapper" onclick="handleWatchlistClick()">📌 My trades: <span id="watchlistCount">0</span> ›</span>
         <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
     </div>
 
@@ -237,7 +237,7 @@ function updateAdminUI() {
 }
 updateAdminUI();
 
-// SHA‑256 hash
+// SHA‑256 helper
 async function sha256(message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
@@ -246,43 +246,58 @@ async function sha256(message) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Admin authentication
+// ── Admin Authentication Wrapper ──
 async function requireAdmin(callback) {
     if (isAdmin) {
         callback();
         return;
     }
 
-    const snap = await db.ref('password_hash').once('value');
-    const storedHash = snap.val();
+    try {
+        const snap = await db.ref('password_hash').once('value');
+        const storedHash = snap.val();
+        let actualHash = storedHash;
 
-    let actualHash = storedHash;
-    if (!storedHash) {
-        const plainSnap = await db.ref('adminPassword').once('value');
-        const plainPassword = plainSnap.val();
-        if (plainPassword) {
-            actualHash = await sha256(plainPassword);
-        } else {
-            alert('Admin password not set. Contact developer.');
-            return;
+        if (!storedHash) {
+            const plainSnap = await db.ref('adminPassword').once('value');
+            const plainPassword = plainSnap.val();
+            if (plainPassword) {
+                actualHash = await sha256(plainPassword);
+            } else {
+                alert('Admin password not set. Contact developer.');
+                return;
+            }
         }
-    }
 
-    const userInput = prompt('🔒 Enter Admin Password:');
-    if (!userInput) return;
+        const userInput = prompt('🔒 Enter Admin Password:');
+        if (!userInput) return;
 
-    const inputHash = await sha256(userInput);
-    if (inputHash === actualHash) {
-        isAdmin = true;
-        const session = { expires: Date.now() + SESSION_DURATION_MS };
-        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-        updateAdminUI();
-        callback();
-    } else {
-        alert('❌ Wrong password! Access denied.');
+        const inputHash = await sha256(userInput);
+        if (inputHash === actualHash) {
+            isAdmin = true;
+            const session = { expires: Date.now() + SESSION_DURATION_MS };
+            localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+            updateAdminUI();
+            callback();
+        } else {
+            alert('❌ Wrong password! Access denied.');
+        }
+    } catch (err) {
+        console.error('Admin auth error:', err);
+        alert('Could not verify admin access. Check console.');
     }
 }
 
+// ── Handlers for buttons (so that event listeners work properly) ──
+function handleScanClick() {
+    requireAdmin(actualScan);
+}
+
+function handleWatchlistClick() {
+    requireAdmin(openWatchlistModal);
+}
+
+// ── Actual Scan Function ──
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     btn.textContent = '⏳ Scanning...'; btn.disabled = true;
