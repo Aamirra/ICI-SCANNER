@@ -189,7 +189,14 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-const PAIRS = [ /* 36 pairs same as before */ ];
+const PAIRS = [
+    {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
+    {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
+    {n:'EURJPY'},{n:'GBPJPY'},{n:'AUDJPY'},{n:'NZDJPY'},{n:'CADJPY'},{n:'CHFJPY'},
+    {n:'EURGBP'},{n:'EURAUD'},{n:'EURCAD'},{n:'EURCHF'},{n:'GBPAUD'},{n:'GBPCAD'},{n:'GBPCHF'},
+    {n:'AUDCAD'},{n:'AUDCHF'},{n:'AUDNZD'},{n:'NZDCAD'},{n:'NZDCHF'},{n:'CADCHF'},
+    {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
+];
 
 let MARKET_DATA = {};
 let techMetrics = {};
@@ -203,7 +210,7 @@ let currentDisplayPairs = [];
 let targetPairsList = [];
 let show4H = true;
 
-// ── Admin State (HASHED PASSWORD) ──
+// ── Admin State (Hashed Password) ──
 let isAdmin = false;
 const ADMIN_SESSION_KEY = 'ici_admin_session';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -228,35 +235,32 @@ function updateAdminUI() {
         else watchlistBtn.classList.remove('visible');
     }
 }
+updateAdminUI();
 
-// ── SHA‑256 hash function using Web Crypto API ──
+// SHA‑256 hash
 async function sha256(message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Admin authentication (uses password_hash node) ──
+// Admin authentication
 async function requireAdmin(callback) {
     if (isAdmin) {
         callback();
         return;
     }
 
-    // Fetch the stored password hash from Firebase
     const snap = await db.ref('password_hash').once('value');
     const storedHash = snap.val();
 
-    // Fallback to plaintext adminPassword if hash not found (compatibility)
     let actualHash = storedHash;
     if (!storedHash) {
         const plainSnap = await db.ref('adminPassword').once('value');
         const plainPassword = plainSnap.val();
         if (plainPassword) {
-            // Hash the plaintext to compare (treat it as hash for session)
             actualHash = await sha256(plainPassword);
         } else {
             alert('Admin password not set. Contact developer.');
@@ -268,7 +272,6 @@ async function requireAdmin(callback) {
     if (!userInput) return;
 
     const inputHash = await sha256(userInput);
-
     if (inputHash === actualHash) {
         isAdmin = true;
         const session = { expires: Date.now() + SESSION_DURATION_MS };
@@ -292,7 +295,7 @@ function actualScan() {
     });
 }
 
-// ── Manual Watchlist ──
+// ── Watchlist ──
 let watchlistSet = new Set();
 db.ref('manualWatchlist').on('value', snap => {
     const val = snap.val() || {};
@@ -313,7 +316,7 @@ function toggleWatchlist(pairName) {
 
 function openWatchlistModal() {
     const entries = [];
-    for (const pair of watchlistSet) { entries.push({ pair, dir: '', phase: '' }); }
+    for (const pair of watchlistSet) { entries.push({ pair }); }
     entries.sort((a,b) => a.pair.localeCompare(b.pair));
     const html = entries.length ? entries.map(e => {
         const sd = sentimentData[e.pair] || {};
@@ -340,14 +343,241 @@ function openWatchlistModal() {
                 </div>
             </div>
         </div>`;
-    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs added yet. Use the star icons on the main table to add pairs.</div>';
-    document.getElementById('watchlistContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">📌 My Trades (Manual Watchlist)</h3>${html}`;
+    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs added yet.</div>';
+    document.getElementById('watchlistContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">📌 My Trades</h3>${html}`;
     document.getElementById('watchlistModal').classList.add('open');
 }
 
-// ── Your existing functions: toggleTheme, toggleDesktopMode, setFilter, filterPairs, updateCounts, render, chart functions, openTargetModal (with 4H toggle) ──
-// (Copy all the working functions from previous final code – unmodified)
-// ...
+// ── Theme, Desktop, Filter ──
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('ici-theme', html.getAttribute('data-theme'));
+}
+
+function toggleDesktopMode() {
+    const isDesktop = document.body.classList.toggle('desktop-mode');
+    const overlay = document.getElementById('chartOverlay');
+    const btn = document.getElementById('desktopBtn');
+    if (isDesktop) {
+        overlay.style.display = 'flex';
+        btn.textContent = '📱';
+        btn.title = 'Switch to Mobile';
+    } else {
+        overlay.style.display = 'none';
+        btn.textContent = '💻';
+        btn.title = 'Desktop Mode';
+    }
+    localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
+}
+
+function setFilter(f) { curF = f; render(); }
+function filterPairs(searchText) {
+    filteredPairs = searchText ? PAIRS.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase())) : [...PAIRS];
+    render();
+}
+
+// ── Counts ──
+function updateCounts() {
+    let b=0, r=0;
+    PAIRS.forEach(p => {
+        const d = MARKET_DATA[p.n] || {};
+        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
+        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
+    });
+    document.getElementById('bc').textContent = b;
+    document.getElementById('rc').textContent = r;
+    document.getElementById('allCount').textContent = PAIRS.length;
+
+    let tCount = 0;
+    for (const [k, s] of Object.entries(PB_STATE)) {
+        if (!s || !s.phase) continue;
+        if (!show4H && k.includes('_4h_')) continue;
+        tCount++;
+    }
+    document.getElementById('targetCount').textContent = tCount;
+    document.getElementById('watchlistCount').textContent = watchlistSet.size;
+}
+
+// ── Render (with watchlist stars) ──
+function render() {
+    const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
+    const filtered = curF === 'all' ? currentPairs : currentPairs.filter(p => {
+        const d = MARKET_DATA[p.n] || {};
+        return ['4h','1day','1week'].every(tf => d[tf] === curF);
+    });
+    currentDisplayPairs = filtered.map(p => p.n);
+
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
+        const t = techMetrics[p.n] || {};
+        const s = sentimentData[p.n] || {};
+        const m = MARKET_DATA[p.n] || {};
+        const isBull = ['4h','1day','1week'].every(tf => m[tf]==='bull');
+        const isBear = ['4h','1day','1week'].every(tf => m[tf]==='bear');
+        const star = isBull ? '★' : isBear ? '★' : '★';
+        const starColor = isBull ? 'var(--green)' : isBear ? 'var(--red)' : '#cbd5e1';
+        const change = t.longTermTrend != null ? (t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%' : '—';
+        const changeClass = t.longTermTrend>=0 ? 'up' : 'down';
+        const bullPct = s.bullish_pct || 0;
+        const bearPct = s.bearish_pct || 0;
+        const total = bullPct + bearPct || 1;
+        const bearW = Math.round((bearPct/total)*100);
+        const bullW = 100 - bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf => m[tf] || '');
+        const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum>0?'+':'') + t.shortTermMomentum.toFixed(2)+'%' : '—';
+        const microVal = t.microMomentum != null ? (t.microMomentum>0?'+':'') + t.microMomentum.toFixed(2)+'%' : '—';
+        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
+        const dollarVolVal = t.dollarVolume1d || '—';
+        const watchlistStar = isAdmin ? `<span class="watchlist-star ${isInWatchlist(p.n) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n) ? '⭐' : '☆'}</span>` : '';
+        return `<div class="item-row">
+            <div class="item-main" onclick="openChartForPair('${p.n}')">
+                <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}</div>
+                <div class="row-timeframes dots-container">${dots}</div>
+                <div class="row-sentiment sentiment-wrapper">
+                    <div class="sentiment-progress">
+                        <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
+                        <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
+                    </div>
+                </div>
+                <div class="row-change change-val ${changeClass}">${change}</div>
+            </div>
+            <div class="compact-details">
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+            </div>
+        </div>`;
+    }).join('');
+    updateCounts();
+}
+
+// ── Chart functions ──
+function openChartForPair(pairName) {
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
+    chartIdx = chartPairs.indexOf(pairName);
+    if (chartIdx === -1) chartIdx = 0;
+    openChart(chartIdx);
+}
+
+function openChartFromTarget(pairName) {
+    chartPairs = targetPairsList.length ? targetPairsList : PAIRS.map(p => p.n);
+    chartIdx = chartPairs.indexOf(pairName);
+    if (chartIdx === -1) chartIdx = 0;
+    openChart(chartIdx);
+    document.getElementById('targetModal').classList.remove('open');
+}
+
+function openChart(idx) {
+    chartIdx = idx;
+    const symbol = chartPairs[idx];
+    document.getElementById('chartPairName').textContent = symbol;
+    document.getElementById('chartOverlay').style.display = 'flex';
+    document.getElementById('tv_chart_container').innerHTML = '';
+    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
+    new TradingView.widget({
+        autosize: true,
+        symbol: isPSX ? 'KSE:'+symbol : symbol,
+        interval: "60",
+        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id: "tv_chart_container",
+        studies: [
+            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
+            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
+}
+function movePair(step) { if (chartIdx+step >=0 && chartIdx+step < chartPairs.length) openChart(chartIdx+step); }
+function closeChart() {
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+    }
+}
+
+// ── Target List Modal (with 4H toggle) ──
+function openTargetModal() {
+    const phasePriority = {
+        'alerted': 4,
+        'monitoring': 3,
+        'correction': 2,
+        'impulse': 1
+    };
+    function phaseLabel(phase) {
+        const map = {
+            'alerted': 'fired',
+            'monitoring': 'impulse1',
+            'correction': 'correction',
+            'impulse': 'impulse2'
+        };
+        return map[phase] || phase;
+    }
+    
+    const entries = [];
+    for (const [key, s] of Object.entries(PB_STATE)) {
+        if (!s || !s.phase) continue;
+        const is4H = key.includes('_4h_');
+        if (!show4H && is4H) continue;
+        const parts = key.split('_');
+        const pair = parts[0];
+        const tf = is4H ? '4H' : '1H';
+        const tfOrder = tf === '1H' ? 1 : 2;
+        const priority = phasePriority[s.phase] || 0;
+        entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority, label: phaseLabel(s.phase) });
+    }
+    
+    entries.sort((a, b) => {
+        if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
+        if (a.priority !== b.priority) return b.priority - a.priority;
+        return a.pair.localeCompare(b.pair);
+    });
+
+    targetPairsList = entries.map(e => e.pair);
+
+    const html = entries.length ? entries.map(e => {
+        const sd = sentimentData[e.pair] || {};
+        const bullPct = sd.bullish_pct || 0;
+        const bearPct = sd.bearish_pct || 0;
+        const total = bullPct + bearPct || 1;
+        const bearW = Math.round((bearPct/total)*100);
+        const bullW = 100 - bearW;
+        const dirCol = e.dir === 'bull' ? 'var(--green)' : 'var(--red)';
+        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartFromTarget('${e.pair}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-weight:700;font-size:15px;">${e.pair}</span>
+                    <span style="font-size:10px;background:var(--pill-bg);padding:2px 6px;border-radius:4px;color:var(--muted)">${e.tf}</span>
+                </div>
+                <span style="font-weight:600;font-size:14px;color:${dirCol}">${e.dir.toUpperCase()}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:12px;color:var(--muted);min-width:70px;">${e.label}</span>
+                <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
+                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
+                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
+    
+    document.getElementById('targetContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">🎯 Target List</h3>${html}`;
+    document.getElementById('targetModal').classList.add('open');
+    updateCounts();
+}
+
+// ── 4H Toggle ──
+function toggle4H() {
+    show4H = !show4H;
+    const btn = document.getElementById('toggle4hBtn');
+    if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); }
+    else { btn.textContent = '4H OFF'; btn.classList.remove('active'); }
+    updateCounts();
+    if (document.getElementById('targetModal').classList.contains('open')) openTargetModal();
+}
 
 // Firebase Listeners
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
@@ -367,8 +597,6 @@ db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; rende
         document.getElementById('chartOverlay').style.display = 'flex';
     }
 })();
-
-updateAdminUI();
 </script>
 </body>
 </html>
