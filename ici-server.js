@@ -1,3 +1,4 @@
+require('./services/whatsapp'); // WhatsApp bot ko server boot hotay hi start krny k liye
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
