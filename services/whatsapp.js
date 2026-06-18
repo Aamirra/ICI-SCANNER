@@ -56,6 +56,18 @@ async function connectToWhatsApp() {
             console.log('============= BANDE MATARAM =============');
             console.log('✅ WhatsApp Bot successfully CONNECTED aur LIVE hai!');
             console.log('=========================================');
+
+            try {
+                // 🔥 YEH LINE AAPKE SARE GROUPS KI IDs TERMINAL ME PRINT KAREGI:
+                const groups = await sock.groupFetchAllParticipating();
+                console.log("\n🔥 AAPKE WHATSAPP GROUPS KI IDs YAHAN HAIN:");
+                for (const id in groups) {
+                    console.log(`👉 GROUP NAME: ${groups[id].subject} | ID: ${id}`);
+                }
+                console.log("=========================================\n");
+            } catch (gErr) {
+                console.error("❌ Groups fetch karne me error:", gErr.message);
+            }
         }
     });
 
@@ -75,7 +87,7 @@ async function connectToWhatsApp() {
 async function sendWhatsAppAlert(messageContent) {
     const targetNumber = process.env.MY_WHATSAPP_NUMBER; 
     if (!targetNumber) {
-        console.error('❌ Render variables me MY_WHATSAPP_NUMBER missing hai.');
+        console.error('❌ Render variables (.env) me MY_WHATSAPP_NUMBER missing hai.');
         return;
     }
     if (!sock) {
@@ -84,7 +96,8 @@ async function sendWhatsAppAlert(messageContent) {
     }
 
     try {
-        const jid = `${targetNumber}@s.whatsapp.net`;
+        // Agar group ID bhej rahe hain to direct use karega, agar number hai to formatted string banayega
+        const jid = targetNumber.includes('@g.us') ? targetNumber : `${targetNumber}@s.whatsapp.net`;
         await sock.sendMessage(jid, { text: messageContent });
         console.log('✅ Alert kamyabi sy WhatsApp pr bhej diya gya.');
     } catch (error) {
