@@ -10,19 +10,21 @@ const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
 function defaultBullState() {
     return {
-        dir:           'bull',
-        phase:         null,
-        runningHigh:   null,
-        lowestLow:     null,
-        firedAt:       0,
-        reminded:      false,
+        dir:            'bull',
+        phase:          null,
+        runningHigh:    null,
+        lowestLow:      null,
+        firedAt:        0,
+        reminded:       false,
         fractalCandles: 0,
-        fractalWait:   false
+        fractalWait:    false,
+        lastCandleTime: null // Har candle par sirf ek baar chalne ke liye
     };
 }
 
 async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
-    if (!raw || !raw.closes || raw.closes.length < 3) {
+    // FIX 1: SMA50 calculate karne ke liye kam se kam 50 candles lazmi hain
+    if (!raw || !raw.closes || raw.closes.length < 50) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
@@ -33,34 +35,46 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    const closes = raw.closes;
-    const highs  = raw.highs || closes;
-    const lows   = raw.lows  || closes;
+    // FIX 2: Agar last element live candle hai, to usey slice kar dein 
+    // taaki hum strictly sirf completed/closed candles par hi processing karein.
+    const closedCloses = raw.closes.slice(0, -1);
+    const closedHighs  = (raw.highs || raw.closes).slice(0, -1);
+    const closedLows   = (raw.lows || raw.closes).slice(0, -1);
 
-    const lastClose = closes[closes.length - 2];
-    const lastHigh  = highs[highs.length - 2];
-    const lastLow   = lows[lows.length - 2];
+    const lastClose = closedCloses[closedCloses.length - 1];
+    const lastHigh  = closedHighs[closedHighs.length - 1];
+    const lastLow   = closedLows[closedLows.length - 1];
 
-    const ema20 = calcEMA(closes, 20);
-    const sma50 = calcSMA(closes, 50);
+    // Indicators ko bhi strictly closed candles par chalayein
+    const ema20 = calcEMA(closedCloses, 20);
+    const sma50 = calcSMA(closedCloses, 50);
 
     if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
+    let s = PB_STATE[stateKey] || defaultBullState();
+
     // Global invalidation: EMA20 <= SMA50 → reset
     if (ema20 <= sma50) {
-        let s = defaultBullState();
-        PB_STATE[stateKey] = s;
+        let resetState = defaultBullState();
+        PB_STATE[stateKey] = resetState;
         await saveTargetList(PB_STATE, firebasePut);
-        return s;
+        return resetState;
     }
 
-    let s = PB_STATE[stateKey] || defaultBullState();
+    // FIX 3: Multi-tick Protection. Agar is candle ko hum pehle hi process 
+    // kar chuke hain, to agle ticks ko skip karein jab tak naye candle ki time stamp na aaye.
+    const currentCandleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
+    if (s.lastCandleTime === currentCandleTime) {
+        return s; 
+    }
+    s.lastCandleTime = currentCandleTime; // Lock current candle time
+
     s.fractalCandles = s.fractalCandles || 0;
     s.fractalWait    = s.fractalWait || false;
 
-    // 1. MONITORING
+    // 1. MONITORING PHASE
     if (s.phase === null || s.phase === 'monitoring') {
         s.phase = 'monitoring';
         s.fractalCandles = 0;
@@ -80,20 +94,17 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 2. CORRECTION (track 2 closes above EMA, then alert)
+    // 2. CORRECTION PHASE
     if (s.phase === 'correction') {
         if (s.lowestLow === null || lastLow < s.lowestLow) {
             s.lowestLow = lastLow;
         }
 
         if (lastClose > ema20) {
-            // Close above EMA: increment counter
-            s.fractalCandles = (s.fractalCandles || 0) + 1;
+            s.fractalCandles += 1;
             if (s.fractalCandles >= 2) {
-                // 2nd close above EMA → alert
-                s.fractalWait = false;   // no longer waiting, alerting now
-                const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
-                const alertKey   = `${stateKey}_bull_${candleTime}`;
+                s.fractalWait = false;
+                const alertKey = `${stateKey}_bull_${currentCandleTime}`;
                 if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                     LAST_ALERT_TIME[stateKey] = alertKey;
                     trimAlertCache();
@@ -106,11 +117,9 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
                 await saveTargetList(PB_STATE, firebasePut);
                 return s;
             } else {
-                // First close above: set fractalWait = true
                 s.fractalWait = true;
             }
         } else {
-            // Close ≤ EMA20: reset counter
             s.fractalCandles = 0;
             s.fractalWait    = false;
         }
@@ -120,9 +129,8 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return s;
     }
 
-    // 3. INVALIDATION (alerted)
+    // 3. INVALIDATION / ALERTED PHASE
     if (s.phase === 'alerted') {
-        // low breach → back to correction
         if (s.lowestLow !== null && lastClose < s.lowestLow) {
             s.phase     = 'correction';
             s.lowestLow = lastLow;
@@ -132,14 +140,12 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             await saveTargetList(PB_STATE, firebasePut);
             return s;
         }
-        // running high breach → full reset
         if (s.runningHigh !== null && lastClose > s.runningHigh) {
-            s = defaultBullState();
-            PB_STATE[stateKey] = s;
+            let resetState = defaultBullState();
+            PB_STATE[stateKey] = resetState;
             await saveTargetList(PB_STATE, firebasePut);
-            return s;
+            return resetState;
         }
-        // price drops back below EMA → correction
         if (lastClose < ema20) {
             s.phase     = 'correction';
             s.lowestLow = lastLow;
