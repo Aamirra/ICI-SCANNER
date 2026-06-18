@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* ═══════════ CSS same as before ═══════════ */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -26,7 +25,7 @@
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
-        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; flex-wrap:wrap; }
+        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; }
         .counters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
         .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; text-align:center; cursor:pointer; }
         .count-card .num { font-size:22px; font-weight:700; margin-bottom:2px; color:var(--txt); }
@@ -34,7 +33,7 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
-        .row-pair { width:25%; } .row-timeframes { width:30%; text-align:center; } .row-sentiment { width:25%; text-align:center; } .row-change { width:20%; text-align:right; }
+        .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
         .item-row { border-bottom:1px solid var(--border); }
         .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
         .item-main:hover { background:var(--pill-bg); }
@@ -101,11 +100,10 @@
         }
         .toggle-4h.active { background:var(--acc); color:#fff; }
 
-        .admin-only { display:none; }
-        .admin-only.visible { display:inline; }
-
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
+        
+        .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
     </style>
 </head>
 <body>
@@ -124,14 +122,12 @@
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
-        <button class="pill scan-btn" onclick="handleScanClick()">🔍 Scan</button>
+        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
     <div class="sync-info">
         ✔ Cloud synced
-        <span style="color:var(--acc);margin-left:6px;cursor:pointer" onclick="openTargetModal()">Target list: <span id="targetCount">0</span> ›</span>
-        <span style="margin-left:12px;color:var(--gold);cursor:pointer" class="admin-only" id="watchlistBtnWrapper" onclick="handleWatchlistClick()">📌 My trades: <span id="watchlistCount">0</span> ›</span>
         <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
     </div>
 
@@ -148,6 +144,14 @@
             <div class="num" style="color:var(--txt)" id="allCount">0</div>
             <div class="label">All pairs</div>
         </div>
+        <div class="count-card" onclick="setFilter('target')">
+            <div class="num" style="color:var(--gold)" id="targetCount">0</div>
+            <div class="label">🎯 Target</div>
+        </div>
+        <div class="count-card" onclick="setFilter('trades')">
+            <div class="num" style="color:var(--gold)" id="tradesCount">0</div>
+            <div class="label">📌 Trades</div>
+        </div>
     </div>
 
     <div class="search-container">
@@ -159,18 +163,9 @@
         <div class="row-timeframes">1H · 4H · 1D · 1W</div>
         <div class="row-sentiment">Sentiment</div>
         <div class="row-change">200C</div>
+        <div class="row-alert">🔔</div>
     </div>
     <div id="pairsContainer"></div>
-</div>
-
-<!-- Target List Modal -->
-<div class="modal" id="targetModal" onclick="this.classList.remove('open')">
-    <div class="modal-content" onclick="event.stopPropagation()" id="targetContent"></div>
-</div>
-
-<!-- Watchlist Modal -->
-<div class="modal" id="watchlistModal" onclick="this.classList.remove('open')">
-    <div class="modal-content" onclick="event.stopPropagation()" id="watchlistContent"></div>
 </div>
 
 <!-- Chart Overlay -->
@@ -185,6 +180,7 @@
 </div>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
+<script src="Alerts.js"></script>
 <script>
 // ── Firebase Init ──
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
@@ -208,90 +204,7 @@ let filteredPairs = [...PAIRS];
 let chartPairs = [];
 let chartIdx = 0;
 let currentDisplayPairs = [];
-let targetPairsList = [];
 let show4H = true;
-
-// ── Admin State (NO session storage – resets on page reload) ──
-let isAdmin = false;   // only true for current page visit after successful password
-
-function updateAdminUI() {
-    const watchlistBtn = document.getElementById('watchlistBtnWrapper');
-    if (watchlistBtn) {
-        if (isAdmin) watchlistBtn.classList.add('visible');
-        else watchlistBtn.classList.remove('visible');
-    }
-}
-
-// SHA‑256 helper
-async function sha256(message) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// ── Admin Authentication (prompts every time if not yet authenticated this page visit) ──
-async function requireAdmin(callback) {
-    if (isAdmin) {
-        callback();
-        return;
-    }
-
-    try {
-        const snap = await db.ref('password_hash').once('value');
-        const storedHash = snap.val();
-        let actualHash = storedHash;
-
-        if (!storedHash) {
-            const plainSnap = await db.ref('adminPassword').once('value');
-            const plainPassword = plainSnap.val();
-            if (plainPassword) {
-                actualHash = await sha256(plainPassword);
-            } else {
-                alert('Admin password not set. Contact developer.');
-                return;
-            }
-        }
-
-        const userInput = prompt('🔒 Enter Admin Password:');
-        if (!userInput) return;
-
-        const inputHash = await sha256(userInput);
-        if (inputHash === actualHash) {
-            isAdmin = true;   // ❗️ valid for this page visit only
-            updateAdminUI();
-            callback();
-        } else {
-            alert('❌ Wrong password! Access denied.');
-        }
-    } catch (err) {
-        console.error('Admin auth error:', err);
-        alert('Could not verify admin access. Check console.');
-    }
-}
-
-// Button handlers
-function handleScanClick() {
-    requireAdmin(actualScan);
-}
-
-function handleWatchlistClick() {
-    requireAdmin(openWatchlistModal);
-}
-
-// Actual scan
-function actualScan() {
-    const btn = document.querySelector('.scan-btn');
-    btn.textContent = '⏳ Scanning...'; btn.disabled = true;
-    fetch('/scan').then(() => {
-        btn.textContent = '✅ Started!';
-        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
-    }).catch(() => {
-        btn.textContent = '❌ Error';
-        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
-    });
-}
 
 // ── Manual Watchlist ──
 let watchlistSet = new Set();
@@ -304,7 +217,6 @@ db.ref('manualWatchlist').on('value', snap => {
 
 function isInWatchlist(pairName) { return watchlistSet.has(pairName); }
 function toggleWatchlist(pairName) {
-    if (!isAdmin) return;
     if (isInWatchlist(pairName)) {
         db.ref(`manualWatchlist/${pairName}`).remove();
     } else {
@@ -312,41 +224,20 @@ function toggleWatchlist(pairName) {
     }
 }
 
-function openWatchlistModal() {
-    const entries = [];
-    for (const pair of watchlistSet) { entries.push({ pair }); }
-    entries.sort((a,b) => a.pair.localeCompare(b.pair));
-    const html = entries.length ? entries.map(e => {
-        const sd = sentimentData[e.pair] || {};
-        const bullPct = sd.bullish_pct || 0;
-        const bearPct = sd.bearish_pct || 0;
-        const total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct/total)*100);
-        const bullW = 100 - bearW;
-        const m = MARKET_DATA[e.pair] || {};
-        const isBull = m['1day'] === 'bull' && m['1week'] === 'bull';
-        const isBear = m['1day'] === 'bear' && m['1week'] === 'bear';
-        const dir = isBull ? 'BULL' : (isBear ? 'BEAR' : '—');
-        const dirCol = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : 'var(--muted)');
-        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartForPair('${e.pair}');document.getElementById('watchlistModal').classList.remove('open')">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-weight:700;font-size:15px;">${e.pair}</span>
-                <span style="font-weight:600;font-size:14px;color:${dirCol}">${dir}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:12px;color:var(--muted);min-width:70px;">manual</span>
-                <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
-                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
-                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
-                </div>
-            </div>
-        </div>`;
-    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No pairs added yet.</div>';
-    document.getElementById('watchlistContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">📌 My Trades</h3>${html}`;
-    document.getElementById('watchlistModal').classList.add('open');
+// ── Scan ──
+function actualScan() {
+    const btn = document.querySelector('.scan-btn');
+    btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+    fetch('/scan').then(() => {
+        btn.textContent = '✅ Started!';
+        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
+    }).catch(() => {
+        btn.textContent = '❌ Error';
+        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
+    });
 }
 
-// ── Theme, Desktop, Filter, Counts, Render, Chart, Target List, 4H Toggle ──
+// ── Theme, Desktop, Filter ──
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
@@ -377,6 +268,7 @@ function filterPairs(searchText) {
     render();
 }
 
+// ── Counts ──
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => {
@@ -395,15 +287,40 @@ function updateCounts() {
         tCount++;
     }
     document.getElementById('targetCount').textContent = tCount;
-    document.getElementById('watchlistCount').textContent = watchlistSet.size;
+    document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
+// ── Target list helper ──
+function isInTargetList(pairName) {
+    for (const [key, s] of Object.entries(PB_STATE)) {
+        if (!s || !s.phase) continue;
+        const parts = key.split('_');
+        if (parts[0] === pairName) {
+            if (!show4H && key.includes('_4h_')) continue;
+            return true;
+        }
+    }
+    return false;
+}
+
+// ── Render (with bell icons) ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
-    const filtered = curF === 'all' ? currentPairs : currentPairs.filter(p => {
-        const d = MARKET_DATA[p.n] || {};
-        return ['4h','1day','1week'].every(tf => d[tf] === curF);
-    });
+    let filtered;
+    if (curF === 'all') {
+        filtered = currentPairs;
+    } else if (curF === 'bull' || curF === 'bear') {
+        filtered = currentPairs.filter(p => {
+            const d = MARKET_DATA[p.n] || {};
+            return ['4h','1day','1week'].every(tf => d[tf] === curF);
+        });
+    } else if (curF === 'target') {
+        filtered = currentPairs.filter(p => isInTargetList(p.n));
+    } else if (curF === 'trades') {
+        filtered = currentPairs.filter(p => watchlistSet.has(p.n));
+    } else {
+        filtered = currentPairs;
+    }
     currentDisplayPairs = filtered.map(p => p.n);
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
@@ -427,7 +344,8 @@ function render() {
         const microVal = t.microMomentum != null ? (t.microMomentum>0?'+':'') + t.microMomentum.toFixed(2)+'%' : '—';
         const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
         const dollarVolVal = t.dollarVolume1d || '—';
-        const watchlistStar = isAdmin ? `<span class="watchlist-star ${isInWatchlist(p.n) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n) ? '⭐' : '☆'}</span>` : '';
+        const watchlistStar = `<span class="watchlist-star ${isInWatchlist(p.n) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n) ? '⭐' : '☆'}</span>`;
+        const bellHtml = (typeof getBellHtml === 'function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); toggleAlert('${p.n}')">🔕</span>`;
         return `<div class="item-row">
             <div class="item-main" onclick="openChartForPair('${p.n}')">
                 <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}</div>
@@ -439,6 +357,7 @@ function render() {
                     </div>
                 </div>
                 <div class="row-change change-val ${changeClass}">${change}</div>
+                <div class="row-alert">${bellHtml}</div>
             </div>
             <div class="compact-details">
                 <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
@@ -451,19 +370,12 @@ function render() {
     updateCounts();
 }
 
+// ── Chart functions ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
     if (chartIdx === -1) chartIdx = 0;
     openChart(chartIdx);
-}
-
-function openChartFromTarget(pairName) {
-    chartPairs = targetPairsList.length ? targetPairsList : PAIRS.map(p => p.n);
-    chartIdx = chartPairs.indexOf(pairName);
-    if (chartIdx === -1) chartIdx = 0;
-    openChart(chartIdx);
-    document.getElementById('targetModal').classList.remove('open');
 }
 
 function openChart(idx) {
@@ -494,91 +406,44 @@ function closeChart() {
     }
 }
 
-function openTargetModal() {
-    const phasePriority = {
-        'alerted': 4,
-        'monitoring': 3,
-        'correction': 2,
-        'impulse': 1
-    };
-    function phaseLabel(phase) {
-        const map = {
-            'alerted': 'fired',
-            'monitoring': 'impulse1',
-            'correction': 'correction',
-            'impulse': 'impulse2'
-        };
-        return map[phase] || phase;
-    }
-    
-    const entries = [];
-    for (const [key, s] of Object.entries(PB_STATE)) {
-        if (!s || !s.phase) continue;
-        const is4H = key.includes('_4h_');
-        if (!show4H && is4H) continue;
-        const parts = key.split('_');
-        const pair = parts[0];
-        const tf = is4H ? '4H' : '1H';
-        const tfOrder = tf === '1H' ? 1 : 2;
-        const priority = phasePriority[s.phase] || 0;
-        entries.push({ pair, tf, tfOrder, dir: s.dir, phase: s.phase, priority, label: phaseLabel(s.phase) });
-    }
-    
-    entries.sort((a, b) => {
-        if (a.tfOrder !== b.tfOrder) return a.tfOrder - b.tfOrder;
-        if (a.priority !== b.priority) return b.priority - a.priority;
-        return a.pair.localeCompare(b.pair);
-    });
-
-    targetPairsList = entries.map(e => e.pair);
-
-    const html = entries.length ? entries.map(e => {
-        const sd = sentimentData[e.pair] || {};
-        const bullPct = sd.bullish_pct || 0;
-        const bearPct = sd.bearish_pct || 0;
-        const total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct/total)*100);
-        const bullW = 100 - bearW;
-        const dirCol = e.dir === 'bull' ? 'var(--green)' : 'var(--red)';
-        return `<div style="padding:12px 10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="openChartFromTarget('${e.pair}')">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-weight:700;font-size:15px;">${e.pair}</span>
-                    <span style="font-size:10px;background:var(--pill-bg);padding:2px 6px;border-radius:4px;color:var(--muted)">${e.tf}</span>
-                </div>
-                <span style="font-weight:600;font-size:14px;color:${dirCol}">${e.dir.toUpperCase()}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:12px;color:var(--muted);min-width:70px;">${e.label}</span>
-                <div style="flex:1;height:14px;border-radius:4px;display:flex;overflow:hidden;font-size:9px;font-weight:700;color:#fff;line-height:14px;text-align:center;">
-                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
-                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
-                </div>
-            </div>
-        </div>`;
-    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
-    
-    document.getElementById('targetContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">🎯 Target List</h3>${html}`;
-    document.getElementById('targetModal').classList.add('open');
-    updateCounts();
+// ── Fallback alert toggle ──
+function toggleAlert(pairName) {
+    console.log('Toggle alert for', pairName);
 }
 
+// ── 4H Toggle with localStorage ──
 function toggle4H() {
     show4H = !show4H;
-    const btn = document.getElementById('toggle4hBtn');
-    if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); }
-    else { btn.textContent = '4H OFF'; btn.classList.remove('active'); }
+    localStorage.setItem('show4H', show4H ? 'true' : 'false');
+    updateToggleButton();
     updateCounts();
-    if (document.getElementById('targetModal').classList.contains('open')) openTargetModal();
+    render();
 }
 
-// Firebase Listeners
+function updateToggleButton() {
+    const btn = document.getElementById('toggle4hBtn');
+    if (show4H) {
+        btn.textContent = '4H ON';
+        btn.classList.add('active');
+    } else {
+        btn.textContent = '4H OFF';
+        btn.classList.remove('active');
+    }
+}
+
+(function() {
+    const saved = localStorage.getItem('show4H');
+    show4H = (saved === 'false') ? false : true;
+    updateToggleButton();
+})();
+
+// ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
 db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
 
-// Restore theme & desktop mode
+// ── Restore theme & desktop mode ──
 (function() {
     const saved = localStorage.getItem('ici-theme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
