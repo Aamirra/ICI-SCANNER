@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const admin = require('firebase-admin');
 const qrcode = require('qrcode-terminal');
 
@@ -15,44 +15,59 @@ async function connectToWhatsApp() {
     try {
         const snapshot = await dbRef.child('creds').once('value');
         if (snapshot.exists() && Object.keys(state.creds).length === 0) {
+            console.log("🔄 Firebase sy purana session data load kiya ja rha hai...");
             state.creds = snapshot.val();
         }
     } catch (err) {
         console.error("❌ Firebase session fetch error:", err);
     }
 
+    // WhatsApp socket configuration with Official Baileys Auto-Browser
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false
+        printQRInTerminal: false,
+        logger: require('pino')({ level: 'silent' }), // फालतू k logs band krne k liye
+        browser: Browsers.ubuntu('Chrome') // Yeh line WhatsApp ko auto-updated signature bheje gi aur 405 error hal kray gi
     });
 
     // Connection updates handle krna
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        // Agar naya login chahiye to Render k Logs me QR code show hoga
+        // Agar naya login chahiye to Terminal me QR code show hoga
         if (qr) {
-            console.log('\n👉 RENDER LOGS ME YEH QR CODE SCAN KAREIN:');
+            console.log('\n👉 APNE MOBILE SY YEH QR CODE SCAN KAREIN:');
             qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log(`Connection closed. Reconnecting: ${shouldReconnect}`);
+            const statusCode = lastDisconnect.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
+            console.log(`Connection closed. Reason Code: ${statusCode}. Reconnecting: ${shouldReconnect}`);
+            
             if (shouldReconnect) {
-                connectToWhatsApp();
+                // Connection drops sy bachne k liye short delay
+                setTimeout(() => connectToWhatsApp(), 5000);
             } else {
                 console.log("❌ WhatsApp sy logout ho gya hai. Firebase sy 'whatsapp_session' delete kr k dobara run krein.");
             }
         } else if (connection === 'open') {
-            console.log('✅ WhatsApp Bot baghair laptop k Render + Firebase pr LIVE hai!');
+            console.log('============= BANDE MATARAM =============');
+            console.log('✅ WhatsApp Bot successfully CONNECTED aur LIVE hai!');
+            console.log('=========================================');
         }
     });
 
     // Jab bhi login credentials update hon, unhein Firebase me save krdo
     sock.ev.on('creds.update', async () => {
         await saveCreds();
-        await dbRef.child('creds').set(state.creds);
+        
+        // FIX: Undefined values ko remove karne ke liye JSON parse/stringify ka use kiya hai
+        if (state.creds) {
+            const cleanCreds = JSON.parse(JSON.stringify(state.creds));
+            await dbRef.child('creds').set(cleanCreds);
+        }
     });
 }
 
