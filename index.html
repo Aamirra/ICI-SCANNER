@@ -26,10 +26,10 @@
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
         .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; }
-        .counters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-        .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; text-align:center; cursor:pointer; }
-        .count-card .num { font-size:22px; font-weight:700; margin-bottom:2px; color:var(--txt); }
-        .count-card .label { font-size:12px; color:var(--muted); font-weight:500; }
+        .counters-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:16px; }
+        .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 4px; text-align:center; cursor:pointer; }
+        .count-card .num { font-size:18px; font-weight:700; margin-bottom:2px; color:var(--txt); }
+        .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
@@ -142,15 +142,15 @@
         </div>
         <div class="count-card" onclick="setFilter('all')">
             <div class="num" style="color:var(--txt)" id="allCount">0</div>
-            <div class="label">All pairs</div>
+            <div class="label">All</div>
         </div>
         <div class="count-card" onclick="setFilter('target')">
             <div class="num" style="color:var(--gold)" id="targetCount">0</div>
-            <div class="label">🎯 Target</div>
+            <div class="label">Target</div>
         </div>
         <div class="count-card" onclick="setFilter('trades')">
             <div class="num" style="color:var(--gold)" id="tradesCount">0</div>
-            <div class="label">📌 Trades</div>
+            <div class="label">Trades</div>
         </div>
     </div>
 
@@ -206,7 +206,7 @@ let chartIdx = 0;
 let currentDisplayPairs = [];
 let show4H = true;
 
-// ── Manual Watchlist ──
+// ── Manual Watchlist (immediate UI update) ──
 let watchlistSet = new Set();
 db.ref('manualWatchlist').on('value', snap => {
     const val = snap.val() || {};
@@ -216,12 +216,19 @@ db.ref('manualWatchlist').on('value', snap => {
 });
 
 function isInWatchlist(pairName) { return watchlistSet.has(pairName); }
+
 function toggleWatchlist(pairName) {
+    // Pehle local set update karo
     if (isInWatchlist(pairName)) {
-        db.ref(`manualWatchlist/${pairName}`).remove();
+        watchlistSet.delete(pairName);
+        db.ref(`manualWatchlist/${pairName}`).remove().catch(e => console.error('Watchlist remove error:', e));
     } else {
-        db.ref(`manualWatchlist/${pairName}`).set(true);
+        watchlistSet.add(pairName);
+        db.ref(`manualWatchlist/${pairName}`).set(true).catch(e => console.error('Watchlist add error:', e));
     }
+    // Turant UI update karo
+    updateCounts();
+    render();
 }
 
 // ── Scan ──
@@ -303,7 +310,7 @@ function isInTargetList(pairName) {
     return false;
 }
 
-// ── Render (with bell icons) ──
+// ── Render (with bell icons and stars) ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
