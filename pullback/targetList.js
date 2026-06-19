@@ -2,6 +2,13 @@ function saveTargetList(PB_STATE, firebasePut) {
     const targets = {};
     for (const pName in PB_STATE) {
         const s = PB_STATE[pName];
+
+        // FIX: null state (delete marker) ko crash kiye bina handle karo
+        if (!s) {
+            targets[pName] = null;
+            continue;
+        }
+
         if (s.dir !== null) {
             targets[pName] = {
                 dir:         s.dir,
