@@ -21,24 +21,25 @@ function defaultBullState() {
     };
 }
 
-// CRASH FIX: Isme se null hataya gaya hai taaki targetList.js crash na ho aur sirf filtered pairs save hon
+// UPDATE: Ab ye function invalid pairs ko Firebase se delete bhi karega
 async function syncFilteredTargets(firebasePut) {
     const filteredState = {};
     for (const key in PB_STATE) {
-        if (!PB_STATE[key]) continue;
-
         const phase = PB_STATE[key].phase;
         
-        // Target list mai sirf wahi pairs show honge jo correction ya alerted phase mai hain
         if (phase === 'correction' || phase === 'alerted') {
+            // Target list mai shamil karein
             filteredState[key] = PB_STATE[key];
+        } else {
+            // FIREBASE FIX: Agar pair monitoring mai hai ya invalid (null) ho chuka hai,
+            // to Firebase ko 'null' bhejein taaki wo wahan se delete ho jaye.
+            filteredState[key] = null; 
         }
     }
     await saveTargetList(filteredState, firebasePut);
 }
 
 async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
-    // Shart: SMA50 ke liye kam se kam 50 candles hona lazmi hain
     if (!raw || !raw.closes || raw.closes.length < 50) {
         return PB_STATE[stateKey] || defaultBullState();
     }
@@ -54,7 +55,6 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     const highs  = raw.highs || closes;
     const lows   = raw.lows  || closes;
 
-    // HOURLY FIX: [length - 1] hi hamari abhi abhi close hone wali taza candle hai (No 1-hour delay)
     const lastClose = closes[closes.length - 1];
     const lastHigh  = highs[highs.length - 1];
     const lastLow   = lows[lows.length - 1];
@@ -66,7 +66,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
-    // Global invalidation: EMA20 <= SMA50 → reset aur target list se remove
+    // Global invalidation: EMA20 <= SMA50 → reset
     if (ema20 <= sma50) {
         let s = defaultBullState();
         PB_STATE[stateKey] = s;
@@ -105,10 +105,9 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         }
 
         if (lastClose > ema20) {
-            s.fractalCandles += 1; // Har hourly scan par +1 hoga agar close EMA20 se upar hai
+            s.fractalCandles += 1;
             
             if (s.fractalCandles >= 2) {
-                // Exactly 2nd candle close hote hi alert chala jayega
                 s.fractalWait = false;
                 const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
                 const alertKey   = `${stateKey}_bull_${candleTime}`;
@@ -128,7 +127,6 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
                 s.fractalWait = true;
             }
         } else {
-            // Agar ek bhi ghanta wapas EMA20 se neeche close hua to counter reset
             s.fractalCandles = 0;
             s.fractalWait    = false;
         }
