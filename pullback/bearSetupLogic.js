@@ -10,26 +10,44 @@ const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
 function defaultBearState() {
     return {
-        dir:           'bear',
-        phase:         null,
-        runningLow:    null,
-        highestHigh:   null,
-        firedAt:       0,
-        reminded:      false,
+        dir:            'bear',
+        phase:          null,
+        runningLow:     null,
+        highestHigh:    null,
+        firedAt:        0,
+        reminded:       false,
         fractalCandles: 0,
-        fractalWait:   false
+        fractalWait:    false
     };
 }
 
+// UPDATE: Ab ye function invalid pairs ko Firebase se delete bhi karega
+async function syncFilteredTargets(firebasePut) {
+    const filteredState = {};
+    for (const key in PB_STATE) {
+        const phase = PB_STATE[key].phase;
+        
+        if (phase === 'correction' || phase === 'alerted') {
+            // Target list mai shamil karein
+            filteredState[key] = PB_STATE[key];
+        } else {
+            // FIREBASE FIX: Agar pair monitoring mai hai ya invalid (null) ho chuka hai,
+            // to Firebase ko 'null' bhejein taaki wo wahan se delete ho jaye.
+            filteredState[key] = null; 
+        }
+    }
+    await saveTargetList(filteredState, firebasePut);
+}
+
 async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
-    if (!raw || !raw.closes || raw.closes.length < 3) {
+    if (!raw || !raw.closes || raw.closes.length < 50) {
         return PB_STATE[stateKey] || defaultBearState();
     }
 
     if (r['1week'] !== 'bear' || r['1day'] !== 'bear') {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
@@ -37,9 +55,9 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     const highs  = raw.highs || closes;
     const lows   = raw.lows  || closes;
 
-    const lastClose = closes[closes.length - 2];
-    const lastHigh  = highs[highs.length - 2];
-    const lastLow   = lows[lows.length - 2];
+    const lastClose = closes[closes.length - 1];
+    const lastHigh  = highs[highs.length - 1];
+    const lastLow   = lows[lows.length - 1];
 
     const ema20 = calcEMA(closes, 20);
     const sma50 = calcSMA(closes, 50);
@@ -52,7 +70,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     if (ema20 >= sma50) {
         let s = defaultBearState();
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
@@ -60,7 +78,7 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
     s.fractalCandles = s.fractalCandles || 0;
     s.fractalWait    = s.fractalWait || false;
 
-    // 1. MONITORING
+    // 1. MONITORING PHASE
     if (s.phase === null || s.phase === 'monitoring') {
         s.phase = 'monitoring';
         s.fractalCandles = 0;
@@ -76,24 +94,24 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
             s.highestHigh = lastHigh;
         }
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
-    // 2. CORRECTION (track 2 closes below EMA, then alert)
+    // 2. CORRECTION PHASE
     if (s.phase === 'correction') {
         if (s.highestHigh === null || lastHigh > s.highestHigh) {
             s.highestHigh = lastHigh;
         }
 
         if (lastClose < ema20) {
-            // Close below EMA: increment counter
-            s.fractalCandles = (s.fractalCandles || 0) + 1;
+            s.fractalCandles += 1;
+            
             if (s.fractalCandles >= 2) {
-                // 2nd close below EMA → alert
                 s.fractalWait = false;
                 const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
                 const alertKey   = `${stateKey}_bear_${candleTime}`;
+                
                 if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                     LAST_ALERT_TIME[stateKey] = alertKey;
                     trimAlertCache();
@@ -103,50 +121,45 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 s.firedAt = Date.now();
                 s.fractalCandles = 0;
                 PB_STATE[stateKey] = s;
-                await saveTargetList(PB_STATE, firebasePut);
+                await syncFilteredTargets(firebasePut);
                 return s;
             } else {
-                // First close below: set fractalWait = true
                 s.fractalWait = true;
             }
         } else {
-            // Close ≥ EMA20: reset counter
             s.fractalCandles = 0;
             s.fractalWait    = false;
         }
 
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
-    // 3. INVALIDATION (alerted)
+    // 3. ALERTED PHASE
     if (s.phase === 'alerted') {
-        // high breach → correction
         if (s.highestHigh !== null && lastClose > s.highestHigh) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
             s.fractalCandles = 0;
             s.fractalWait    = false;
             PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
+            await syncFilteredTargets(firebasePut);
             return s;
         }
-        // running low breach → reset
         if (s.runningLow !== null && lastClose < s.runningLow) {
             s = defaultBearState();
             PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
+            await syncFilteredTargets(firebasePut);
             return s;
         }
-        // price rises back above EMA → correction
         if (lastClose > ema20) {
             s.phase       = 'correction';
             s.highestHigh = lastHigh;
             s.fractalCandles = 0;
             s.fractalWait    = false;
             PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
+            await syncFilteredTargets(firebasePut);
             return s;
         }
     }
