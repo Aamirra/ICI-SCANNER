@@ -17,13 +17,29 @@ function defaultBullState() {
         firedAt:        0,
         reminded:       false,
         fractalCandles: 0,
-        fractalWait:    false,
-        lastCandleTime: null // Har candle par sirf ek baar chalne ke liye
+        fractalWait:    false
     };
 }
 
+// UPDATE: Ab ye function invalid pairs ko Firebase se delete bhi karega
+async function syncFilteredTargets(firebasePut) {
+    const filteredState = {};
+    for (const key in PB_STATE) {
+        const phase = PB_STATE[key].phase;
+        
+        if (phase === 'correction' || phase === 'alerted') {
+            // Target list mai shamil karein
+            filteredState[key] = PB_STATE[key];
+        } else {
+            // FIREBASE FIX: Agar pair monitoring mai hai ya invalid (null) ho chuka hai,
+            // to Firebase ko 'null' bhejein taaki wo wahan se delete ho jaye.
+            filteredState[key] = null; 
+        }
+    }
+    await saveTargetList(filteredState, firebasePut);
+}
+
 async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
-    // FIX 1: SMA50 calculate karne ke liye kam se kam 50 candles lazmi hain
     if (!raw || !raw.closes || raw.closes.length < 50) {
         return PB_STATE[stateKey] || defaultBullState();
     }
@@ -31,46 +47,34 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
     if (r['1week'] !== 'bull' || r['1day'] !== 'bull') {
         let s = defaultBullState();
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
-    // FIX 2: Agar last element live candle hai, to usey slice kar dein 
-    // taaki hum strictly sirf completed/closed candles par hi processing karein.
-    const closedCloses = raw.closes.slice(0, -1);
-    const closedHighs  = (raw.highs || raw.closes).slice(0, -1);
-    const closedLows   = (raw.lows || raw.closes).slice(0, -1);
+    const closes = raw.closes;
+    const highs  = raw.highs || closes;
+    const lows   = raw.lows  || closes;
 
-    const lastClose = closedCloses[closedCloses.length - 1];
-    const lastHigh  = closedHighs[closedHighs.length - 1];
-    const lastLow   = closedLows[closedLows.length - 1];
+    const lastClose = closes[closes.length - 1];
+    const lastHigh  = highs[highs.length - 1];
+    const lastLow   = lows[lows.length - 1];
 
-    // Indicators ko bhi strictly closed candles par chalayein
-    const ema20 = calcEMA(closedCloses, 20);
-    const sma50 = calcSMA(closedCloses, 50);
+    const ema20 = calcEMA(closes, 20);
+    const sma50 = calcSMA(closes, 50);
 
     if (!ema20 || !sma50 || isNaN(ema20) || isNaN(sma50)) {
         return PB_STATE[stateKey] || defaultBullState();
     }
 
-    let s = PB_STATE[stateKey] || defaultBullState();
-
     // Global invalidation: EMA20 <= SMA50 → reset
     if (ema20 <= sma50) {
-        let resetState = defaultBullState();
-        PB_STATE[stateKey] = resetState;
-        await saveTargetList(PB_STATE, firebasePut);
-        return resetState;
+        let s = defaultBullState();
+        PB_STATE[stateKey] = s;
+        await syncFilteredTargets(firebasePut);
+        return s;
     }
 
-    // FIX 3: Multi-tick Protection. Agar is candle ko hum pehle hi process 
-    // kar chuke hain, to agle ticks ko skip karein jab tak naye candle ki time stamp na aaye.
-    const currentCandleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
-    if (s.lastCandleTime === currentCandleTime) {
-        return s; 
-    }
-    s.lastCandleTime = currentCandleTime; // Lock current candle time
-
+    let s = PB_STATE[stateKey] || defaultBullState();
     s.fractalCandles = s.fractalCandles || 0;
     s.fractalWait    = s.fractalWait || false;
 
@@ -90,7 +94,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             s.lowestLow = lastLow;
         }
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
@@ -102,9 +106,12 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
 
         if (lastClose > ema20) {
             s.fractalCandles += 1;
+            
             if (s.fractalCandles >= 2) {
                 s.fractalWait = false;
-                const alertKey = `${stateKey}_bull_${currentCandleTime}`;
+                const candleTime = raw.time || Math.floor(Date.now() / 60000) * 60000;
+                const alertKey   = `${stateKey}_bull_${candleTime}`;
+                
                 if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                     LAST_ALERT_TIME[stateKey] = alertKey;
                     trimAlertCache();
@@ -114,7 +121,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
                 s.firedAt = Date.now();
                 s.fractalCandles = 0;
                 PB_STATE[stateKey] = s;
-                await saveTargetList(PB_STATE, firebasePut);
+                await syncFilteredTargets(firebasePut);
                 return s;
             } else {
                 s.fractalWait = true;
@@ -125,11 +132,11 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
         }
 
         PB_STATE[stateKey] = s;
-        await saveTargetList(PB_STATE, firebasePut);
+        await syncFilteredTargets(firebasePut);
         return s;
     }
 
-    // 3. INVALIDATION / ALERTED PHASE
+    // 3. ALERTED PHASE
     if (s.phase === 'alerted') {
         if (s.lowestLow !== null && lastClose < s.lowestLow) {
             s.phase     = 'correction';
@@ -137,14 +144,14 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             s.fractalCandles = 0;
             s.fractalWait    = false;
             PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
+            await syncFilteredTargets(firebasePut);
             return s;
         }
         if (s.runningHigh !== null && lastClose > s.runningHigh) {
-            let resetState = defaultBullState();
-            PB_STATE[stateKey] = resetState;
-            await saveTargetList(PB_STATE, firebasePut);
-            return resetState;
+            s = defaultBullState();
+            PB_STATE[stateKey] = s;
+            await syncFilteredTargets(firebasePut);
+            return s;
         }
         if (lastClose < ema20) {
             s.phase     = 'correction';
@@ -152,7 +159,7 @@ async function handleBull(stateKey, p, raw, r, sendTG, firebasePut) {
             s.fractalCandles = 0;
             s.fractalWait    = false;
             PB_STATE[stateKey] = s;
-            await saveTargetList(PB_STATE, firebasePut);
+            await syncFilteredTargets(firebasePut);
             return s;
         }
     }
