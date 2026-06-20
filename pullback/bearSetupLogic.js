@@ -8,6 +8,9 @@ const {
 } = require('./tradeStateManager');
 const { buildICIAlertMsg } = require('./telegramAlertBuilder');
 
+// 🔥 WHATSAPP INTEGRATION: WhatsApp alert function import kiya hai
+const { sendWhatsAppAlert } = require('../services/whatsapp');
+
 function defaultBearState() {
     return {
         dir:            'bear',
@@ -115,7 +118,19 @@ async function handleBear(stateKey, p, raw, r, sendTG, firebasePut) {
                 if (LAST_ALERT_TIME[stateKey] !== alertKey) {
                     LAST_ALERT_TIME[stateKey] = alertKey;
                     trimAlertCache();
-                    await sendTG(buildICIAlertMsg(p.n, false));
+
+                    // Actual Alert Text generate ho raha hai
+                    const alertMsg = buildICIAlertMsg(p.n, false);
+
+                    // Telegram Alert (Purana Code)
+                    await sendTG(alertMsg);
+
+                    // 🔥 WHATSAPP ALERT (Naya Code): Bina kisi crash risk ke sath me bhejega
+                    try {
+                        await sendWhatsAppAlert(alertMsg);
+                    } catch (waErr) {
+                        console.error("❌ Bearish WhatsApp send trigger error:", waErr.message);
+                    }
                 }
                 s.phase   = 'alerted';
                 s.firedAt = Date.now();
