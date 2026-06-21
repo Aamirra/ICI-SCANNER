@@ -1,7 +1,7 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const admin = require('firebase-admin');
 const qrcode = require('qrcode-terminal');
-const fs = require('fs'); // 🔥 FIX: Local folder handling k liye fs module add kiya hai
+const fs = require('fs'); 
 
 let sock = null;
 
@@ -23,12 +23,12 @@ async function connectToWhatsApp() {
         console.error("❌ Firebase session fetch error:", err);
     }
 
-    // WhatsApp socket configuration with Official Baileys Auto-Browser
+    // 🔥 FIX 1: Custom Modern Browser Signature daala hai jo 405 block bypass kray ga
     sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        logger: require('pino')({ level: 'silent' }), // फालतू k logs band krne k liye
-        browser: Browsers.ubuntu('Chrome') // Yeh line WhatsApp ko auto-updated signature bheje gi aur 405 error hal kray gi
+        logger: require('pino')({ level: 'silent' }), 
+        browser: ['Mac OS', 'Chrome', '125.0.0.0'] 
     });
 
     // Connection updates handle krna
@@ -43,32 +43,33 @@ async function connectToWhatsApp() {
 
         if (connection === 'close') {
             const statusCode = lastDisconnect.error?.output?.statusCode;
-            
             console.log(`Connection closed. Reason Code: ${statusCode}.`);
             
-            // 🔥 VIP FIX: Agar 405 (Bad Session), 401 (Unauthorized) ya Logout ho jaye to loop torrin aur auto-clean kren
             if (statusCode === 405 || statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
-                console.log(`⚠️ Corrupted Session ya Logout detected (Code: ${statusCode}). Automatic self-healing shuru...`);
-                try {
-                    // 1. Firebase node delete krna
-                    await dbRef.remove();
-                    console.log("🗑️ Firebase sy purana bad-token successfully delete kr diya gya.");
-                    
-                    // 2. Local auth folder wipe krna taake agla session bilkul zero sy fresh start ho
-                    if (fs.existsSync('auth_info_baileys')) {
-                        fs.rmSync('auth_info_baileys', { recursive: true, force: true });
-                        console.log("🗑️ Local cache directory fully wipe ho gyi hai.");
+                
+                // 🔥 FIX 2: Check kren ke kya pehle sy koi user profile logged in thi?
+                const hasActiveSession = state.creds && state.creds.me;
+
+                if (hasActiveSession || statusCode === DisconnectReason.loggedOut) {
+                    console.log(`⚠️ Corrupted Session detected (Code: ${statusCode}). Automatic self-healing shuru...`);
+                    try {
+                        await dbRef.remove();
+                        if (fs.existsSync('auth_info_baileys')) {
+                            fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+                        }
+                        console.log("🗑️ Bad-token aur local cache fully clear kr diye gaye hain.");
+                    } catch (cleanupErr) {
+                        console.error("❌ Auto-cleanup error:", cleanupErr.message);
                     }
-                } catch (cleanupErr) {
-                    console.error("❌ Auto-cleanup error:", cleanupErr.message);
+                    console.log("🔄 5 second me fresh retry ho rha hai...");
+                    setTimeout(() => connectToWhatsApp(), 5000);
+                } else {
+                    // Agar session pehle sy hi khali tha aur phir bhi 405 aya, to yeh rate limit ya IP block hai
+                    console.log("❌ Fresh start pr bhi 405 error aya hai. Yeh WhatsApp ki taraf sy Temporary Rate Limit hai.");
+                    console.log("⏳ Loop torne aur permanent ban sy bachne k liye system 1 minute ka cooldown break ly rha hai...");
+                    setTimeout(() => connectToWhatsApp(), 60000); // 1 minute lamba cooldown break
                 }
-                
-                // 5 Second k delay k baad fresh code run ho ga jo logs me automatic naya QR de ga
-                console.log("🔄 5 second me system fresh boot ho rha hai... Logs me naya QR check kr k scan krein.");
-                setTimeout(() => connectToWhatsApp(), 5000);
-                
             } else {
-                // Normal network disconnects (WiFi/Server drop) k liye automatic auto-reconnect
                 console.log("🔄 Normal network drop hai. Reconnecting background me active hai...");
                 setTimeout(() => connectToWhatsApp(), 5000);
             }
@@ -78,7 +79,6 @@ async function connectToWhatsApp() {
             console.log('=========================================');
 
             try {
-                // 🔥 YEH LINE AAPKE SARE GROUPS KI IDs TERMINAL ME PRINT KAREGI:
                 const groups = await sock.groupFetchAllParticipating();
                 console.log("\n🔥 AAPKE WHATSAPP GROUPS KI IDs YAHAN HAIN:");
                 for (const id in groups) {
@@ -94,8 +94,6 @@ async function connectToWhatsApp() {
     // Jab bhi login credentials update hon, unhein Firebase me save krdo
     sock.ev.on('creds.update', async () => {
         await saveCreds();
-        
-        // FIX: Undefined values ko remove karne ke liye JSON parse/stringify ka use kiya hai
         if (state.creds) {
             const cleanCreds = JSON.parse(JSON.stringify(state.creds));
             await dbRef.child('creds').set(cleanCreds);
@@ -116,7 +114,6 @@ async function sendWhatsAppAlert(messageContent) {
     }
 
     try {
-        // Agar group ID bhej rahe hain to direct use karega, agar number hai to formatted string banayega
         const jid = targetNumber.includes('@g.us') ? targetNumber : `${targetNumber}@s.whatsapp.net`;
         await sock.sendMessage(jid, { text: messageContent });
         console.log('✅ Alert kamyabi sy WhatsApp pr bhej diya gya.');
@@ -125,7 +122,6 @@ async function sendWhatsAppAlert(messageContent) {
     }
 }
 
-// Automatically start connection on boot
 connectToWhatsApp();
 
 module.exports = { sendWhatsAppAlert };
