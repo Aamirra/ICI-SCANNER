@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys'); // 🔥 Browsers import kiya
 const admin = require('firebase-admin');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs'); 
@@ -19,8 +19,8 @@ async function connectToWhatsApp() {
         console.error("❌ Firebase session fetch error:", err);
     }
 
-    // 🔥 FIX 1: WhatsApp ka bilkul latest version dynamically fetch krna taake 405 bypass ho
-    let version = [2, 3000, 1017531287]; // Safe fallback version
+    // WhatsApp ka latest version dynamically fetch krna
+    let version = [2, 3000, 1017531287]; 
     try {
         const { version: latestVersion, isLatest } = await fetchLatestBaileysVersion();
         console.log(`ℹ️ WhatsApp Web v${latestVersion.join('.')} istemal ho rha hai. Latest: ${isLatest}`);
@@ -33,8 +33,8 @@ async function connectToWhatsApp() {
         auth: state,
         printQRInTerminal: false,
         logger: require('pino')({ level: 'silent' }), 
-        browser: ['Mac OS', 'Chrome', '125.0.0.0'],
-        version // 🔥 Dynamic version pass kr di
+        browser: Browsers.macintosh('Desktop'), // 🔥 HARDCODED VERSION KHATAM! Ab Baileys khud 2026 ka latest browser signature bhejega
+        version 
     });
 
     sock.ev.on('connection.update', async (update) => {
