@@ -23,7 +23,7 @@ async function connectToWhatsApp() {
         console.error("❌ Firebase session fetch error:", err);
     }
 
-    // 🔥 FIX 1: Custom Modern Browser Signature daala hai jo 405 block bypass kray ga
+    // Custom Modern Browser Signature jo 405 block bypass kray ga
     sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
@@ -45,31 +45,29 @@ async function connectToWhatsApp() {
             const statusCode = lastDisconnect.error?.output?.statusCode;
             console.log(`Connection closed. Reason Code: ${statusCode}.`);
             
+            // 🔥 VIP FIX: Agar 405, 401 ya Logout aaye to BINA KISI CONDITION k sab saaf karo
             if (statusCode === 405 || statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
-                
-                // 🔥 FIX 2: Check kren ke kya pehle sy koi user profile logged in thi?
-                const hasActiveSession = state.creds && state.creds.me;
-
-                if (hasActiveSession || statusCode === DisconnectReason.loggedOut) {
-                    console.log(`⚠️ Corrupted Session detected (Code: ${statusCode}). Automatic self-healing shuru...`);
-                    try {
-                        await dbRef.remove();
-                        if (fs.existsSync('auth_info_baileys')) {
-                            fs.rmSync('auth_info_baileys', { recursive: true, force: true });
-                        }
-                        console.log("🗑️ Bad-token aur local cache fully clear kr diye gaye hain.");
-                    } catch (cleanupErr) {
-                        console.error("❌ Auto-cleanup error:", cleanupErr.message);
+                console.log(`⚠️ Session Error detected (Code: ${statusCode}). Automatic complete cleanup shuru...`);
+                try {
+                    // 1. Firebase clear karna
+                    await dbRef.remove();
+                    console.log("🗑️ Firebase sy session data mukammal delete kr diya gya.");
+                    
+                    // 2. Local cache directory clear karna
+                    if (fs.existsSync('auth_info_baileys')) {
+                        fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+                        console.log("🗑️ Local cache directory ('auth_info_baileys') ko fully wipe kr diya gya.");
                     }
-                    console.log("🔄 5 second me fresh retry ho rha hai...");
-                    setTimeout(() => connectToWhatsApp(), 5000);
-                } else {
-                    // Agar session pehle sy hi khali tha aur phir bhi 405 aya, to yeh rate limit ya IP block hai
-                    console.log("❌ Fresh start pr bhi 405 error aya hai. Yeh WhatsApp ki taraf sy Temporary Rate Limit hai.");
-                    console.log("⏳ Loop torne aur permanent ban sy bachne k liye system 1 minute ka cooldown break ly rha hai...");
-                    setTimeout(() => connectToWhatsApp(), 60000); // 1 minute lamba cooldown break
+                } catch (cleanupErr) {
+                    console.error("❌ Auto-cleanup error:", cleanupErr.message);
                 }
+                
+                // 10 Second ka break taake WhatsApp server thanda ho aur phir fresh QR code aaye
+                console.log("⏳ Loop toot chuka hai. 10 second me system fresh boot ho kar naya QR code dega...");
+                setTimeout(() => connectToWhatsApp(), 10000);
+                
             } else {
+                // Normal network disconnects k liye retry
                 console.log("🔄 Normal network drop hai. Reconnecting background me active hai...");
                 setTimeout(() => connectToWhatsApp(), 5000);
             }
