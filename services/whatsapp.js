@@ -1,115 +1,103 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys'); 
-const admin = require('firebase-admin');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
-const fs = require('fs'); 
+const fs = require('fs');
+const path = require('path');
 
-let sock = null;
+// Firebase Configuration (Apne path ke mutabik adjust kar lein agar different hai)
+const { db } = require('../config/firebase'); 
 
-async function connectToWhatsApp() {
-    const dbRef = admin.database().ref('whatsapp_session');
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+// Auth directory ka path
+const AUTH_DIR = path.join(__dirname, '../../auth_info_baileys');
 
+/**
+ * 405 Error ya Log Out hone par automatic cleanup karne ka function
+ */
+async function handleSessionCleanup() {
+    console.log("⚠️ Session Error detected (Code: 405). Automatic complete cleanup shuru...");
+    
+    // 1. Firebase se session delete karna
     try {
-        const snapshot = await dbRef.child('creds').once('value');
-        if (snapshot.exists() && Object.keys(state.creds).length === 0) {
-            console.log("🔄 Firebase sy purana session data load kiya ja rha hai...");
-            state.creds = snapshot.val();
+        await db.ref('whatsapp_session').remove(); // Apne Firebase node ka naam check kar lein
+        console.log("🗑️ Firebase sy session data mukammal delete kr diya gya.");
+    } catch (error) {
+        console.log("❌ Firebase cleanup me error aaya:", error.message);
+    }
+
+    // 2. Local Cache directory delete karna
+    try {
+        if (fs.existsSync(AUTH_DIR)) {
+            fs.rmSync(AUTH_DIR, { recursive: true, force: true });
         }
-    } catch (err) {
-        console.error("❌ Firebase session fetch error:", err);
+        console.log("🗑️ Local cache directory ('auth_info_baileys') ko fully wipe kr diya gya.");
+    } catch (error) {
+        console.log("❌ Local directory cleanup me error aaya:", error.message);
     }
 
-    // WhatsApp ka latest version dynamically fetch krna
-    let version = [2, 3000, 1017531287]; 
-    try {
-        const { version: latestVersion, isLatest } = await fetchLatestBaileysVersion();
-        console.log(`ℹ️ WhatsApp Web v${latestVersion.join('.')} istemal ho rha hai. Latest: ${isLatest}`);
-        version = latestVersion;
-    } catch (vErr) {
-        console.log("⚠️ Latest version fetch nahi ho saka, fallback version use ho rha hai.");
-    }
+    console.log("⏳ Loop toot chuka hai. 10 second me system fresh boot ho kar naya QR code dega...");
+    
+    // 10 second baad process exit taake Render instantly fresh container load kare
+    setTimeout(() => {
+        process.exit(1);
+    }, 10000);
+}
 
-    sock = makeWASocket({
+/**
+ * WhatsApp Connection Initialize karne ka main function
+ */
+async function connectToWhatsApp() {
+    // Multi-file auth state load karna
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+    // Baileys socket configuration
+    const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false,
-        logger: require('pino')({ level: 'silent' }), 
-        // 🔥 FIXED: Macintosh crash khatam. Ubuntu chrome signature 100% stable chalta hai.
-        browser: Browsers.ubuntu('Chrome'), 
-        version 
+        printQRInTerminal: false, // QR code hum niche custom handle kar rahe hain
+        logger: require('pino')({ level: 'silent' }), // Extra logs band karne ke liye
+        browser: Browsers.ubuntu('Chrome'), // 🔥 Stable signature for 2026!
+        auth_info_baileys: state
     });
 
+    // Connection updates monitor karna
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
-        
+
+        // 1. QR Code Handle karna (Render Line-Height Fix)
         if (qr) {
-            console.log('\n👉 APNE MOBILE SY YEH QR CODE SCAN KAREIN:');
-            qrcode.generate(qr, { small: true });
+            console.log("👉 SCAN ME PLEASE FOR CONNECTION:");
+            // FIXED: small: false kiya hai taake blocks bade hon aur Render par vertically stretch na hon
+            qrcode.generate(qr, { small: false }); 
         }
 
+        // 2. Connection Close Hone Par Check
         if (connection === 'close') {
-            const statusCode = lastDisconnect.error?.output?.statusCode;
-            console.log(`Connection closed. Reason Code: ${statusCode}.`);
-            
-            if (statusCode === 405 || statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
-                console.log(`⚠️ Session Error detected (Code: ${statusCode}). Automatic complete cleanup shuru...`);
-                try {
-                    await dbRef.remove();
-                    if (fs.existsSync('auth_info_baileys')) {
-                        fs.rmSync('auth_info_baileys', { recursive: true, force: true });
-                    }
-                    console.log("🗑️ Local cache aur Firebase data fully wipe kr diya gya.");
-                } catch (cleanupErr) {
-                    console.error("❌ Auto-cleanup error:", cleanupErr.message);
-                }
-                
-                console.log("⏳ 15 second ka break... System fresh boot ho rha hai.");
-                setTimeout(() => connectToWhatsApp(), 15000);
-                
+            const reason = lastDisconnect?.error?.output?.statusCode;
+            console.log(`Connection closed. Reason Code: ${reason}.`);
+
+            if (reason === 405 || reason === DisconnectReason.loggedOut) {
+                // Agar session block ya corrupt ho chuka ho
+                await handleSessionCleanup();
             } else {
+                // Agar internet ya normal network drop ho to auto-reconnect
                 console.log("🔄 Normal network drop hai. Reconnecting...");
                 setTimeout(() => connectToWhatsApp(), 5000);
             }
-        } else if (connection === 'open') {
-            console.log('============= BANDE MATARAM =============');
-            console.log('✅ WhatsApp Bot successfully CONNECTED aur LIVE hai!');
-            console.log('=========================================');
-
-            try {
-                const groups = await sock.groupFetchAllParticipating();
-                console.log("\n🔥 AAPKE WHATSAPP GROUPS KI IDs YAHAN HAIN:");
-                for (const id in groups) {
-                    console.log(`👉 GROUP NAME: ${groups[id].subject} | ID: ${id}`);
-                }
-                console.log("=========================================\n");
-            } catch (gErr) {
-                console.error("❌ Groups fetch karne me error:", gErr.message);
-            }
+        } 
+        
+        // 3. Connection Successfully Open Hone Par
+        else if (connection === 'open') {
+            console.log(`============= BANDE MATARAM =============`);
+            console.log(`✅ WhatsApp Bot successfully CONNECTED aur LIVE hai!`);
+            console.log(`=========================================`);
+            
+            // Yahan aap apna data fetching ya routing logic initialize kar sakte hain
         }
     });
 
-    sock.ev.on('creds.update', async () => {
-        await saveCreds();
-        if (state.creds) {
-            const cleanCreds = JSON.parse(JSON.stringify(state.creds));
-            await dbRef.child('creds').set(cleanCreds);
-        }
-    });
+    // Credentials update hone par automatic save karna
+    sock.ev.on('creds.update', saveCreds);
+
+    return sock;
 }
 
-// Message bhejne ka function
-async function sendWhatsAppAlert(messageContent) {
-    const targetNumber = process.env.MY_WHATSAPP_NUMBER; 
-    if (!targetNumber || !sock) return;
-
-    try {
-        const jid = targetNumber.includes('@g.us') ? targetNumber : `${targetNumber}@s.whatsapp.net`;
-        await sock.sendMessage(jid, { text: messageContent });
-        console.log('✅ Alert kamyabi sy WhatsApp pr bhej diya gya.');
-    } catch (error) {
-        console.error('❌ WhatsApp send error:', error.message);
-    }
-}
-
-connectToWhatsApp();
-
-module.exports = { sendWhatsAppAlert };
+// Function export karna taake app.js ya server.js me run ho sake
+module.exports = { connectToWhatsApp };
