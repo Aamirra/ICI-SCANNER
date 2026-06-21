@@ -3,7 +3,7 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 
-// Firebase Configuration (Agar path different hai to adjust karein)
+// Firebase Configuration (Agar use nahi karte to is line ko hata dein ya comment kar dein)
 const { db } = require('../config/firebase'); 
 
 // Auth directory ka path
@@ -20,8 +20,10 @@ async function handleSessionCleanup() {
     
     // 1. Firebase se session delete karna
     try {
-        await db.ref('whatsapp_session').remove(); 
-        console.log("🗑️ Firebase sy session data mukammal delete kr diya gya.");
+        if (db) {
+            await db.ref('whatsapp_session').remove(); 
+            console.log("🗑️ Firebase sy session data mukammal delete kr diya gya.");
+        }
     } catch (error) {
         console.log("❌ Firebase cleanup me error aaya:", error.message);
     }
@@ -44,6 +46,34 @@ async function handleSessionCleanup() {
 }
 
 /**
+ * QR Code ko compact aur center mein render karne ka function
+ */
+function renderOptimizedQR(qrString) {
+    console.log("\n========================================");
+    console.log("👉 SCAN ME PLEASE FOR CONNECTION:");
+    console.log("========================================\n");
+
+    // small: true blocks ko compress karta hai jo scanning asaan banata hai
+    qrcode.generate(qrString, { small: true }, (qrCode) => {
+        // Har line ko trim kar ke extra spaces hata dein
+        const lines = qrCode.split('\n').map(line => line.trimEnd());
+        
+        // Terminal ki width nikalein (default 80)
+        const terminalWidth = process.stdout.columns || 80;
+        
+        // Sabse lambi line ki length se center calculate karein
+        const maxLength = Math.max(...lines.map(l => l.length));
+        const padding = Math.floor((terminalWidth - maxLength) / 2);
+
+        // Center alignment ke liye spaces add karein
+        const centeredQR = lines.map(line => ' '.repeat(Math.max(0, padding)) + line).join('\n');
+        
+        console.log(centeredQR);
+        console.log("\n========================================\n");
+    });
+}
+
+/**
  * WhatsApp Connection Initialize karne ka main function
  */
 async function connectToWhatsApp() {
@@ -53,21 +83,19 @@ async function connectToWhatsApp() {
     // Baileys socket configuration
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false, 
+        printQRInTerminal: false, // QR hum custom handle kar rahe hain
         logger: require('pino')({ level: 'silent' }),
-        browser: Browsers.ubuntu('Chrome'), 
-        // FIX 1: 'auth_info_baileys' ko yahan se hata diya hai. Yeh extra option errors cause karta hai.
+        browser: Browsers.ubuntu('Chrome'),
+        // FIX 1: 'auth_info_baileys: state' ko yahan se hata diya hai. Yeh extra option errors cause karta hai.
     });
 
     // Connection updates monitor karna
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // 1. QR Code Handle karna
+        // 1. QR Code Handle karna (Compact aur Centered)
         if (qr) {
-            console.log("👉 SCAN ME PLEASE FOR CONNECTION:");
-            // FIX 2: Render logs mein readability ke liye 'small: true' behtar rehta hai.
-            qrcode.generate(qr, { small: true }); 
+            renderOptimizedQR(qr);
         }
 
         // 2. Connection Close Hone Par Check
@@ -76,7 +104,6 @@ async function connectToWhatsApp() {
             console.log(`Connection closed. Reason Code: ${statusCode}.`);
 
             // FIX 3: 405 error ko DisconnectReason.loggedOut se alag treat karein.
-            // Agar 515 (Connection Lost) ya koi aur error aaye to usko reconnect hone dein.
             if (statusCode === 405 || statusCode === DisconnectReason.loggedOut) {
                 await handleSessionCleanup();
             } else {
