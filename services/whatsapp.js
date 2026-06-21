@@ -3,11 +3,14 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 
-// Firebase Configuration (Apne path ke mutabik adjust kar lein agar different hai)
+// Firebase Configuration (Agar path different hai to adjust karein)
 const { db } = require('../config/firebase'); 
 
 // Auth directory ka path
 const AUTH_DIR = path.join(__dirname, '../../auth_info_baileys');
+
+// Socket ko global rakhan taake reconnect ke waqt purana connection band kar sakein
+let sock;
 
 /**
  * 405 Error ya Log Out hone par automatic cleanup karne ka function
@@ -17,7 +20,7 @@ async function handleSessionCleanup() {
     
     // 1. Firebase se session delete karna
     try {
-        await db.ref('whatsapp_session').remove(); // Apne Firebase node ka naam check kar lein
+        await db.ref('whatsapp_session').remove(); 
         console.log("🗑️ Firebase sy session data mukammal delete kr diya gya.");
     } catch (error) {
         console.log("❌ Firebase cleanup me error aaya:", error.message);
@@ -35,7 +38,6 @@ async function handleSessionCleanup() {
 
     console.log("⏳ Loop toot chuka hai. 10 second me system fresh boot ho kar naya QR code dega...");
     
-    // 10 second baad process exit taake Render instantly fresh container load kare
     setTimeout(() => {
         process.exit(1);
     }, 10000);
@@ -49,36 +51,39 @@ async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
     // Baileys socket configuration
-    const sock = makeWASocket({
+    sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false, // QR code hum niche custom handle kar rahe hain
-        logger: require('pino')({ level: 'silent' }), // Extra logs band karne ke liye
-        browser: Browsers.ubuntu('Chrome'), // 🔥 Stable signature for 2026!
-        auth_info_baileys: state
+        printQRInTerminal: false, 
+        logger: require('pino')({ level: 'silent' }),
+        browser: Browsers.ubuntu('Chrome'), 
+        // FIX 1: 'auth_info_baileys' ko yahan se hata diya hai. Yeh extra option errors cause karta hai.
     });
 
     // Connection updates monitor karna
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // 1. QR Code Handle karna (Render Line-Height Fix)
+        // 1. QR Code Handle karna
         if (qr) {
             console.log("👉 SCAN ME PLEASE FOR CONNECTION:");
-            // FIXED: small: false kiya hai taake blocks bade hon aur Render par vertically stretch na hon
-            qrcode.generate(qr, { small: false }); 
+            // FIX 2: Render logs mein readability ke liye 'small: true' behtar rehta hai.
+            qrcode.generate(qr, { small: true }); 
         }
 
         // 2. Connection Close Hone Par Check
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            console.log(`Connection closed. Reason Code: ${reason}.`);
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            console.log(`Connection closed. Reason Code: ${statusCode}.`);
 
-            if (reason === 405 || reason === DisconnectReason.loggedOut) {
-                // Agar session block ya corrupt ho chuka ho
+            // FIX 3: 405 error ko DisconnectReason.loggedOut se alag treat karein.
+            // Agar 515 (Connection Lost) ya koi aur error aaye to usko reconnect hone dein.
+            if (statusCode === 405 || statusCode === DisconnectReason.loggedOut) {
                 await handleSessionCleanup();
             } else {
-                // Agar internet ya normal network drop ho to auto-reconnect
                 console.log("🔄 Normal network drop hai. Reconnecting...");
+                // Pehle purane socket ke listeners ko clear karein
+                sock.ev.removeAllListeners('connection.update'); 
+                sock.ev.removeAllListeners('creds.update');
                 setTimeout(() => connectToWhatsApp(), 5000);
             }
         } 
@@ -88,8 +93,6 @@ async function connectToWhatsApp() {
             console.log(`============= BANDE MATARAM =============`);
             console.log(`✅ WhatsApp Bot successfully CONNECTED aur LIVE hai!`);
             console.log(`=========================================`);
-            
-            // Yahan aap apna data fetching ya routing logic initialize kar sakte hain
         }
     });
 
@@ -99,5 +102,4 @@ async function connectToWhatsApp() {
     return sock;
 }
 
-// Function export karna taake app.js ya server.js me run ho sake
 module.exports = { connectToWhatsApp };
