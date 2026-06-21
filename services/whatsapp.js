@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys'); // 🔥 Browsers import kiya
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys'); 
 const admin = require('firebase-admin');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs'); 
@@ -33,7 +33,8 @@ async function connectToWhatsApp() {
         auth: state,
         printQRInTerminal: false,
         logger: require('pino')({ level: 'silent' }), 
-        browser: Browsers.macintosh('Desktop'), // 🔥 HARDCODED VERSION KHATAM! Ab Baileys khud 2026 ka latest browser signature bhejega
+        // 🔥 FIXED: Macintosh crash khatam. Ubuntu chrome signature 100% stable chalta hai.
+        browser: Browsers.ubuntu('Chrome'), 
         version 
     });
 
