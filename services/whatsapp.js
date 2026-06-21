@@ -1,6 +1,7 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const admin = require('firebase-admin');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs'); // 🔥 FIX: Local folder handling k liye fs module add kiya hai
 
 let sock = null;
 
@@ -42,15 +43,34 @@ async function connectToWhatsApp() {
 
         if (connection === 'close') {
             const statusCode = lastDisconnect.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             
-            console.log(`Connection closed. Reason Code: ${statusCode}. Reconnecting: ${shouldReconnect}`);
+            console.log(`Connection closed. Reason Code: ${statusCode}.`);
             
-            if (shouldReconnect) {
-                // Connection drops sy bachne k liye short delay
+            // 🔥 VIP FIX: Agar 405 (Bad Session), 401 (Unauthorized) ya Logout ho jaye to loop torrin aur auto-clean kren
+            if (statusCode === 405 || statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
+                console.log(`⚠️ Corrupted Session ya Logout detected (Code: ${statusCode}). Automatic self-healing shuru...`);
+                try {
+                    // 1. Firebase node delete krna
+                    await dbRef.remove();
+                    console.log("🗑️ Firebase sy purana bad-token successfully delete kr diya gya.");
+                    
+                    // 2. Local auth folder wipe krna taake agla session bilkul zero sy fresh start ho
+                    if (fs.existsSync('auth_info_baileys')) {
+                        fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+                        console.log("🗑️ Local cache directory fully wipe ho gyi hai.");
+                    }
+                } catch (cleanupErr) {
+                    console.error("❌ Auto-cleanup error:", cleanupErr.message);
+                }
+                
+                // 5 Second k delay k baad fresh code run ho ga jo logs me automatic naya QR de ga
+                console.log("🔄 5 second me system fresh boot ho rha hai... Logs me naya QR check kr k scan krein.");
                 setTimeout(() => connectToWhatsApp(), 5000);
+                
             } else {
-                console.log("❌ WhatsApp sy logout ho gya hai. Firebase sy 'whatsapp_session' delete kr k dobara run krein.");
+                // Normal network disconnects (WiFi/Server drop) k liye automatic auto-reconnect
+                console.log("🔄 Normal network drop hai. Reconnecting background me active hai...");
+                setTimeout(() => connectToWhatsApp(), 5000);
             }
         } else if (connection === 'open') {
             console.log('============= BANDE MATARAM =============');
