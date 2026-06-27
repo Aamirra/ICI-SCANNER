@@ -531,4 +531,10 @@ async function masterScan() {
 
 masterScan.isBusy = () => isScanning;
 
-module.exports = masterScan;
+// ✅ Changed last line – export RAW arrays
+module.exports = {
+    masterScan,
+    RAW_1H,
+    RAW_4H,
+    RAW_DAILY
+};
