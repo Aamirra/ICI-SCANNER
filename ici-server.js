@@ -5,7 +5,6 @@ const admin = require('firebase-admin');
 const config = require('./config');
 const { spawn } = require('child_process');
 
-// Scanner variable ko pehle declare kr rhy hain taake HTTP server isay use kr sakay
 let masterScan;
 
 // ═══════════════════════════════════════════
@@ -24,7 +23,7 @@ if (!admin.apps.length) {
 }
 
 // ═══════════════════════════════════════════
-// HTTP SERVER (Render k liye pehle start kr rhy hain taake port foran open ho)
+// HTTP SERVER
 // ═══════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 
@@ -89,8 +88,8 @@ http.createServer((req, res) => {
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
 
-// 🔥 WHATSAPP BOT (Server open hone k baad background me chalta rahe ga)
-require('./services/whatsapp');
+// 🔥 WHATSAPP BOT (make sure filename is whatsappBot.js in services/)
+require('./services/whatsappBot');
 
 // ═══════════════════════════════════════════
 // BACKGROUND PROCESSES
@@ -104,6 +103,11 @@ sentimentJob.unref();
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 
+// ✅ Nayi services import karo
+const liveTicks = require('./services/liveTicks');
+const healthMonitor = require('./services/healthMonitor');
+const selfHealer = require('./services/selfHealer');
+
 function firebaseGet(p) {
     return admin.database().ref(p).once('value').then(snap => snap.val());
 }
@@ -112,4 +116,10 @@ function firebaseGet(p) {
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
     console.log('✅ Scanner & Sentiment job started');
+
+    // ✅ Live services start karo
+    liveTicks.start();
+    healthMonitor.start();
+    selfHealer.start();
+    console.log('✅ LiveTicks, HealthMonitor, SelfHealer started');
 })();
