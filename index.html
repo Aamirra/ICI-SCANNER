@@ -245,7 +245,7 @@ async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).r
 
 // ── Gemini Chat ──
 const GEMINI_API_KEY = '__GEMINI_KEY__';  // ← server replace karega env var se
-const GEMINI_MODEL = 'gemini-1.5-flash'; // free tier model
+const GEMINI_MODEL = 'gemini-1.5-flash-latest'; // free tier model
 
 async function sendGeminiChat() {
     const input = document.getElementById('chatInputEmbedded');
