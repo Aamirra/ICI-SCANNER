@@ -289,8 +289,8 @@ async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/st
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
 // ── AI Chat (Embedded, now always accessible) ──
-const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';
-const AI_MODEL = 'deepseek/deepseek-v4-flash:free';
+const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';   // ← server replace karega, agar fail ho to yahan apni key paste kar do test ke liye
+const AI_MODEL = 'deepseek/deepseek-r1:free';      // ✅ confirmed working model
 
 const tools = [
     { type: "function", function: { name: "force_scan", description: "Manually trigger a market scan immediately.", parameters: { type: "object", properties: {} } } },
@@ -485,7 +485,7 @@ function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-function toggleAlert(pair) { console.log('Alert toggle',pair); } // fallback if Alerts.js missing
+function toggleAlert(pair) { console.log('Alert toggle',pair); }
 
 // ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
