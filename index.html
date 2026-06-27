@@ -70,50 +70,15 @@
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
-
         /* ── AI Assistant Panel (always visible) ── */
-        .ai-assistant-panel {
-            background: var(--surface);
-            border: 1px solid var(--acc);
-            border-radius: 12px;
-            margin-bottom: 12px;
-            font-size: 12px;
-            overflow: hidden;
-        }
-        .ai-header {
-            padding: 8px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            color: var(--acc);
-            cursor: pointer;
-            background: var(--pill-bg);
-        }
-        .ai-body {
-            max-height: 300px;
-            overflow-y: auto;
-            transition: max-height 0.3s;
-        }
+        .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
+        .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
+        .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
         .ai-body.collapsed { max-height: 0; }
-        .error-list-embedded {
-            padding: 4px 12px;
-            border-bottom: 1px solid var(--border);
-            display: none;
-        }
+        .error-list-embedded { padding: 4px 12px; border-bottom: 1px solid var(--border); display: none; }
         .error-list-embedded.has-errors { display: block; }
-        .error-item {
-            padding: 4px 0;
-            border-bottom: 1px solid var(--border);
-            color: var(--muted);
-            font-size: 11px;
-        }
-        .chat-section {
-            padding: 8px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+        .error-item { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+        .chat-section { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
         .chat-messages-embedded { max-height: 120px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
         .chat-message-embedded { margin-bottom: 6px; }
         .chat-message-embedded.user { text-align: right; }
@@ -124,8 +89,6 @@
         .chat-input-embedded { display: flex; gap: 6px; }
         .chat-input-embedded input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--pill-bg); color: var(--txt); outline: none; }
         .chat-input-embedded button { padding: 6px 10px; background: var(--acc); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-
-        /* ── Pending Code Changes (same) ── */
         .pending-code-changes { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; margin-bottom: 12px; padding: 8px 12px; font-size: 12px; display: none; }
         .pending-code-changes.visible { display: block; }
         .pending-header { font-weight: 600; color: var(--gold); margin-bottom: 6px; }
@@ -157,7 +120,7 @@
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
-    <!-- ✅ AI Assistant Panel (always visible) -->
+    <!-- ✅ AI Assistant Panel -->
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()">
             <span>🤖 AI Assistant</span>
@@ -168,8 +131,8 @@
             <div class="chat-section">
                 <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
                 <div class="chat-input-embedded">
-                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendEmbeddedChat()">
-                    <button onclick="sendEmbeddedChat()">Send</button>
+                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendGeminiChat()">
+                    <button onclick="sendGeminiChat()">Send</button>
                 </div>
             </div>
         </div>
@@ -280,103 +243,50 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat (final working model: Qwen 3 Next 80B free) ──
-const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';   // server inject karega, ya yahan apni key paste karein test ke liye
-const AI_MODEL = 'qwen/qwen3-next-80b-a3b-instruct:free';   // ✅ free, supports tools
+// ── Gemini Chat ──
+const GEMINI_API_KEY = '__GEMINI_KEY__';  // ← server replace karega env var se
+const GEMINI_MODEL = 'gemini-1.5-flash'; // free tier model
 
-const tools = [
-    { type: "function", function: { name: "force_scan", description: "Trigger a market scan.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "clear_errors", description: "Clear error logs.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "toggle_alert_channel", description: "Enable/disable Telegram or WhatsApp alerts.", parameters: { type: "object", properties: { channel: { type: "string", enum: ["telegram","whatsapp"] }, enable: { type: "boolean" } }, required: ["channel","enable"] } } },
-    { type: "function", function: { name: "get_pair_detail", description: "Get detailed data for a trading pair.", parameters: { type: "object", properties: { pair: { type: "string" } }, required: ["pair"] } } },
-    { type: "function", function: { name: "add_custom_alert", description: "Add a custom alert rule.", parameters: { type: "object", properties: { pair: { type: "string" }, timeframe: { type: "string", enum: ["1h","4h","1day","1week"] }, signal: { type: "string", enum: ["bull","bear"] } }, required: ["pair","timeframe","signal"] } } },
-    { type: "function", function: { name: "remove_custom_alert", description: "Remove a custom alert rule by ID.", parameters: { type: "object", properties: { ruleId: { type: "string" } }, required: ["ruleId"] } } },
-    { type: "function", function: { name: "list_custom_alerts", description: "List active custom alert rules.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "get_scanner_status", description: "Get scanner health, active setups, errors, zero volume pairs.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "schedule_whatsapp_message", description: "Schedule a WhatsApp message.", parameters: { type: "object", properties: { message: { type: "string" }, delay_minutes: { type: "number" } }, required: ["message","delay_minutes"] } } },
-    { type: "function", function: { name: "modify_code", description: "Request code change (creates GitHub PR after approval).", parameters: { type: "object", properties: { instruction: { type: "string" } }, required: ["instruction"] } } }
-];
-
-async function executeToolCall(toolCall) {
-    const { name, arguments: args } = toolCall.function;
-    const parsedArgs = JSON.parse(args);
-    switch (name) {
-        case 'force_scan': fetch('/scan').catch(()=>{}); return { success: true, message: 'Scan triggered.' };
-        case 'clear_errors': await db.ref('errorLog').remove(); return { success: true, message: 'Error logs cleared.' };
-        case 'toggle_alert_channel': {
-            const { channel, enable } = parsedArgs;
-            const current = alertSettings[channel] ?? true;
-            if (current !== enable) { db.ref(`alertSettings/${channel}`).set(enable); alertSettings[channel] = enable; updateToggleButtons(); return { success: true, message: `${channel} alerts ${enable?'enabled':'disabled'}.` }; }
-            return { success: true, message: `${channel} is already ${enable?'enabled':'disabled'}.` };
-        }
-        case 'get_pair_detail': {
-            const { pair } = parsedArgs;
-            const t = techMetrics[pair] || {}, s = sentimentData[pair] || {}, m = MARKET_DATA[pair] || {};
-            const pb = Object.entries(PB_STATE).filter(([k,v]) => k.startsWith(pair+'_') && v.phase);
-            return { success: true, detail: { pair, price: liveMarketData[pair]?.price || m.currentPrice || 'N/A', signals: { '1h': m['1h'], '4h': m['4h'], '1day': m['1day'], '1week': m['1week'] }, sentiment: { bull: s.bullish_pct, bear: s.bearish_pct }, longTermTrend: t.longTermTrend?.toFixed(2)+'%', volume7d: t.volume7dAvg?.toLocaleString() || 'N/A', pullbackStates: pb.map(([k,v]) => ({ tf: k.includes('_4h_')?'4h':'1h', dir: v.dir, phase: v.phase })) } };
-        }
-        case 'add_custom_alert': { const { pair, timeframe, signal } = parsedArgs; const ref = db.ref('customAlertRules').push(); await ref.set({ pair, timeframe, signal, active: true, createdAt: Date.now() }); return { success: true, ruleId: ref.key, message: 'Alert rule created.' }; }
-        case 'remove_custom_alert': { await db.ref(`customAlertRules/${parsedArgs.ruleId}`).remove(); return { success: true, message: 'Rule removed.' }; }
-        case 'list_custom_alerts': { const snap = await db.ref('customAlertRules').once('value'); const rules = snap.val() || {}; return { success: true, rules: Object.entries(rules).map(([id,r])=>({id, ...r})), count: Object.keys(rules).length }; }
-        case 'get_scanner_status': {
-            const status = { activeSetups: Object.values(PB_STATE).filter(s=>s.phase).length, firedCount: Object.values(PB_STATE).filter(s=>s.phase==='alerted').length, liveSignals: Object.keys(liveMarketData).length, recentErrors: errorLog.slice(-3).map(e=>`[${new Date(e.time).toLocaleTimeString()}] ${e.message}`), zeroVolumePairs: (()=>{ const zv=[]; for(const [p,d] of Object.entries(techMetrics)) if(d.volume7dAvg===0||d.volume7dAvg==null) zv.push(p); return zv.slice(0,5); })() };
-            return { success: true, status };
-        }
-        case 'schedule_whatsapp_message': { const { message, delay_minutes } = parsedArgs; const sendAt = Date.now() + delay_minutes*60000; await db.ref('scheduledMessages').push({ message, sendAt, createdAt: Date.now() }); return { success: true, message: 'Message scheduled.' }; }
-        case 'modify_code': { const { instruction } = parsedArgs; const ref = db.ref('codeChangeRequests').push(); await ref.set({ instruction, status: 'pending_approval', createdAt: Date.now(), requestedBy: 'AI Assistant' }); return { success: true, message: 'Code change request submitted for approval.' }; }
-        default: return { success: false, message: 'Unknown tool' };
-    }
-}
-
-async function sendEmbeddedChat() {
+async function sendGeminiChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
     if (!userText) return;
+
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
-    const systemPrompt = `You are an AI assistant embedded in a trading scanner dashboard. Use the provided tools whenever the user asks about scanner status, settings, or actions. If no tool fits, reply normally. Always be concise and friendly.`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const systemPrompt = "You are a helpful assistant for a trading scanner app. Provide concise, friendly answers.";
 
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': window.location.origin, 'X-Title': 'ICI Scanner' },
-            body: JSON.stringify({ model: AI_MODEL, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }], tools: tools, tool_choice: 'auto', temperature: 0.2 })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: systemPrompt + "\n\nUser: " + userText + "\nAssistant: " }]
+                }]
+            })
         });
         const data = await response.json();
-        const message = data.choices?.[0]?.message;
-        if (!message) {
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>Sorry, I can't process that right now. Please try again later.</span></div>`;
-            return;
-        }
-        if (message.tool_calls && message.tool_calls.length > 0) {
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(message.content || 'Let me do that...')}</span></div>`;
-            for (const toolCall of message.tool_calls) { const result = await executeToolCall(toolCall); toolCall.result = result; }
-            const followUp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': window.location.origin, 'X-Title': 'ICI Scanner' },
-                body: JSON.stringify({ model: AI_MODEL, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }, { role: 'assistant', tool_calls: message.tool_calls, content: message.content }, ...message.tool_calls.map(tc => ({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: JSON.stringify(tc.result) }))] })
-            });
-            const finalData = await followUp.json();
-            const finalContent = finalData.choices?.[0]?.message?.content || 'Done.';
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(finalContent)}</span></div>`;
-        } else {
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(message.content || 'Hmm...')}</span></div>`;
-        }
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, no response.';
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(text)}</span></div>`;
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (e) {
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>❌ Network error. Please try again.</span></div>`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>❌ API error: ${e.message}</span></div>`;
     }
 }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ── Scan, Theme, Desktop, Filter, Counts, Render, Chart, 4H Toggle (unchanged) ──
+// ── Scan ──
 function actualScan() {
     const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
     .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
+
+// ── Theme, Desktop, Filter ──
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
@@ -392,6 +302,8 @@ function toggleDesktopMode() {
 }
 function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
+
+// ── Counts ──
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
@@ -405,6 +317,8 @@ function isInTargetList(p) {
     for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; const parts=k.split('_'); if(parts[0]===p) { if(!show4H && k.includes('_4h_')) continue; return true; } }
     return false;
 }
+
+// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -452,6 +366,8 @@ function render() {
     }).join('');
     updateCounts();
 }
+
+// ── Chart ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -467,9 +383,12 @@ function openChart(idx) {
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
+
+// ── 4H Toggle ──
 function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
+
 function toggleAlert(pair) { console.log('Alert toggle',pair); }
 
 // ── Firebase Listeners ──
