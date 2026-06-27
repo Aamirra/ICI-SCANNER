@@ -288,21 +288,21 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat (Embedded, now always accessible) ──
-const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';   // ← server replace karega, agar fail ho to yahan apni key paste kar do test ke liye
-const AI_MODEL = 'openrouter/auto';      // ✅ confirmed working model
+// ── AI Chat (Improved) ──
+const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';
+const AI_MODEL = 'openrouter/auto';   // automatically picks best free model
 
 const tools = [
-    { type: "function", function: { name: "force_scan", description: "Manually trigger a market scan immediately.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "clear_errors", description: "Clear all error logs in the scanner.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "toggle_alert_channel", description: "Enable or disable Telegram or WhatsApp alert notifications.", parameters: { type: "object", properties: { channel: { type: "string", enum: ["telegram","whatsapp"] }, enable: { type: "boolean" } }, required: ["channel","enable"] } } },
-    { type: "function", function: { name: "get_pair_detail", description: "Get detailed scanner data for a specific trading pair.", parameters: { type: "object", properties: { pair: { type: "string", description: "Pair name, e.g., EURUSD" } }, required: ["pair"] } } },
+    { type: "function", function: { name: "force_scan", description: "Trigger a market scan.", parameters: { type: "object", properties: {} } } },
+    { type: "function", function: { name: "clear_errors", description: "Clear error logs.", parameters: { type: "object", properties: {} } } },
+    { type: "function", function: { name: "toggle_alert_channel", description: "Enable/disable Telegram or WhatsApp alerts.", parameters: { type: "object", properties: { channel: { type: "string", enum: ["telegram","whatsapp"] }, enable: { type: "boolean" } }, required: ["channel","enable"] } } },
+    { type: "function", function: { name: "get_pair_detail", description: "Get detailed data for a trading pair.", parameters: { type: "object", properties: { pair: { type: "string" } }, required: ["pair"] } } },
     { type: "function", function: { name: "add_custom_alert", description: "Add a custom alert rule.", parameters: { type: "object", properties: { pair: { type: "string" }, timeframe: { type: "string", enum: ["1h","4h","1day","1week"] }, signal: { type: "string", enum: ["bull","bear"] } }, required: ["pair","timeframe","signal"] } } },
     { type: "function", function: { name: "remove_custom_alert", description: "Remove a custom alert rule by ID.", parameters: { type: "object", properties: { ruleId: { type: "string" } }, required: ["ruleId"] } } },
-    { type: "function", function: { name: "list_custom_alerts", description: "List all active custom alert rules.", parameters: { type: "object", properties: {} } } },
-    { type: "function", function: { name: "get_scanner_status", description: "Get current scanner health status.", parameters: { type: "object", properties: {} } } },
+    { type: "function", function: { name: "list_custom_alerts", description: "List active custom alert rules.", parameters: { type: "object", properties: {} } } },
+    { type: "function", function: { name: "get_scanner_status", description: "Get scanner health, active setups, errors, zero volume pairs.", parameters: { type: "object", properties: {} } } },
     { type: "function", function: { name: "schedule_whatsapp_message", description: "Schedule a WhatsApp message.", parameters: { type: "object", properties: { message: { type: "string" }, delay_minutes: { type: "number" } }, required: ["message","delay_minutes"] } } },
-    { type: "function", function: { name: "modify_code", description: "Request a code change. AI will create a GitHub PR.", parameters: { type: "object", properties: { instruction: { type: "string" } }, required: ["instruction"] } } }
+    { type: "function", function: { name: "modify_code", description: "Request code change (creates GitHub PR after approval).", parameters: { type: "object", properties: { instruction: { type: "string" } }, required: ["instruction"] } } }
 ];
 
 async function executeToolCall(toolCall) {
@@ -343,7 +343,10 @@ async function sendEmbeddedChat() {
     if (!userText) return;
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
-    const systemPrompt = `You are an AI assistant for a trading scanner. Use the provided tools when appropriate.`;
+
+    // ✅ Improved system prompt – AI now proactively uses tools
+    const systemPrompt = `You are an AI assistant embedded in a live trading scanner dashboard. You have access to tools that can read scanner data, toggle settings, manage custom alerts, schedule WhatsApp messages, and even request code changes. When the user asks something related to the scanner (like "how many setups?", "show errors", "check status", "turn off telegram alerts", "add alert for EURUSD", etc.), you MUST call the appropriate tool immediately. If you are unsure which tool to use, call get_scanner_status first. For general questions, you can answer directly. But for anything about the scanner's operation, use the tools. Always respond in a friendly, concise tone.`;
+
     try {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -374,14 +377,12 @@ async function sendEmbeddedChat() {
 }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ── Scan ──
+// ── Scan, Theme, Desktop, Filter, Counts, Render, Chart, 4H Toggle (unchanged) ──
 function actualScan() {
     const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
     .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
-
-// ── Theme, Desktop, Filter ──
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
@@ -397,8 +398,6 @@ function toggleDesktopMode() {
 }
 function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
-
-// ── Counts ──
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
@@ -408,13 +407,10 @@ function updateCounts() {
     document.getElementById('targetCount').textContent=tCount;
     document.getElementById('tradesCount').textContent=watchlistSet.size;
 }
-
 function isInTargetList(p) {
     for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; const parts=k.split('_'); if(parts[0]===p) { if(!show4H && k.includes('_4h_')) continue; return true; } }
     return false;
 }
-
-// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -462,8 +458,6 @@ function render() {
     }).join('');
     updateCounts();
 }
-
-// ── Chart ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -479,12 +473,9 @@ function openChart(idx) {
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
-
-// ── 4H Toggle ──
 function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
-
 function toggleAlert(pair) { console.log('Alert toggle',pair); }
 
 // ── Firebase Listeners ──
