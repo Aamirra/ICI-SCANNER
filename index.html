@@ -244,7 +244,7 @@ async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/st
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
 // ── AI Chat (Embedded) ──
-const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';   // ← placeholder, server replace karega
+const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';
 const AI_MODEL = 'deepseek/deepseek-v4-flash:free';
 
 const tools = [
