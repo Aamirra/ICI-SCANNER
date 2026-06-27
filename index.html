@@ -290,7 +290,7 @@ async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).r
 
 // ── AI Chat (Embedded, now always accessible) ──
 const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';   // ← server replace karega, agar fail ho to yahan apni key paste kar do test ke liye
-const AI_MODEL = 'meta-llama/llama-3.1-8b-instruct:free';      // ✅ confirmed working model
+const AI_MODEL = 'openrouter/auto';      // ✅ confirmed working model
 
 const tools = [
     { type: "function", function: { name: "force_scan", description: "Manually trigger a market scan immediately.", parameters: { type: "object", properties: {} } } },
