@@ -243,7 +243,7 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── Gemini Chat ──
+// ── Gemini Chat (Key injected by server – no hardcoded key in GitHub) ──
 const GEMINI_API_KEY = (typeof window.__INJECTED_GEMINI_KEY !== 'undefined') ? window.__INJECTED_GEMINI_KEY : '';
 const GEMINI_MODEL = 'gemini-1.5-flash-latest';
 
@@ -257,7 +257,6 @@ async function sendGeminiChat() {
     input.value = '';
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-    const systemPrompt = "You are a helpful assistant for a trading scanner app. Provide concise, friendly answers.";
 
     try {
         const response = await fetch(url, {
@@ -265,7 +264,7 @@ async function sendGeminiChat() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: systemPrompt + "\n\nUser: " + userText + "\nAssistant: " }]
+                    parts: [{ text: userText }]
                 }]
             })
         });
