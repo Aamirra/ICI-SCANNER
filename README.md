@@ -27,15 +27,22 @@ ICI-SCANNER/
 │   ├── sentiment_job.py
 │   └── sentiment_scraper.py
 ├── services/
-│   ├── AlertWorker.kt + AlertScheduler
+│   ├── AlertScheduler
+│   ├── AlertWorker.kt
 │   ├── AndroidBridge.kt
 │   ├── apiTracker.js
 │   ├── broadcast.js
 │   ├── database.js
+│   ├── healthMonitor.js
+│   ├── liveTicks.js
 │   ├── report.js
+│   ├── selfHealer.js
 │   ├── stockMetrics.js
 │   ├── technicalMetrics.js
-│   └── telegram.js
+│   ├── telegram.js
+│   ├── whatsapp.js
+│   ├── whatsappBot.js
+│   └── whatsapp_v2.js
 ├── utils/
 │   ├── AlertManager.kt
 │   ├── emaCalc.js
