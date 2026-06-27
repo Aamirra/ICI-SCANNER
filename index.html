@@ -18,8 +18,11 @@
         .brand-icon { width:36px; height:36px; background:var(--acc); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
         .brand-text h1 { font-size:16px; font-weight:700; line-height:1.2; }
         .brand-text span { font-size:12px; color:var(--muted); }
-        .header-actions { display:flex; gap:8px; }
+        .header-actions { display:flex; gap:8px; align-items:center; }
         .icon-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--txt); }
+        .alert-toggle { padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); }
+        .alert-toggle.active { background:var(--green); color:#fff; border-color:var(--green); }
+        .alert-toggle.inactive { background:var(--red); color:#fff; border-color:var(--red); }
         .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
         .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
@@ -46,64 +49,53 @@
         .sent-red { background:var(--red); } .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
         .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
-
-        .compact-details {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            padding:4px 8px 10px 8px;
-            font-size:10px;
-            color:var(--muted);
-            gap:6px;
-            flex-wrap:wrap;
-        }
+        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
         .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
         .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
         .compact-metric .val { font-weight:600; color:var(--txt); }
-        .compact-metric .val.up { color:var(--green); }
-        .compact-metric .val.down { color:var(--red); }
-
+        .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
-
         body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
-        body.desktop-mode .phone-container {
-            max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0;
-            box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border);
-        }
-        body.desktop-mode #chartOverlay {
-            position:relative !important; display:flex !important; flex:1; height:100vh;
-            z-index:1 !important; background:var(--bg);
-        }
+        body.desktop-mode .phone-container { max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
+        body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
         body.desktop-mode #tv_chart_container { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
-        body.desktop-mode #tv_chart_container:empty {
-            display:flex !important; align-items:center; justify-content:center; gap:12px;
-        }
+        body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
         body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
-        body.desktop-mode #tv_chart_container:empty::after {
-            content:'Select a pair to view chart'; font-family:'Inter',sans-serif;
-            font-size:12px; color:var(--muted); opacity:0.5;
-        }
-
-        .toggle-4h {
-            cursor:pointer;
-            padding:2px 8px;
-            border-radius:12px;
-            background:var(--pill-bg);
-            font-weight:600;
-            margin-left:8px;
-            font-size:11px;
-            color:var(--muted);
-            user-select:none;
-        }
+        body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
+        .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
-
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
-        
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
+        /* ── Error Panel & AI Chat ── */
+        .error-panel { background: var(--surface); border: 1px solid var(--red); border-radius: 12px; margin-bottom: 12px; font-size: 12px; display: none; }
+        .error-panel.visible { display: block; }
+        .error-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--red); cursor: pointer; }
+        .error-details { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+        .error-details.expanded { max-height: 400px; overflow-y: auto; }
+        .error-item { padding: 4px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+        .chat-section { padding: 8px 12px; border-top: 1px solid var(--red); display: flex; flex-direction: column; gap: 6px; }
+        .chat-messages-embedded { max-height: 150px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
+        .chat-message-embedded { margin-bottom: 6px; }
+        .chat-message-embedded.user { text-align: right; }
+        .chat-message-embedded.assistant { text-align: left; }
+        .chat-message-embedded span { display: inline-block; padding: 4px 8px; border-radius: 10px; max-width: 85%; word-wrap: break-word; }
+        .chat-message-embedded.user span { background: var(--acc); color: #fff; }
+        .chat-message-embedded.assistant span { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+        .chat-input-embedded { display: flex; gap: 6px; }
+        .chat-input-embedded input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--pill-bg); color: var(--txt); outline: none; }
+        .chat-input-embedded button { padding: 6px 10px; background: var(--acc); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        /* ── Pending Code Changes ── */
+        .pending-code-changes { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; margin-bottom: 12px; padding: 8px 12px; font-size: 12px; display: none; }
+        .pending-code-changes.visible { display: block; }
+        .pending-header { font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+        .pending-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+        .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .btn-approve { background: var(--green); }
+        .btn-reject { background: var(--red); }
     </style>
 </head>
 <body>
@@ -116,6 +108,8 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
         </div>
     </div>
 
@@ -126,44 +120,46 @@
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
+    <!-- Error Panel with embedded AI Chat -->
+    <div class="error-panel" id="errorPanel">
+        <div class="error-header" onclick="toggleErrorPanel()">
+            <span>⚠️ Scanner Issues (<span id="errorCount">0</span>)</span>
+            <span style="font-size:14px;">▼</span>
+        </div>
+        <div class="error-details" id="errorDetails">
+            <div id="errorList"></div>
+            <div class="chat-section">
+                <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
+                <div class="chat-input-embedded">
+                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI about errors..." onkeypress="if(event.key==='Enter') sendEmbeddedChat()">
+                    <button onclick="sendEmbeddedChat()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Code Changes Panel -->
+    <div class="pending-code-changes" id="pendingCodePanel">
+        <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
+        <div id="pendingCodeList"></div>
+    </div>
+
     <div class="sync-info">
         ✔ Cloud synced
         <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
     </div>
 
     <div class="counters-grid">
-        <div class="count-card" onclick="setFilter('bull')">
-            <div class="num" style="color:var(--green)" id="bc">0</div>
-            <div class="label">Bullish</div>
-        </div>
-        <div class="count-card" onclick="setFilter('bear')">
-            <div class="num" style="color:var(--red)" id="rc">0</div>
-            <div class="label">Bearish</div>
-        </div>
-        <div class="count-card" onclick="setFilter('all')">
-            <div class="num" style="color:var(--txt)" id="allCount">0</div>
-            <div class="label">All</div>
-        </div>
-        <div class="count-card" onclick="setFilter('target')">
-            <div class="num" style="color:var(--gold)" id="targetCount">0</div>
-            <div class="label">Target</div>
-        </div>
-        <div class="count-card" onclick="setFilter('trades')">
-            <div class="num" style="color:var(--gold)" id="tradesCount">0</div>
-            <div class="label">Trades</div>
-        </div>
+        <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
+        <div class="count-card" onclick="setFilter('bear')"><div class="num" style="color:var(--red)" id="rc">0</div><div class="label">Bearish</div></div>
+        <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
+        <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount">0</div><div class="label">Target</div></div>
+        <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
 
-    <div class="search-container">
-        <input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)">
-    </div>
-
+    <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
     <div class="table-header">
-        <div class="row-pair">Pair</div>
-        <div class="row-timeframes">1H · 4H · 1D · 1W</div>
-        <div class="row-sentiment">Sentiment</div>
-        <div class="row-change">200C</div>
-        <div class="row-alert">🔔</div>
+        <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
     </div>
     <div id="pairsContainer"></div>
 </div>
@@ -195,53 +191,346 @@ const PAIRS = [
     {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
 ];
 
-let MARKET_DATA = {};
-let techMetrics = {};
-let sentimentData = {};
-let PB_STATE = {};
-let curF = 'all';
-let filteredPairs = [...PAIRS];
-let chartPairs = [];
-let chartIdx = 0;
-let currentDisplayPairs = [];
-let show4H = true;
-
-// ── Manual Watchlist (immediate UI update) ──
+let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
+let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let watchlistSet = new Set();
-db.ref('manualWatchlist').on('value', snap => {
-    const val = snap.val() || {};
-    watchlistSet = new Set(Object.keys(val));
-    updateCounts();
-    render();
-});
+let liveMarketData = {};
+let errorLog = [];
+let alertSettings = { telegram: true, whatsapp: true };
 
-function isInWatchlist(pairName) { return watchlistSet.has(pairName); }
-
-function toggleWatchlist(pairName) {
-    // Pehle local set update karo
-    if (isInWatchlist(pairName)) {
-        watchlistSet.delete(pairName);
-        db.ref(`manualWatchlist/${pairName}`).remove().catch(e => console.error('Watchlist remove error:', e));
-    } else {
-        watchlistSet.add(pairName);
-        db.ref(`manualWatchlist/${pairName}`).set(true).catch(e => console.error('Watchlist add error:', e));
-    }
-    // Turant UI update karo
-    updateCounts();
-    render();
+// ── Alert Settings Listener ──
+db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
+function updateToggleButtons() {
+    const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
+    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? '🔔 Telegram ON' : '🔕 Telegram OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
+    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? '💬 WhatsApp ON' : '🔕 WhatsApp OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
 }
+function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
+
+// ── Watchlist ──
+db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
+function isInWatchlist(p) { return watchlistSet.has(p); }
+function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
+
+// ── Live Market Data ──
+db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+
+// ── Error Log ──
+db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorPanel(); });
+function updateErrorPanel() {
+    const panel = document.getElementById('errorPanel'), countSpan = document.getElementById('errorCount'), listDiv = document.getElementById('errorList');
+    if (!panel) return;
+    if (errorLog.length === 0) { panel.classList.remove('visible'); return; }
+    panel.classList.add('visible'); countSpan.textContent = errorLog.length;
+    listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
+}
+function toggleErrorPanel() { const details = document.getElementById('errorDetails'); if(details) details.classList.toggle('expanded'); }
+
+// ── Pending Code Changes ──
+db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
+    const requests = snap.val() || {};
+    const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
+    if (!panel) return;
+    const items = Object.entries(requests);
+    if (items.length === 0) { panel.classList.remove('visible'); return; }
+    panel.classList.add('visible'); countSpan.textContent = items.length;
+    listDiv.innerHTML = items.map(([id, req]) => `<div class="pending-item">
+        <span style="flex:1;color:var(--txt);">${escapeHtml(req.instruction)}</span>
+        <button class="btn-approve" onclick="approveCodeChange('${id}')">Approve</button>
+        <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
+    </div>`).join('');
+});
+async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
+async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
+
+// ── AI Chat (Embedded) ──
+const OPENROUTER_API_KEY = 'sk-or-v1-...'; // 🔐 Apni OpenRouter API key yahan daalein
+const AI_MODEL = 'deepseek/deepseek-v4-flash:free';
+
+const tools = [
+    {
+        type: "function",
+        function: {
+            name: "force_scan",
+            description: "Manually trigger a market scan immediately.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "clear_errors",
+            description: "Clear all error logs in the scanner.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_alert_channel",
+            description: "Enable or disable Telegram or WhatsApp alert notifications.",
+            parameters: {
+                type: "object",
+                properties: {
+                    channel: { type: "string", enum: ["telegram","whatsapp"] },
+                    enable: { type: "boolean" }
+                },
+                required: ["channel","enable"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "get_pair_detail",
+            description: "Get detailed scanner data for a specific trading pair.",
+            parameters: {
+                type: "object",
+                properties: {
+                    pair: { type: "string", description: "Pair name, e.g., EURUSD" }
+                },
+                required: ["pair"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "add_custom_alert",
+            description: "Add a custom alert rule for when a specific pair and timeframe signal changes to a given direction.",
+            parameters: {
+                type: "object",
+                properties: {
+                    pair: { type: "string" },
+                    timeframe: { type: "string", enum: ["1h","4h","1day","1week"] },
+                    signal: { type: "string", enum: ["bull","bear"] }
+                },
+                required: ["pair","timeframe","signal"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "remove_custom_alert",
+            description: "Remove a custom alert rule by its ID.",
+            parameters: {
+                type: "object",
+                properties: { ruleId: { type: "string" } },
+                required: ["ruleId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "list_custom_alerts",
+            description: "List all active custom alert rules.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "get_scanner_status",
+            description: "Get current scanner health status including active setups, errors, and zero volume pairs.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "schedule_whatsapp_message",
+            description: "Schedule a WhatsApp message to be sent after a specified delay.",
+            parameters: {
+                type: "object",
+                properties: {
+                    message: { type: "string" },
+                    delay_minutes: { type: "number" }
+                },
+                required: ["message","delay_minutes"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "modify_code",
+            description: "Request a code change. The AI will generate changes and create a GitHub pull request for review.",
+            parameters: {
+                type: "object",
+                properties: { instruction: { type: "string" } },
+                required: ["instruction"]
+            }
+        }
+    }
+];
+
+async function executeToolCall(toolCall) {
+    const { name, arguments: args } = toolCall.function;
+    const parsedArgs = JSON.parse(args);
+    switch (name) {
+        case 'force_scan':
+            fetch('/scan').catch(()=>{});
+            return { success: true, message: 'Scan triggered.' };
+        case 'clear_errors':
+            await db.ref('errorLog').remove();
+            return { success: true, message: 'Error logs cleared.' };
+        case 'toggle_alert_channel': {
+            const { channel, enable } = parsedArgs;
+            const current = alertSettings[channel] ?? true;
+            if (current !== enable) {
+                db.ref(`alertSettings/${channel}`).set(enable);
+                alertSettings[channel] = enable;
+                updateToggleButtons();
+                return { success: true, message: `${channel} alerts ${enable?'enabled':'disabled'}.` };
+            }
+            return { success: true, message: `${channel} is already ${enable?'enabled':'disabled'}.` };
+        }
+        case 'get_pair_detail': {
+            const { pair } = parsedArgs;
+            const t = techMetrics[pair] || {}, s = sentimentData[pair] || {}, m = MARKET_DATA[pair] || {};
+            const pb = Object.entries(PB_STATE).filter(([k,v]) => k.startsWith(pair+'_') && v.phase);
+            const detail = {
+                pair,
+                price: liveMarketData[pair]?.price || m.currentPrice || 'N/A',
+                signals: { '1h': m['1h'], '4h': m['4h'], '1day': m['1day'], '1week': m['1week'] },
+                sentiment: { bull: s.bullish_pct, bear: s.bearish_pct },
+                longTermTrend: t.longTermTrend?.toFixed(2)+'%',
+                volume7d: t.volume7dAvg?.toLocaleString() || 'N/A',
+                pullbackStates: pb.map(([k,v]) => ({ tf: k.includes('_4h_')?'4h':'1h', dir: v.dir, phase: v.phase }))
+            };
+            return { success: true, detail };
+        }
+        case 'add_custom_alert': {
+            const { pair, timeframe, signal } = parsedArgs;
+            const newRuleRef = db.ref('customAlertRules').push();
+            await newRuleRef.set({ pair, timeframe, signal, active: true, createdAt: Date.now() });
+            return { success: true, ruleId: newRuleRef.key, message: `Alert rule created for ${pair} ${timeframe} ${signal}.` };
+        }
+        case 'remove_custom_alert': {
+            const { ruleId } = parsedArgs;
+            await db.ref(`customAlertRules/${ruleId}`).remove();
+            return { success: true, message: `Rule ${ruleId} removed.` };
+        }
+        case 'list_custom_alerts': {
+            const snap = await db.ref('customAlertRules').once('value');
+            const rules = snap.val() || {};
+            const list = Object.entries(rules).map(([id, r]) => ({ id, ...r }));
+            return { success: true, rules: list, count: list.length };
+        }
+        case 'get_scanner_status': {
+            const status = {
+                activeSetups: Object.values(PB_STATE).filter(s => s.phase).length,
+                firedCount: Object.values(PB_STATE).filter(s => s.phase === 'alerted').length,
+                liveSignals: Object.keys(liveMarketData).length,
+                recentErrors: errorLog.slice(-3).map(e => `[${new Date(e.time).toLocaleTimeString()}] ${e.message}`),
+                zeroVolumePairs: (() => {
+                    const zv = [];
+                    for (const [p, d] of Object.entries(techMetrics)) {
+                        if (d.volume7dAvg === 0 || d.volume7dAvg == null) zv.push(p);
+                    }
+                    return zv.slice(0,5);
+                })()
+            };
+            return { success: true, status };
+        }
+        case 'schedule_whatsapp_message': {
+            const { message, delay_minutes } = parsedArgs;
+            const sendAt = Date.now() + delay_minutes * 60000;
+            await db.ref('scheduledMessages').push({ message, sendAt, createdAt: Date.now() });
+            return { success: true, message: `Message scheduled in ${delay_minutes} min.` };
+        }
+        case 'modify_code': {
+            const { instruction } = parsedArgs;
+            const reqRef = db.ref('codeChangeRequests').push();
+            await reqRef.set({ instruction, status: 'pending_approval', createdAt: Date.now(), requestedBy: 'AI Assistant' });
+            return { success: true, message: 'Code change request submitted for your approval.' };
+        }
+        default:
+            return { success: false, message: `Unknown tool: ${name}` };
+    }
+}
+
+async function sendEmbeddedChat() {
+    const input = document.getElementById('chatInputEmbedded');
+    const messagesDiv = document.getElementById('chatMessagesEmbedded');
+    const userText = input.value.trim();
+    if (!userText) return;
+    messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
+    input.value = '';
+    const systemPrompt = `You are an AI assistant for a trading scanner. Use the provided tools when appropriate. Always output a friendly, concise response.`;
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'ICI Scanner'
+            },
+            body: JSON.stringify({
+                model: AI_MODEL,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userText }
+                ],
+                tools: tools,
+                tool_choice: 'auto',
+                temperature: 0.2
+            })
+        });
+        const data = await response.json();
+        const message = data.choices?.[0]?.message;
+        if (!message) { messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>Sorry, no response.</span></div>`; return; }
+        if (message.tool_calls && message.tool_calls.length > 0) {
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(message.content || 'Let me do that...')}</span></div>`;
+            for (const toolCall of message.tool_calls) {
+                const result = await executeToolCall(toolCall);
+                toolCall.result = result;
+            }
+            const followUp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'ICI Scanner'
+                },
+                body: JSON.stringify({
+                    model: AI_MODEL,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userText },
+                        { role: 'assistant', tool_calls: message.tool_calls, content: message.content },
+                        ...message.tool_calls.map(tc => ({
+                            role: 'tool',
+                            tool_call_id: tc.id,
+                            name: tc.function.name,
+                            content: JSON.stringify(tc.result)
+                        }))
+                    ],
+                    temperature: 0.2
+                })
+            });
+            const finalData = await followUp.json();
+            const finalContent = finalData.choices?.[0]?.message?.content || 'Done.';
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(finalContent)}</span></div>`;
+        } else {
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(message.content || 'Hmm...')}</span></div>`;
+        }
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch (e) {
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>❌ API error: ${e.message}</span></div>`;
+    }
+}
+function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ── Scan ──
 function actualScan() {
-    const btn = document.querySelector('.scan-btn');
-    btn.textContent = '⏳ Scanning...'; btn.disabled = true;
-    fetch('/scan').then(() => {
-        btn.textContent = '✅ Started!';
-        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
-    }).catch(() => {
-        btn.textContent = '❌ Error';
-        setTimeout(() => { btn.textContent = '🔍 Scan'; btn.disabled = false; }, 3000);
-    });
+    const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+    fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
+    .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
 
 // ── Theme, Desktop, Filter ──
@@ -252,216 +541,116 @@ function toggleTheme() {
     document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-theme', html.getAttribute('data-theme'));
 }
-
 function toggleDesktopMode() {
     const isDesktop = document.body.classList.toggle('desktop-mode');
-    const overlay = document.getElementById('chartOverlay');
-    const btn = document.getElementById('desktopBtn');
-    if (isDesktop) {
-        overlay.style.display = 'flex';
-        btn.textContent = '📱';
-        btn.title = 'Switch to Mobile';
-    } else {
-        overlay.style.display = 'none';
-        btn.textContent = '💻';
-        btn.title = 'Desktop Mode';
-    }
+    document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
+    document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '💻';
     localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
 }
-
 function setFilter(f) { curF = f; render(); }
-function filterPairs(searchText) {
-    filteredPairs = searchText ? PAIRS.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase())) : [...PAIRS];
-    render();
-}
+function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
 // ── Counts ──
 function updateCounts() {
     let b=0, r=0;
-    PAIRS.forEach(p => {
-        const d = MARKET_DATA[p.n] || {};
-        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
-        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
-    });
-    document.getElementById('bc').textContent = b;
-    document.getElementById('rc').textContent = r;
-    document.getElementById('allCount').textContent = PAIRS.length;
-
-    let tCount = 0;
-    for (const [k, s] of Object.entries(PB_STATE)) {
-        if (!s || !s.phase) continue;
-        if (!show4H && k.includes('_4h_')) continue;
-        tCount++;
-    }
-    document.getElementById('targetCount').textContent = tCount;
-    document.getElementById('tradesCount').textContent = watchlistSet.size;
+    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
+    document.getElementById('bc').textContent=b; document.getElementById('rc').textContent=r; document.getElementById('allCount').textContent=PAIRS.length;
+    let tCount=0;
+    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; if(!show4H && k.includes('_4h_')) continue; tCount++; }
+    document.getElementById('targetCount').textContent=tCount;
+    document.getElementById('tradesCount').textContent=watchlistSet.size;
 }
 
-// ── Target list helper ──
-function isInTargetList(pairName) {
-    for (const [key, s] of Object.entries(PB_STATE)) {
-        if (!s || !s.phase) continue;
-        const parts = key.split('_');
-        if (parts[0] === pairName) {
-            if (!show4H && key.includes('_4h_')) continue;
-            return true;
-        }
-    }
+function isInTargetList(p) {
+    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; const parts=k.split('_'); if(parts[0]===p) { if(!show4H && k.includes('_4h_')) continue; return true; } }
     return false;
 }
 
-// ── Render (with bell icons and stars) ──
+// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
-    if (curF === 'all') {
-        filtered = currentPairs;
-    } else if (curF === 'bull' || curF === 'bear') {
-        filtered = currentPairs.filter(p => {
-            const d = MARKET_DATA[p.n] || {};
-            return ['4h','1day','1week'].every(tf => d[tf] === curF);
-        });
-    } else if (curF === 'target') {
-        filtered = currentPairs.filter(p => isInTargetList(p.n));
-    } else if (curF === 'trades') {
-        filtered = currentPairs.filter(p => watchlistSet.has(p.n));
-    } else {
-        filtered = currentPairs;
-    }
-    currentDisplayPairs = filtered.map(p => p.n);
+    if(curF==='all') filtered = currentPairs;
+    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+    else if(curF==='target') filtered = currentPairs.filter(p=>isInTargetList(p.n));
+    else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
+    else filtered = currentPairs;
+    currentDisplayPairs = filtered.map(p=>p.n);
 
-    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const t = techMetrics[p.n] || {};
-        const s = sentimentData[p.n] || {};
-        const m = MARKET_DATA[p.n] || {};
-        const isBull = ['4h','1day','1week'].every(tf => m[tf]==='bull');
-        const isBear = ['4h','1day','1week'].every(tf => m[tf]==='bear');
-        const star = isBull ? '★' : isBear ? '★' : '★';
-        const starColor = isBull ? 'var(--green)' : isBear ? 'var(--red)' : '#cbd5e1';
-        const change = t.longTermTrend != null ? (t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%' : '—';
-        const changeClass = t.longTermTrend>=0 ? 'up' : 'down';
-        const bullPct = s.bullish_pct || 0;
-        const bearPct = s.bearish_pct || 0;
-        const total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct/total)*100);
-        const bullW = 100 - bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf => m[tf] || '');
-        const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
-        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum>0?'+':'') + t.shortTermMomentum.toFixed(2)+'%' : '—';
-        const microVal = t.microMomentum != null ? (t.microMomentum>0?'+':'') + t.microMomentum.toFixed(2)+'%' : '—';
-        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
-        const dollarVolVal = t.dollarVolume1d || '—';
-        const watchlistStar = `<span class="watchlist-star ${isInWatchlist(p.n) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n) ? '⭐' : '☆'}</span>`;
-        const bellHtml = (typeof getBellHtml === 'function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); toggleAlert('${p.n}')">🔕</span>`;
-        return `<div class="item-row">
-            <div class="item-main" onclick="openChartForPair('${p.n}')">
-                <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}</div>
-                <div class="row-timeframes dots-container">${dots}</div>
-                <div class="row-sentiment sentiment-wrapper">
-                    <div class="sentiment-progress">
-                        <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
-                        <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
-                    </div>
-                </div>
-                <div class="row-change change-val ${changeClass}">${change}</div>
-                <div class="row-alert">${bellHtml}</div>
-            </div>
-            <div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
-                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
-                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
-            </div>
-        </div>`;
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
+        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
+        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
+        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
+        const changeClass=t.longTermTrend>=0?'up':'down';
+        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
+        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf=>{
+            const liveM = liveMarketData && liveMarketData[p.n];
+            if(liveM && liveM[tf]) return liveM[tf];
+            return m[tf] || '';
+        });
+        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
+        const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
+        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); toggleAlert('${p.n}')">🔕</span>`;
+        const livePrice = liveMarketData && liveMarketData[p.n] && liveMarketData[p.n].price ? liveMarketData[p.n].price.toFixed(4) : '';
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+        return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
+            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
+            <div class="row-timeframes dots-container">${dots}</div>
+            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert">${bellHtml}</div>
+        </div><div class="compact-details">
+            <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+            <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+            <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+            <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+        </div></div>`;
     }).join('');
     updateCounts();
 }
 
-// ── Chart functions ──
+// ── Chart ──
 function openChartForPair(pairName) {
-    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
-    chartIdx = chartPairs.indexOf(pairName);
-    if (chartIdx === -1) chartIdx = 0;
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
     openChart(chartIdx);
 }
-
 function openChart(idx) {
-    chartIdx = idx;
-    const symbol = chartPairs[idx];
-    document.getElementById('chartPairName').textContent = symbol;
-    document.getElementById('chartOverlay').style.display = 'flex';
-    document.getElementById('tv_chart_container').innerHTML = '';
-    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({
-        autosize: true,
-        symbol: isPSX ? 'KSE:'+symbol : symbol,
-        interval: "60",
-        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id: "tv_chart_container",
-        studies: [
-            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
-            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
-            {id:"WilliamFractal@tv-basicstudies"}
-        ]
-    });
+    chartIdx=idx; const symbol=chartPairs[idx];
+    document.getElementById('chartPairName').textContent=symbol;
+    document.getElementById('chartOverlay').style.display='flex';
+    document.getElementById('tv_chart_container').innerHTML='';
+    const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
 }
-function movePair(step) { if (chartIdx+step >=0 && chartIdx+step < chartPairs.length) openChart(chartIdx+step); }
-function closeChart() {
-    if (!document.body.classList.contains('desktop-mode')) {
-        document.getElementById('chartOverlay').style.display = 'none';
-    }
-}
+function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
+function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
 
-// ── Fallback alert toggle ──
-function toggleAlert(pairName) {
-    console.log('Toggle alert for', pairName);
-}
+// ── 4H Toggle ──
+function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
+function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
+(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-// ── 4H Toggle with localStorage ──
-function toggle4H() {
-    show4H = !show4H;
-    localStorage.setItem('show4H', show4H ? 'true' : 'false');
-    updateToggleButton();
-    updateCounts();
-    render();
-}
-
-function updateToggleButton() {
-    const btn = document.getElementById('toggle4hBtn');
-    if (show4H) {
-        btn.textContent = '4H ON';
-        btn.classList.add('active');
-    } else {
-        btn.textContent = '4H OFF';
-        btn.classList.remove('active');
-    }
-}
-
-(function() {
-    const saved = localStorage.getItem('show4H');
-    show4H = (saved === 'false') ? false : true;
-    updateToggleButton();
-})();
+function toggleAlert(pair) { console.log('Alert toggle',pair); } // fallback
 
 // ── Firebase Listeners ──
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
-db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
+db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
 
-// ── Restore theme & desktop mode ──
-(function() {
-    const saved = localStorage.getItem('ici-theme');
-    if (saved) document.documentElement.setAttribute('data-theme', saved);
-    document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
-
-    if (localStorage.getItem('desktop-mode') === 'desktop') {
-        document.body.classList.add('desktop-mode');
-        document.getElementById('desktopBtn').textContent = '📱';
-        document.getElementById('chartOverlay').style.display = 'flex';
-    }
+(function(){
+    const saved=localStorage.getItem('ici-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
+updateToggleButtons();
 </script>
 </body>
 </html>
