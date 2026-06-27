@@ -243,9 +243,9 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── OpenRouter Chat (using free model qwen/qwen3-next-80b-a3b-instruct:free) ──
+// ── OpenRouter Chat (NVIDIA Nemotron Nano 12B – free) ──
 const OPENROUTER_API_KEY = (typeof window.__INJECTED_OPENROUTER_KEY !== 'undefined') ? window.__INJECTED_OPENROUTER_KEY : '';
-const OR_MODEL = 'qwen/qwen3-next-80b-a3b-instruct:free';
+const OR_MODEL = 'nvidia/nemotron-nano-12b:free';
 
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
@@ -405,104 +405,6 @@ db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(
     if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
 updateToggleButtons();
-// ── OpenRouter Chat (using free model qwen/qwen3-next-80b-a3b-instruct:free) ──
-const OPENROUTER_API_KEY = (typeof window.__INJECTED_OPENROUTER_KEY !== 'undefined') ? window.__INJECTED_OPENROUTER_KEY : '';
-const OR_MODEL = 'qwen/qwen3-next-80b-a3b-instruct:free';
-
-async function sendOpenRouterChat() {
-    const input = document.getElementById('chatInputEmbedded');
-    const messagesDiv = document.getElementById('chatMessagesEmbedded');
-    if (!input || !messagesDiv) return;
-
-    const text = input.value.trim();
-    if (!text) return;
-
-    // 1. User ka message UI par show karein
-    appendChatMessage(text, 'user');
-    input.value = '';
-
-    // 2. Thinking placeholder
-    const loadingId = 'loading-' + Date.now();
-    appendChatMessage('Thinking...', 'assistant', loadingId);
-
-    try {
-        if (!OPENROUTER_API_KEY) {
-            throw new Error("API Key missing! Window variable '__INJECTED_OPENROUTER_KEY' check karein.");
-        }
-
-        // 3. OpenRouter Free Tier API Call
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": window.location.origin || "http://localhost:3000",
-                "X-Title": "ICI Scanner Dashboard"
-            },
-            body: JSON.stringify({
-                model: OR_MODEL,
-                messages: [{ role: "user", content: text }]
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`API Error (${response.status}): ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        const aiResponse = data.choices[0]?.message?.content || "/sorry no response";
-
-        // Loading remove karke real response insert karein
-        const loadingEl = document.getElementById(loadingId);
-        if (loadingEl) loadingEl.remove();
-        
-        appendChatMessage(aiResponse, 'assistant');
-
-    } catch (error) {
-        console.error("AI Assistant Error:", error);
-        
-        const loadingEl = document.getElementById(loadingId);
-        if (loadingEl) loadingEl.remove();
-        
-        appendChatMessage(`⚠️ Error: ${error.message}`, 'assistant');
-        
-        if (db && db.ref) {
-            db.ref('errorLog').push({
-                time: Date.now(),
-                message: `AI Chat Failed: ${error.message}`
-            });
-        }
-    }
-}
-
-// ── AI UI Helpers ──
-function appendChatMessage(text, sender, id = null) {
-    const messagesDiv = document.getElementById('chatMessagesEmbedded');
-    if (!messagesDiv) return;
-
-    const messageIdAttr = id ? `id="${id}"` : '';
-    const formattedText = text.replace(/\n/g, '<br>');
-
-    const msgHtml = `
-        <div class="chat-message-embedded ${sender}" ${messageIdAttr}>
-            <span>${sender === 'user' ? escapeHtml(text) : formattedText}</span>
-        </div>
-    `;
-
-    messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-function escapeHtml(text) {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-    
 </script>
 </body>
 </html>
