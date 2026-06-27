@@ -84,10 +84,10 @@ http.createServer((req, res) => {
 
         // ✅ Environment variable injection for Gemini key in index.html
         if (relativePath === 'index.html') {
-            if (process.env.GEMINI_API_KEY) {
-                data = data.replace('__GEMINI_KEY__', process.env.GEMINI_API_KEY);
-            }
-        }
+    const injectedKey = process.env.GEMINI_API_KEY || '';
+    const injectionScript = `<script>window.__INJECTED_GEMINI_KEY = '${injectedKey}';</script>`;
+    data = data.replace('</body>', injectionScript + '</body>');
+}
 
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
