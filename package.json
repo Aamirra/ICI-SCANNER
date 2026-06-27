@@ -12,6 +12,7 @@
     "qrcode-terminal": "^0.12.0"
   },
   "scripts": {
-    "start": "node ici-server.js"
+    "start": "node ici-server.js",
+    "postinstall": "pip install -r requirements.txt"
   }
 }
