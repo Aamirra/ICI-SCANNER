@@ -75,12 +75,18 @@ http.createServer((req, res) => {
     };
     const contentType = contentTypes[ext] || 'text/plain';
 
-    fs.readFile(filePath, (err, data) => {
+    fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
             res.writeHead(404);
             res.end('Not Found');
             return;
         }
+
+        // ✅ Environment variable injection for OpenRouter key in index.html
+        if (relativePath === 'index.html' && process.env.OPENROUTER_API_KEY) {
+            data = data.replace('__OPENROUTER_KEY__', process.env.OPENROUTER_API_KEY);
+        }
+
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
     });
@@ -88,7 +94,7 @@ http.createServer((req, res) => {
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
 
-// 🔥 WHATSAPP BOT (make sure filename is whatsappBot.js in services/)
+// 🔥 WHATSAPP BOT
 require('./services/whatsappBot');
 
 // ═══════════════════════════════════════════
@@ -117,7 +123,6 @@ function firebaseGet(p) {
     if (typeof masterScan === 'function') masterScan();
     console.log('✅ Scanner & Sentiment job started');
 
-    // ✅ Live services start karo
     liveTicks.start();
     healthMonitor.start();
     selfHealer.start();
