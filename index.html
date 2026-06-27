@@ -288,9 +288,9 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat (Improved) ──
+// ── AI Chat (Tools mandatory) ──
 const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';
-const AI_MODEL = 'openrouter/auto';   // automatically picks best free model
+const AI_MODEL = 'google/gemini-2.5-flash-lite-preview-09-2025:free';   // ✅ confirmed tools support
 
 const tools = [
     { type: "function", function: { name: "force_scan", description: "Trigger a market scan.", parameters: { type: "object", properties: {} } } },
@@ -344,8 +344,8 @@ async function sendEmbeddedChat() {
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
-    // ✅ Improved system prompt – AI now proactively uses tools
-    const systemPrompt = `You are an AI assistant embedded in a live trading scanner dashboard. You have access to tools that can read scanner data, toggle settings, manage custom alerts, schedule WhatsApp messages, and even request code changes. When the user asks something related to the scanner (like "how many setups?", "show errors", "check status", "turn off telegram alerts", "add alert for EURUSD", etc.), you MUST call the appropriate tool immediately. If you are unsure which tool to use, call get_scanner_status first. For general questions, you can answer directly. But for anything about the scanner's operation, use the tools. Always respond in a friendly, concise tone.`;
+    // 🔥 Aggressive system prompt – AI MUST use tools
+    const systemPrompt = `You are an AI assistant embedded in a live trading scanner dashboard. You have access to tools that control the scanner. You MUST call a tool for every request, even if it seems simple. If you are unsure which tool to use, call get_scanner_status first. Never respond with plain text if there is a tool that can handle the request. For general questions, you can answer directly only if no tool applies. Always be concise and friendly.`;
 
     try {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
