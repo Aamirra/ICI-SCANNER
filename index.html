@@ -288,9 +288,9 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat (Tools mandatory) ──
+// ── AI Chat (Gemini 2.5 Flash Lite – tool calling confirmed) ──
 const OPENROUTER_API_KEY = '__OPENROUTER_KEY__';
-const AI_MODEL = 'google/gemini-2.5-flash-lite-preview-09-2025:free';   // ✅ confirmed tools support
+const AI_MODEL = 'google/gemini-2.5-flash-lite-preview-09-2025:free';   // ✅ free + tools
 
 const tools = [
     { type: "function", function: { name: "force_scan", description: "Trigger a market scan.", parameters: { type: "object", properties: {} } } },
@@ -344,7 +344,7 @@ async function sendEmbeddedChat() {
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
-    // 🔥 Aggressive system prompt – AI MUST use tools
+    // Aggressive prompt: AI MUST use tools
     const systemPrompt = `You are an AI assistant embedded in a live trading scanner dashboard. You have access to tools that control the scanner. You MUST call a tool for every request, even if it seems simple. If you are unsure which tool to use, call get_scanner_status first. Never respond with plain text if there is a tool that can handle the request. For general questions, you can answer directly only if no tool applies. Always be concise and friendly.`;
 
     try {
