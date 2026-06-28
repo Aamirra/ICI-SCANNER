@@ -21,11 +21,16 @@ if (!admin.apps.length) {
 
 const PORT = process.env.PORT || 3000;
 
+// Sleep helper
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
     // ==========================================
-    // AI CHAT PROXY ENDPOINT (OpenRouter)
+    // AI CHAT PROXY ENDPOINT (OpenRouter + Retry)
     // ==========================================
     if (req.method === 'POST' && safePath === '/api/chat') {
         let body = '';
@@ -53,7 +58,6 @@ http.createServer((req, res) => {
                     { role: 'system', content: 'You are a helpful assistant for a trading scanner dashboard. Be concise.' }
                 ];
 
-                // Add history if provided
                 if (Array.isArray(history)) {
                     history.forEach(msg => {
                         messages.push({
@@ -63,31 +67,45 @@ http.createServer((req, res) => {
                     });
                 }
 
-                // Add current user message
                 messages.push({ role: 'user', content: message });
 
-                // Call OpenRouter API
-                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        // Mistral free model – reliable and higher rate limits
-                        "model": "meta-llama/llama-3.2-1b-instruct:free",
-                        "messages": messages
-                    })
-                });
+                // Retry logic: try up to 3 times with 2 sec delay if 429
+                let response;
+                let data;
+                let retries = 0;
+                const maxRetries = 3;
 
-                // Handle rate limiting (429) with a friendly message
+                while (retries < maxRetries) {
+                    response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            "model": "meta-llama/llama-3.2-3b-instruct:free",
+                            "messages": messages
+                        })
+                    });
+
+                    if (response.status !== 429) {
+                        break; // not rate limited, proceed
+                    }
+
+                    // Rate limited – wait and retry
+                    retries++;
+                    console.log(`⏳ Rate limited, retrying in 2 seconds... (attempt ${retries}/${maxRetries})`);
+                    await sleep(2000);
+                }
+
+                // If still 429 after retries
                 if (response.status === 429) {
                     res.writeHead(429, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Bahut zyada requests! Thodi der (1-2 min) ruk kar try karein.' }));
+                    res.end(JSON.stringify({ error: 'Abhi bahut zyada traffic hai. Thodi der ruk kar try karein.' }));
                     return;
                 }
 
-                const data = await response.json();
+                data = await response.json();
 
                 if (!response.ok) {
                     const errMsg = data?.error?.message || `HTTP ${response.status}`;
@@ -156,17 +174,11 @@ http.createServer((req, res) => {
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
 
-// 🔥 WHATSAPP BOT – commented (will use later on separate instance)
-// require('./services/whatsappBot');
-
 const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
 sentimentJob.unref();
 
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
-
-// LiveTicks – commented (will use later)
-// const liveTicks = require('./services/liveTicks');
 
 const healthMonitor = require('./services/healthMonitor');
 const selfHealer = require('./services/selfHealer');
@@ -177,7 +189,6 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
     console.log('✅ Scanner & Sentiment job started');
-    // liveTicks.start();
     healthMonitor.start();
     selfHealer.start();
     console.log('✅ HealthMonitor, SelfHealer started');
