@@ -74,11 +74,18 @@ http.createServer((req, res) => {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        // Using a reliable free model
-                        "model": "meta-llama/llama-3.2-3b-instruct:free", 
+                        // ✅ Changed model to a more reliable free tier model
+                        "model": "mistralai/mistral-7b-instruct:free", 
                         "messages": messages
                     })
                 });
+
+                // Handle rate limiting (429) with a friendly message
+                if (response.status === 429) {
+                    res.writeHead(429, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Bahut zyada requests! Thodi der (1-2 min) ruk kar try karein.' }));
+                    return;
+                }
 
                 const data = await response.json();
 
