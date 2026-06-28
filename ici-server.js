@@ -75,7 +75,7 @@ http.createServer((req, res) => {
                     },
                     body: JSON.stringify({
                         // Mistral free model – reliable and higher rate limits
-                        "model": "meta-llama/llama-3.2-3b-instruct:free",
+                        "model": "google/gemma-3-27b-it:free",
                         "messages": messages
                     })
                 });
