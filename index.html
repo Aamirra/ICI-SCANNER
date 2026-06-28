@@ -262,7 +262,38 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
         <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
     </div>`).join('');
 });
-async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
+
+async function approveCodeChange(id) {
+    const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
+    const changeReq = snap.val();
+    if (!changeReq || changeReq.status !== 'pending_approval') {
+        console.error('Change request not found or already processed');
+        return;
+    }
+    const newContent = changeReq.newContent;
+    if (!newContent) {
+        console.error('No newContent in change request');
+        return;
+    }
+    try {
+        const res = await fetch('/api/approve-code-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, newContent })
+        });
+        const result = await res.json();
+        if (res.ok) {
+            await db.ref(`codeChangeRequests/${id}/status`).set('approved');
+            alert('Code change committed! Render deploy hone ke baad AI update ho jayega.');
+        } else {
+            alert('Error: ' + (result.error || 'Failed'));
+        }
+    } catch(e) {
+        console.error(e);
+        alert('Network error');
+    }
+}
+
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
 // ── AI Chat via Server Proxy (with Action Parser) ──
@@ -272,11 +303,9 @@ async function sendOpenRouterChat() {
     const userText = input.value.trim();
     if (!userText) return;
 
-    // User message
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
-    // Loading
     messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
@@ -289,7 +318,6 @@ async function sendOpenRouterChat() {
 
         const data = await response.json();
 
-        // Remove loading
         const loadingEl = document.getElementById('loadingMsg');
         if (loadingEl) loadingEl.remove();
 
@@ -298,7 +326,6 @@ async function sendOpenRouterChat() {
             messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(errMsg)}</span></div>`;
         } else {
             const rawResponse = data.response || 'Sorry, no response.';
-            // Parse potential action block [ACTION:action_type]{...}
             const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
             let displayText = rawResponse;
             let pendingAction = null;
@@ -306,12 +333,10 @@ async function sendOpenRouterChat() {
             if (actionMatch) {
                 const actionType = actionMatch[1];
                 const paramsStr = actionMatch[2];
-                // Remove action line from display
                 displayText = rawResponse.replace(actionMatch[0], '').trim();
                 try {
                     const params = JSON.parse(paramsStr);
                     pendingAction = { type: actionType, params };
-                    // Show approval overlay
                     document.getElementById('approvalMessage').textContent = `AI wants to perform action: "${actionType}" with details: ${paramsStr}. Allow?`;
                     document.getElementById('approvalOverlay').classList.add('open');
                     window.__pendingAction = { type: actionType, params };
@@ -320,7 +345,6 @@ async function sendOpenRouterChat() {
                 }
             }
 
-            // Display the cleaned text
             if (displayText) {
                 messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
             }
@@ -334,7 +358,6 @@ async function sendOpenRouterChat() {
     }
 }
 
-// ── Approval handlers ──
 async function approveAction() {
     const action = window.__pendingAction;
     if (!action) return;
