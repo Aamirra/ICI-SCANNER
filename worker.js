@@ -1,9 +1,8 @@
-// worker.js – runs background jobs on a separate Render account
 const admin = require('firebase-admin');
 const config = require('./config');
+const http = require('http');
 const { spawn } = require('child_process');
 
-// Firebase init (same as ici-server.js)
 if (!admin.apps.length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountJson) {
@@ -16,33 +15,26 @@ if (!admin.apps.length) {
     });
 }
 
-// Sentiment job (Python)
+// Background jobs start
 const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
 sentimentJob.unref();
+console.log('✅ Sentiment job started');
 
-// Live Ticks
 const liveTicks = require('./services/liveTicks');
+liveTicks.start();
+console.log('✅ LiveTicks started');
 
-// Health Monitor
 const healthMonitor = require('./services/healthMonitor');
-// Self Healer
 const selfHealer = require('./services/selfHealer');
+healthMonitor.start();
+selfHealer.start();
+console.log('✅ HealthMonitor & SelfHealer started');
 
-// (Optional) Scanner – agar scanner bhi yahan chahiye to require kar sakte hain,
-// lekin wo on‑demand hai, isliye main server par hi rakhna theek hai.
-// const masterScan = require('./core/scanner');
-// const { restoreState } = require('./pullback/setupScanner');
-
-function firebaseGet(p) {
-    return admin.database().ref(p).once('value').then(snap => snap.val());
-}
-
-(async () => {
-    // await restoreState(firebaseGet);   // only needed if scanner runs here
-    liveTicks.start();
-    console.log('✅ LiveTicks started');
-    healthMonitor.start();
-    selfHealer.start();
-    console.log('✅ HealthMonitor & SelfHealer started');
-    console.log('🚀 Worker is running background jobs...');
-})();
+// Minimal HTTP server for Render health check
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Worker running');
+}).listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Worker server listening on port ${PORT}`);
+});
