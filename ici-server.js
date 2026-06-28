@@ -75,7 +75,6 @@ http.createServer((req, res) => {
                     return;
                 }
 
-                // ── SYSTEM PROMPT (Roman Urdu + English mixed) ──
                 const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You can propose actions using [ACTION:...] format. Available actions:
 - send_telegram: parameters {"text":"message"}
 - send_whatsapp: parameters {"text":"message", "number":"optional"}
@@ -102,7 +101,6 @@ Always put the action block FIRST, then your reply.`;
 
                 messages.push({ role: 'user', content: message });
 
-                // Retry logic
                 let response;
                 let data;
                 let retries = 0;
@@ -115,7 +113,7 @@ Always put the action block FIRST, then your reply.`;
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            "model": "deepseek/deepseek-chat:free",   // ✅ Free DeepSeek model
+                            "model": "deepseek/deepseek-chat:free",
                             "messages": messages
                         })
                     });
@@ -278,7 +276,6 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Static file serving & scan route ──
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -317,7 +314,14 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
 
-// ── Scanner (on‑demand) ──
+// ── Background Services (All Active) ──
+const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
+sentimentJob.unref();
+
+const liveTicks = require('./services/liveTicks');   // ✅ Uncommented
+const healthMonitor = require('./services/healthMonitor');
+const selfHealer = require('./services/selfHealer');
+
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 
@@ -327,4 +331,8 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
     console.log('✅ Scanner started');
+    liveTicks.start();         // ✅ Started
+    healthMonitor.start();
+    selfHealer.start();
+    console.log('✅ HealthMonitor, SelfHealer, LiveTicks started');
 })();
