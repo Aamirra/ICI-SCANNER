@@ -96,6 +96,16 @@
         .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
         .btn-approve { background: var(--green); }
         .btn-reject { background: var(--red); }
+        /* ── Approval Overlay ── */
+        .approval-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; }
+        .approval-overlay.open { display:flex; }
+        .approval-box { background:var(--surface); border-radius:16px; padding:20px; max-width:360px; width:90%; color:var(--txt); }
+        .approval-box h3 { margin:0 0 8px; font-size:16px; }
+        .approval-box p { font-size:13px; color:var(--muted); margin-bottom:16px; }
+        .approval-btns { display:flex; gap:8px; justify-content:flex-end; }
+        .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
+        .approve-btn { background:var(--green); color:#fff; }
+        .reject-btn { background:var(--red); color:#fff; }
     </style>
 </head>
 <body>
@@ -175,6 +185,18 @@
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
 
+<!-- Approval Overlay -->
+<div class="approval-overlay" id="approvalOverlay">
+    <div class="approval-box">
+        <h3>⚠️ AI Action Approval</h3>
+        <p id="approvalMessage"></p>
+        <div class="approval-btns">
+            <button class="reject-btn" onclick="rejectAction()">Reject</button>
+            <button class="approve-btn" onclick="approveAction()">Approve</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
@@ -243,23 +265,22 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat via Server Proxy (Secure & Reliable) ──
+// ── AI Chat via Server Proxy (with Action Parser) ──
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
     if (!userText) return;
 
-    // User ka message chat box mein dikhayein
+    // User message
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
-    // Loading message dikhayein
+    // Loading
     messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     try {
-        // Apne server ke proxy endpoint ko call karein
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -268,28 +289,78 @@ async function sendOpenRouterChat() {
 
         const data = await response.json();
 
-        // Loading message hata dein
+        // Remove loading
         const loadingEl = document.getElementById('loadingMsg');
         if (loadingEl) loadingEl.remove();
 
         if (!response.ok) {
-            // Agar server ya API se error aaya toh exact error yahan dikhega
             const errMsg = data.error || `HTTP Error ${response.status}`;
             messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(errMsg)}</span></div>`;
         } else {
-            // AI ka jawab dikhayein
-            const text = data.response || 'Sorry, no response.';
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(text)}</span></div>`;
+            const rawResponse = data.response || 'Sorry, no response.';
+            // Parse potential action block [ACTION:action_type]{...}
+            const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
+            let displayText = rawResponse;
+            let pendingAction = null;
+
+            if (actionMatch) {
+                const actionType = actionMatch[1];
+                const paramsStr = actionMatch[2];
+                // Remove action line from display
+                displayText = rawResponse.replace(actionMatch[0], '').trim();
+                try {
+                    const params = JSON.parse(paramsStr);
+                    pendingAction = { type: actionType, params };
+                    // Show approval overlay
+                    document.getElementById('approvalMessage').textContent = `AI wants to perform action: "${actionType}" with details: ${paramsStr}. Allow?`;
+                    document.getElementById('approvalOverlay').classList.add('open');
+                    window.__pendingAction = { type: actionType, params };
+                } catch(e) {
+                    console.error('Action parse error', e);
+                }
+            }
+
+            // Display the cleaned text
+            if (displayText) {
+                messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
+            }
         }
         
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (e) {
-        // Agar internet disconnect ho ya server down ho
         const loadingEl = document.getElementById('loadingMsg');
         if (loadingEl) loadingEl.remove();
         messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error: ${escapeHtml(e.message)}</span></div>`;
     }
 }
+
+// ── Approval handlers ──
+async function approveAction() {
+    const action = window.__pendingAction;
+    if (!action) return;
+    document.getElementById('approvalOverlay').classList.remove('open');
+    try {
+        const res = await fetch('/api/execute-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(action)
+        });
+        const result = await res.json();
+        const messagesDiv = document.getElementById('chatMessagesEmbedded');
+        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch(e) {
+        console.error(e);
+    }
+    window.__pendingAction = null;
+}
+
+function rejectAction() {
+    document.getElementById('approvalOverlay').classList.remove('open');
+    window.__pendingAction = null;
+}
+
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ── Scan ──
