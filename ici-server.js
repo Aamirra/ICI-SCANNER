@@ -75,7 +75,7 @@ http.createServer((req, res) => {
                     },
                     body: JSON.stringify({
                         // Mistral free model – reliable and higher rate limits
-                        "model": "mistralai/mistral-7b-instruct:free",
+                        "model": "meta-llama/llama-3.2-3b-instruct:free",
                         "messages": messages
                     })
                 });
