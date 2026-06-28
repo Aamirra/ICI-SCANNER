@@ -83,7 +83,7 @@ http.createServer((req, res) => {
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            "model": "meta-llama/llama-3.2-3b-instruct:free",
+                            "model": "cohere/north-mini-code:free",
                             "messages": messages
                         })
                     });
