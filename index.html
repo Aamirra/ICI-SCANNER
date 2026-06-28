@@ -243,48 +243,51 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── OpenRouter Chat (Qwen3 – free model with retry) ──
-const OPENROUTER_API_KEY = (typeof window.__INJECTED_OPENROUTER_KEY !== 'undefined') ? window.__INJECTED_OPENROUTER_KEY : '';
-const OR_MODEL = 'qwen/qwen3-next-80b-a3b-instruct:free';
-
-async function sendOpenRouterChat(retryCount = 0) {
+// ── AI Chat via Server Proxy (Secure & Reliable) ──
+async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
     if (!userText) return;
 
+    // User ka message chat box mein dikhayein
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
 
+    // Loading message dikhayein
+    messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        // Apne server ke proxy endpoint ko call karein
+        const response = await fetch('/api/chat', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': window.location.origin,
-                'X-Title': 'ICI Scanner'
-            },
-            body: JSON.stringify({
-                model: OR_MODEL,
-                messages: [{ role: 'user', content: userText }],
-                temperature: 0.2
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userText })
         });
 
-        // Handle rate limiting (429)
-        if (response.status === 429 && retryCount < 3) {
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>⏳ Rate limit hit, retrying in 5 seconds...</span></div>`;
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            return sendOpenRouterChat(retryCount + 1);
-        }
-
         const data = await response.json();
-        const text = data.choices?.[0]?.message?.content || 'Sorry, no response.';
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(text)}</span></div>`;
+
+        // Loading message hata dein
+        const loadingEl = document.getElementById('loadingMsg');
+        if (loadingEl) loadingEl.remove();
+
+        if (!response.ok) {
+            // Agar server ya API se error aaya toh exact error yahan dikhega
+            const errMsg = data.error || `HTTP Error ${response.status}`;
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(errMsg)}</span></div>`;
+        } else {
+            // AI ka jawab dikhayein
+            const text = data.response || 'Sorry, no response.';
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(text)}</span></div>`;
+        }
+        
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (e) {
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>❌ API error: ${e.message}</span></div>`;
+        // Agar internet disconnect ho ya server down ho
+        const loadingEl = document.getElementById('loadingMsg');
+        if (loadingEl) loadingEl.remove();
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error: ${escapeHtml(e.message)}</span></div>`;
     }
 }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
