@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
-const { spawn } = require('child_process');
 
 let masterScan;
 
@@ -27,7 +26,6 @@ function sleep(ms) {
 
 // ── GitHub Helper ──
 async function commitFileChange(owner, repo, filePath, newContent, commitMessage, token) {
-    // Get current file (to get SHA if exists)
     const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
     const getRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
     let sha = null;
@@ -77,7 +75,7 @@ http.createServer((req, res) => {
                     return;
                 }
 
-                // ── SYSTEM PROMPT (English) ──
+                // ── SYSTEM PROMPT (Roman Urdu + English mixed) ──
                 const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You can propose actions using [ACTION:...] format. Available actions:
 - send_telegram: parameters {"text":"message"}
 - send_whatsapp: parameters {"text":"message", "number":"optional"}
@@ -117,7 +115,7 @@ Always put the action block FIRST, then your reply.`;
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            "model": "cohere/north-mini-code:free",
+                            "model": "deepseek/deepseek-chat:free",   // ✅ Free DeepSeek model
                             "messages": messages
                         })
                     });
@@ -235,15 +233,15 @@ Always put the action block FIRST, then your reply.`;
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', async () => {
             try {
-                const { id } = JSON.parse(body);
-                if (!id) {
+                const { id, newContent } = JSON.parse(body);
+                if (!id || !newContent) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'id is required' }));
+                    res.end(JSON.stringify({ error: 'id and newContent are required' }));
                     return;
                 }
 
                 const githubToken = process.env.GITHUB_TOKEN;
-                const repoFull = process.env.GITHUB_REPO; // e.g., "username/ICI-SCANNER"
+                const repoFull = process.env.GITHUB_REPO;
                 if (!githubToken || !repoFull) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'GITHUB_TOKEN ya GITHUB_REPO set nahi hai.' }));
@@ -251,7 +249,6 @@ Always put the action block FIRST, then your reply.`;
                 }
                 const [owner, repo] = repoFull.split('/');
 
-                // Get the change request from Firebase
                 const snap = await admin.database().ref(`codeChangeRequests/${id}`).once('value');
                 const changeReq = snap.val();
                 if (!changeReq || changeReq.status !== 'pending_approval') {
@@ -261,25 +258,10 @@ Always put the action block FIRST, then your reply.`;
                 }
 
                 const { instruction, file } = changeReq;
-                // In a real implementation, we'd parse instruction and apply changes intelligently.
-                // Here we assume the instruction describes what to replace in the file, but for simple cases,
-                // we can let AI generate the full new content. For now, we'll just commit the instruction as a comment.
-                // To keep it simple and functional: we'll have the frontend send the actual new file content 
-                // as part of the approval payload. So we'll modify approveCodeChange to send newContent.
-                // Let's adjust: the endpoint expects { id, newContent }.
-
-                const newContent = JSON.parse(body).newContent;
-                if (!newContent) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'newContent is required' }));
-                    return;
-                }
-
                 const commitMessage = `AI suggested change: ${instruction}`;
                 const putRes = await commitFileChange(owner, repo, file, newContent, commitMessage, githubToken);
                 
                 if (putRes.ok) {
-                    // Update status to approved
                     await admin.database().ref(`codeChangeRequests/${id}/status`).set('approved');
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true, message: 'Code change committed to GitHub! Render ab deploy karega.' }));
@@ -296,7 +278,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ... existing static file serving and scan route (unchanged, keep same as before) ...
+    // ── Static file serving & scan route ──
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -335,21 +317,14 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
 });
 
-const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
-sentimentJob.unref();
-
+// ── Scanner (on‑demand) ──
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
-const healthMonitor = require('./services/healthMonitor');
-const selfHealer = require('./services/selfHealer');
 
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 
 (async () => {
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
-    console.log('✅ Scanner & Sentiment job started');
-    healthMonitor.start();
-    selfHealer.start();
-    console.log('✅ HealthMonitor, SelfHealer started');
+    console.log('✅ Scanner started');
 })();
