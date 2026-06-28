@@ -23,6 +23,94 @@ const PORT = process.env.PORT || 3000;
 
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
+
+    // ==========================================
+    // AI CHAT PROXY ENDPOINT (OpenRouter)
+    // ==========================================
+    if (req.method === 'POST' && safePath === '/api/chat') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        
+        req.on('end', async () => {
+            try {
+                const { message, history } = JSON.parse(body);
+                
+                if (!message) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Message is required' }));
+                    return;
+                }
+
+                const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+                if (!OPENROUTER_API_KEY) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'OpenRouter API Key missing on server!' }));
+                    return;
+                }
+
+                // Prepare messages for OpenRouter
+                const messages = [
+                    { role: 'system', content: 'You are a helpful assistant for a trading scanner dashboard. Be concise.' }
+                ];
+
+                // Add history if provided
+                if (Array.isArray(history)) {
+                    history.forEach(msg => {
+                        messages.push({
+                            role: msg.role === 'model' ? 'assistant' : 'user',
+                            content: msg.text
+                        });
+                    });
+                }
+
+                // Add current user message
+                messages.push({ role: 'user', content: message });
+
+                // Call OpenRouter API
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        // Using a reliable free model
+                        "model": "meta-llama/llama-3.2-3b-instruct:free", 
+                        "messages": messages
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const errMsg = data?.error?.message || `HTTP ${response.status}`;
+                    res.writeHead(response.status, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: errMsg }));
+                    return;
+                }
+
+                const aiText = data?.choices?.[0]?.message?.content;
+                
+                if (!aiText) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ response: "AI se khaali jawab aaya hai." }));
+                    return;
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ response: aiText.trim() }));
+
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: `Server Error: ${error.message}` }));
+            }
+        });
+        return;
+    }
+    // ==========================================
+    // END AI CHAT PROXY
+    // ==========================================
+
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -33,6 +121,7 @@ http.createServer((req, res) => {
         }
         return;
     }
+    
     if (safePath === '/stocks' || safePath === '/stocks.html') {
         const filePath = path.join(__dirname, 'stocks.html');
         fs.readFile(filePath, (err, data) => {
@@ -41,21 +130,23 @@ http.createServer((req, res) => {
         });
         return;
     }
+    
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
+    
     if (!filePath.startsWith(path.join(__dirname))) { res.writeHead(403); res.end('Forbidden'); return; }
+    
     const ext = path.extname(filePath);
     const contentTypes = { '.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json' };
     const contentType = contentTypes[ext] || 'text/plain';
+    
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) { res.writeHead(404); res.end('Not Found'); return; }
-        // ✅ Server‑side injection of OpenRouter API key (secure – no key in GitHub)
-        if (relativePath === 'index.html') {
-            const injectedKey = process.env.OPENROUTER_API_KEY || '';
-            const injectionScript = `<script>window.__INJECTED_OPENROUTER_KEY = '${injectedKey}';</script>`;
-            data = data.replace('</body>', injectionScript + '</body>');
-        }
-        res.writeHead(200, { 'Content-Type': contentType }); res.end(data);
+        
+        // (Old injection code removed for security and reliability)
+        
+        res.writeHead(200, { 'Content-Type': contentType }); 
+        res.end(data);
     });
 }).listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
