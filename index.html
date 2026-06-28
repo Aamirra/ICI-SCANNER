@@ -245,7 +245,7 @@ async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).r
 
 // ── OpenRouter Chat (NVIDIA Nemotron Nano 12B – free) ──
 const OPENROUTER_API_KEY = (typeof window.__INJECTED_OPENROUTER_KEY !== 'undefined') ? window.__INJECTED_OPENROUTER_KEY : '';
-const OR_MODEL = 'nvidia/nemotron-nano-12b:free';
+const OR_MODEL = 'google/gemini-2.5-flash-lite-preview-09-2025:free';
 
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
