@@ -269,7 +269,8 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = WebChromeClient()
         WebView.setWebContentsDebuggingEnabled(true)
 
-        val url = if (isAdmin) "https://ici-scaner.onrender.com?mode=admin" else "https://ici-scaner.onrender.com"
+        // ✅ FIXED URL: Naya dashboard (AI assistant, live prices, etc.)
+        val url = if (isAdmin) "https://ici-scanner.onrender.com?mode=admin" else "https://ici-scanner.onrender.com"
         webView.loadUrl(url)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
