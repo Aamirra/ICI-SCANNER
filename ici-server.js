@@ -52,28 +52,24 @@ http.createServer((req, res) => {
                     return;
                 }
 
-                // ── UPDATED SYSTEM PROMPT: AI can propose actions ──
-                const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You have the ability to perform actions on the dashboard if the user asks. You must respond in a helpful manner. When the user asks you to do something (e.g., send a message, run a scan, change a setting), you MUST propose the action using the exact format:
+                // ── UPDATED SYSTEM PROMPT: AI can diagnose & propose fixes ──
+                const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You can propose actions using [ACTION:...] format. Available actions:
+- send_telegram: parameters {"text":"message"}
+- send_whatsapp: parameters {"text":"message", "number":"optional"}
+- run_scan: parameters {}
+- toggle_alert: parameters {"type":"telegram"|"whatsapp", "enable":true|false}
+- create_code_change: parameters {"instruction":"detailed change description", "file":"filename.js"}  (use this when you detect a bug and want to propose a code fix)
 
-[ACTION:action_type]{"param1":"value1","param2":"value2"}
+When a requested action fails (user reports it didn't work), you MUST diagnose the problem by thinking about the server setup:
+- Telegram uses environment variables: BOT_TOKEN and CHAT_ID (both must be set in Render).
+- If Telegram fails, common causes: wrong token, wrong chat ID, or missing variables.
+- WhatsApp not implemented yet.
+- Scan uses masterScan function – if it fails, server might be busy.
+- Toggle alert updates Firebase alertSettings.
 
-Then write your normal conversational reply AFTER that. The action block MUST be on its own line, at the very beginning of your message, and the JSON must be valid. After that line, you can write anything.
+Guide the user to check browser console (F12) and Render logs for error details. If you identify a specific code change that would fix the issue (e.g., variable name mismatch), propose a create_code_change action with clear instructions.
 
-Available action types:
-- send_telegram: Sends a message via Telegram. Parameters: {"text":"message content"}
-- send_whatsapp: Sends a message via WhatsApp. Parameters: {"text":"message content", "number":"optional phone number"}
-- run_scan: Triggers a scan of all pairs. Parameters: {}
-- toggle_alert: Toggles alert setting. Parameters: {"type":"telegram"|"whatsapp", "enable": true|false}
-- set_theme: Changes app theme. Parameters: {"theme":"light"|"dark"}
-
-If the user's request cannot be mapped to an action, just reply normally without an action block. If you are unsure, ask the user for clarification.
-
-Example:
-User: "Telegram pe bhejo Hello everyone"
-You: [ACTION:send_telegram]{"text":"Hello everyone"}
-Okay, maine Telegram par "Hello everyone" bhejne ka action propose kiya hai. Aap approve karein.
-
-Remember: Only propose an action if the user explicitly asks to do something. Don't invent actions.`;
+Always put the action block FIRST, then your conversational reply.`;
 
                 const messages = [
                     { role: 'system', content: systemPrompt }
@@ -163,8 +159,8 @@ Remember: Only propose an action if the user explicitly asks to do something. Do
 
                 // ── Telegram ──
                 if (action === 'send_telegram') {
-                    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-                    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+                    const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN;
+                    const TELEGRAM_CHAT_ID = process.env.CHAT_ID;
                     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
                         result = { success: false, message: 'Telegram bot token ya chat ID set nahi hai. Please environment variables check karein.' };
                     } else {
@@ -185,7 +181,6 @@ Remember: Only propose an action if the user explicitly asks to do something. Do
                 }
                 // ── WhatsApp (placeholder) ──
                 else if (action === 'send_whatsapp') {
-                    // Later we can integrate Twilio or other
                     result = { success: false, message: 'WhatsApp service not configured yet.' };
                 }
                 // ── Run Scan ──
@@ -208,13 +203,26 @@ Remember: Only propose an action if the user explicitly asks to do something. Do
                         result = { success: false, message: 'Invalid parameters.' };
                     }
                 }
-                // ── Set Theme (we can't change frontend theme from backend, but we can store preference) ──
-                else if (action === 'set_theme') {
-                    const theme = params?.theme;
-                    if (theme === 'light' || theme === 'dark') {
-                        // We can't directly change user's browser, but we could store in DB if needed
-                        result = { success: false, message: 'Theme change from backend is not supported directly. Use frontend toggle.' };
+                // ── Create Code Change Request ──
+                else if (action === 'create_code_change') {
+                    const instruction = params?.instruction;
+                    const file = params?.file;
+                    if (!instruction || !file) {
+                        result = { success: false, message: 'instruction and file parameters are required.' };
+                    } else {
+                        const ref = admin.database().ref('codeChangeRequests').push();
+                        await ref.set({
+                            instruction,
+                            file,
+                            status: 'pending_approval',
+                            timestamp: Date.now()
+                        });
+                        result = { success: true, message: 'Code change request created. It will appear in the Pending Code Changes panel for approval.' };
                     }
+                }
+                // ── Set Theme (placeholder) ──
+                else if (action === 'set_theme') {
+                    result = { success: false, message: 'Theme change from backend is not supported directly.' };
                 }
 
                 res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
