@@ -74,8 +74,8 @@ http.createServer((req, res) => {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        // ✅ Changed model to a more reliable free tier model
-                        "model": "mistralai/mistral-7b-instruct:free", 
+                        // Mistral free model – reliable and higher rate limits
+                        "model": "mistralai/mistral-7b-instruct:free",
                         "messages": messages
                     })
                 });
@@ -149,9 +149,6 @@ http.createServer((req, res) => {
     
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) { res.writeHead(404); res.end('Not Found'); return; }
-        
-        // (Old injection code removed for security and reliability)
-        
         res.writeHead(200, { 'Content-Type': contentType }); 
         res.end(data);
     });
