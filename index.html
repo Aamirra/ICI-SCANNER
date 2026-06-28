@@ -243,11 +243,11 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── OpenRouter Chat (NVIDIA Nemotron Nano 12B – free) ──
+// ── OpenRouter Chat (Qwen3 – free model with retry) ──
 const OPENROUTER_API_KEY = (typeof window.__INJECTED_OPENROUTER_KEY !== 'undefined') ? window.__INJECTED_OPENROUTER_KEY : '';
-const OR_MODEL = 'google/gemini-2.5-flash-lite-preview-09-2025:free';
+const OR_MODEL = 'qwen/qwen3-next-80b-a3b-instruct:free';
 
-async function sendOpenRouterChat() {
+async function sendOpenRouterChat(retryCount = 0) {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
@@ -271,6 +271,14 @@ async function sendOpenRouterChat() {
                 temperature: 0.2
             })
         });
+
+        // Handle rate limiting (429)
+        if (response.status === 429 && retryCount < 3) {
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>⏳ Rate limit hit, retrying in 5 seconds...</span></div>`;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            return sendOpenRouterChat(retryCount + 1);
+        }
+
         const data = await response.json();
         const text = data.choices?.[0]?.message?.content || 'Sorry, no response.';
         messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(text)}</span></div>`;
