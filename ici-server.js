@@ -25,6 +25,31 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ── GitHub Helper ──
+async function commitFileChange(owner, repo, filePath, newContent, commitMessage, token) {
+    // Get current file (to get SHA if exists)
+    const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+    const getRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
+    let sha = null;
+    if (getRes.ok) {
+        const fileData = await getRes.json();
+        sha = fileData.sha;
+    }
+
+    const body = {
+        message: commitMessage,
+        content: Buffer.from(newContent).toString('base64'),
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(getUrl, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    return putRes;
+}
+
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
@@ -52,24 +77,17 @@ http.createServer((req, res) => {
                     return;
                 }
 
-                // ── UPDATED SYSTEM PROMPT: AI can diagnose & propose fixes ──
+                // ── SYSTEM PROMPT (English) ──
                 const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You can propose actions using [ACTION:...] format. Available actions:
 - send_telegram: parameters {"text":"message"}
 - send_whatsapp: parameters {"text":"message", "number":"optional"}
 - run_scan: parameters {}
 - toggle_alert: parameters {"type":"telegram"|"whatsapp", "enable":true|false}
-- create_code_change: parameters {"instruction":"detailed change description", "file":"filename.js"}  (use this when you detect a bug and want to propose a code fix)
+- create_code_change: parameters {"instruction":"detailed change description", "file":"filename.js"}
 
-When a requested action fails (user reports it didn't work), you MUST diagnose the problem by thinking about the server setup:
-- Telegram uses environment variables: BOT_TOKEN and CHAT_ID (both must be set in Render).
-- If Telegram fails, common causes: wrong token, wrong chat ID, or missing variables.
-- WhatsApp not implemented yet.
-- Scan uses masterScan function – if it fails, server might be busy.
-- Toggle alert updates Firebase alertSettings.
+When a requested action fails, diagnose the problem. Guide the user to check browser console (F12) and Render logs. If you identify a specific code change that would fix the issue, propose a create_code_change action with clear instructions.
 
-Guide the user to check browser console (F12) and Render logs for error details. If you identify a specific code change that would fix the issue (e.g., variable name mismatch), propose a create_code_change action with clear instructions.
-
-Always put the action block FIRST, then your conversational reply.`;
+Always put the action block FIRST, then your reply.`;
 
                 const messages = [
                     { role: 'system', content: systemPrompt }
@@ -86,12 +104,11 @@ Always put the action block FIRST, then your conversational reply.`;
 
                 messages.push({ role: 'user', content: message });
 
-                // Retry logic (max 3 attempts, 2 sec delay)
+                // Retry logic
                 let response;
                 let data;
                 let retries = 0;
                 const maxRetries = 3;
-
                 while (retries < maxRetries) {
                     response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                         method: "POST",
@@ -104,22 +121,19 @@ Always put the action block FIRST, then your conversational reply.`;
                             "messages": messages
                         })
                     });
-
                     if (response.status !== 429) break;
-
                     retries++;
-                    console.log(`⏳ Rate limited, retrying in 2 seconds... (${retries}/${maxRetries})`);
+                    console.log(`⏳ Rate limited, retrying... (${retries}/${maxRetries})`);
                     await sleep(2000);
                 }
 
                 if (response.status === 429) {
                     res.writeHead(429, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Thodi der ruk kar try karein. (Rate limit exceeded)' }));
+                    res.end(JSON.stringify({ error: 'Thodi der ruk kar try karein.' }));
                     return;
                 }
 
                 data = await response.json();
-
                 if (!response.ok) {
                     const errMsg = data?.error?.message || `HTTP ${response.status}`;
                     res.writeHead(response.status, { 'Content-Type': 'application/json' });
@@ -128,16 +142,8 @@ Always put the action block FIRST, then your conversational reply.`;
                 }
 
                 const aiText = data?.choices?.[0]?.message?.content;
-                
-                if (!aiText) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ response: "AI se khaali jawab aaya hai." }));
-                    return;
-                }
-
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ response: aiText.trim() }));
-
+                res.end(JSON.stringify({ response: (aiText || '').trim() }));
             } catch (error) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: `Server Error: ${error.message}` }));
@@ -157,43 +163,33 @@ Always put the action block FIRST, then your conversational reply.`;
                 const { action, params } = JSON.parse(body);
                 let result = { success: false, message: 'Unknown action' };
 
-                // ── Telegram ──
                 if (action === 'send_telegram') {
-                    const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN;
-                    const TELEGRAM_CHAT_ID = process.env.CHAT_ID;
-                    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-                        result = { success: false, message: 'Telegram bot token ya chat ID set nahi hai. Please environment variables check karein.' };
+                    const token = process.env.BOT_TOKEN;
+                    const chatId = process.env.CHAT_ID;
+                    if (!token || !chatId) {
+                        result = { success: false, message: 'Telegram bot token ya chat ID set nahi hai.' };
                     } else {
                         const text = params?.text || 'No text';
-                        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-                        const tgRes = await fetch(url, {
+                        const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text })
+                            body: JSON.stringify({ chat_id: chatId, text })
                         });
                         const tgData = await tgRes.json();
-                        if (tgData.ok) {
-                            result = { success: true, message: 'Telegram message sent!' };
-                        } else {
-                            result = { success: false, message: 'Telegram error: ' + tgData.description };
-                        }
+                        result = tgData.ok ? 
+                            { success: true, message: 'Telegram message sent!' } :
+                            { success: false, message: 'Telegram error: ' + tgData.description };
                     }
-                }
-                // ── WhatsApp (placeholder) ──
-                else if (action === 'send_whatsapp') {
+                } else if (action === 'send_whatsapp') {
                     result = { success: false, message: 'WhatsApp service not configured yet.' };
-                }
-                // ── Run Scan ──
-                else if (action === 'run_scan') {
+                } else if (action === 'run_scan') {
                     if (masterScan && typeof masterScan === 'function') {
                         masterScan();
                         result = { success: true, message: 'Scan started!' };
                     } else {
                         result = { success: false, message: 'Scan function not available.' };
                     }
-                }
-                // ── Toggle Alert ──
-                else if (action === 'toggle_alert') {
+                } else if (action === 'toggle_alert') {
                     const alertType = params?.type;
                     const enable = params?.enable;
                     if (alertType && typeof enable === 'boolean') {
@@ -202,13 +198,11 @@ Always put the action block FIRST, then your conversational reply.`;
                     } else {
                         result = { success: false, message: 'Invalid parameters.' };
                     }
-                }
-                // ── Create Code Change Request ──
-                else if (action === 'create_code_change') {
+                } else if (action === 'create_code_change') {
                     const instruction = params?.instruction;
                     const file = params?.file;
                     if (!instruction || !file) {
-                        result = { success: false, message: 'instruction and file parameters are required.' };
+                        result = { success: false, message: 'instruction and file are required.' };
                     } else {
                         const ref = admin.database().ref('codeChangeRequests').push();
                         await ref.set({
@@ -217,12 +211,10 @@ Always put the action block FIRST, then your conversational reply.`;
                             status: 'pending_approval',
                             timestamp: Date.now()
                         });
-                        result = { success: true, message: 'Code change request created. It will appear in the Pending Code Changes panel for approval.' };
+                        result = { success: true, message: 'Code change request created. Pending panel mein dekhein.' };
                     }
-                }
-                // ── Set Theme (placeholder) ──
-                else if (action === 'set_theme') {
-                    result = { success: false, message: 'Theme change from backend is not supported directly.' };
+                } else if (action === 'set_theme') {
+                    result = { success: false, message: 'Theme change not supported.' };
                 }
 
                 res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
@@ -234,10 +226,77 @@ Always put the action block FIRST, then your conversational reply.`;
         });
         return;
     }
-    // ==========================================
-    // END ACTION EXECUTOR
-    // ==========================================
 
+    // ==========================================
+    // APPROVE CODE CHANGE (Commit to GitHub)
+    // ==========================================
+    if (req.method === 'POST' && safePath === '/api/approve-code-change') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const { id } = JSON.parse(body);
+                if (!id) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'id is required' }));
+                    return;
+                }
+
+                const githubToken = process.env.GITHUB_TOKEN;
+                const repoFull = process.env.GITHUB_REPO; // e.g., "username/ICI-SCANNER"
+                if (!githubToken || !repoFull) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'GITHUB_TOKEN ya GITHUB_REPO set nahi hai.' }));
+                    return;
+                }
+                const [owner, repo] = repoFull.split('/');
+
+                // Get the change request from Firebase
+                const snap = await admin.database().ref(`codeChangeRequests/${id}`).once('value');
+                const changeReq = snap.val();
+                if (!changeReq || changeReq.status !== 'pending_approval') {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Change request not found or already processed.' }));
+                    return;
+                }
+
+                const { instruction, file } = changeReq;
+                // In a real implementation, we'd parse instruction and apply changes intelligently.
+                // Here we assume the instruction describes what to replace in the file, but for simple cases,
+                // we can let AI generate the full new content. For now, we'll just commit the instruction as a comment.
+                // To keep it simple and functional: we'll have the frontend send the actual new file content 
+                // as part of the approval payload. So we'll modify approveCodeChange to send newContent.
+                // Let's adjust: the endpoint expects { id, newContent }.
+
+                const newContent = JSON.parse(body).newContent;
+                if (!newContent) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'newContent is required' }));
+                    return;
+                }
+
+                const commitMessage = `AI suggested change: ${instruction}`;
+                const putRes = await commitFileChange(owner, repo, file, newContent, commitMessage, githubToken);
+                
+                if (putRes.ok) {
+                    // Update status to approved
+                    await admin.database().ref(`codeChangeRequests/${id}/status`).set('approved');
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, message: 'Code change committed to GitHub! Render ab deploy karega.' }));
+                } else {
+                    const err = await putRes.json();
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: `GitHub error: ${err.message}` }));
+                }
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: `Server Error: ${error.message}` }));
+            }
+        });
+        return;
+    }
+
+    // ... existing static file serving and scan route (unchanged, keep same as before) ...
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -281,7 +340,6 @@ sentimentJob.unref();
 
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
-
 const healthMonitor = require('./services/healthMonitor');
 const selfHealer = require('./services/selfHealer');
 
