@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
-const { spawn } = require('child_process');   // ✅ Added
 
 let masterScan;
 
@@ -34,13 +33,11 @@ async function commitFileChange(owner, repo, filePath, newContent, commitMessage
         const fileData = await getRes.json();
         sha = fileData.sha;
     }
-
     const body = {
         message: commitMessage,
         content: Buffer.from(newContent).toString('base64'),
     };
     if (sha) body.sha = sha;
-
     const putRes = await fetch(getUrl, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -52,23 +49,18 @@ async function commitFileChange(owner, repo, filePath, newContent, commitMessage
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // ==========================================
-    // AI CHAT PROXY ENDPOINT (OpenRouter + Retry)
-    // ==========================================
+    // ── AI Chat Proxy ──
     if (req.method === 'POST' && safePath === '/api/chat') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
-        
         req.on('end', async () => {
             try {
                 const { message, history } = JSON.parse(body);
-                
                 if (!message) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Message is required' }));
                     return;
                 }
-
                 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
                 if (!OPENROUTER_API_KEY) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -87,10 +79,7 @@ When a requested action fails, diagnose the problem. Guide the user to check bro
 
 Always put the action block FIRST, then your reply.`;
 
-                const messages = [
-                    { role: 'system', content: systemPrompt }
-                ];
-
+                const messages = [{ role: 'system', content: systemPrompt }];
                 if (Array.isArray(history)) {
                     history.forEach(msg => {
                         messages.push({
@@ -99,7 +88,6 @@ Always put the action block FIRST, then your reply.`;
                         });
                     });
                 }
-
                 messages.push({ role: 'user', content: message });
 
                 let response;
@@ -123,13 +111,11 @@ Always put the action block FIRST, then your reply.`;
                     console.log(`⏳ Rate limited, retrying... (${retries}/${maxRetries})`);
                     await sleep(2000);
                 }
-
                 if (response.status === 429) {
                     res.writeHead(429, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Thodi der ruk kar try karein.' }));
                     return;
                 }
-
                 data = await response.json();
                 if (!response.ok) {
                     const errMsg = data?.error?.message || `HTTP ${response.status}`;
@@ -137,7 +123,6 @@ Always put the action block FIRST, then your reply.`;
                     res.end(JSON.stringify({ error: errMsg }));
                     return;
                 }
-
                 const aiText = data?.choices?.[0]?.message?.content;
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ response: (aiText || '').trim() }));
@@ -149,9 +134,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ==========================================
-    // ACTION EXECUTOR ENDPOINT
-    // ==========================================
+    // ── Action Executor ──
     if (req.method === 'POST' && safePath === '/api/execute-action') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -159,7 +142,6 @@ Always put the action block FIRST, then your reply.`;
             try {
                 const { action, params } = JSON.parse(body);
                 let result = { success: false, message: 'Unknown action' };
-
                 if (action === 'send_telegram') {
                     const token = process.env.BOT_TOKEN;
                     const chatId = process.env.CHAT_ID;
@@ -213,7 +195,6 @@ Always put the action block FIRST, then your reply.`;
                 } else if (action === 'set_theme') {
                     result = { success: false, message: 'Theme change not supported.' };
                 }
-
                 res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
             } catch (error) {
@@ -224,9 +205,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ==========================================
-    // APPROVE CODE CHANGE (Commit to GitHub)
-    // ==========================================
+    // ── Approve Code Change ──
     if (req.method === 'POST' && safePath === '/api/approve-code-change') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -238,7 +217,6 @@ Always put the action block FIRST, then your reply.`;
                     res.end(JSON.stringify({ error: 'id and newContent are required' }));
                     return;
                 }
-
                 const githubToken = process.env.GITHUB_TOKEN;
                 const repoFull = process.env.GITHUB_REPO;
                 if (!githubToken || !repoFull) {
@@ -247,7 +225,6 @@ Always put the action block FIRST, then your reply.`;
                     return;
                 }
                 const [owner, repo] = repoFull.split('/');
-
                 const snap = await admin.database().ref(`codeChangeRequests/${id}`).once('value');
                 const changeReq = snap.val();
                 if (!changeReq || changeReq.status !== 'pending_approval') {
@@ -255,11 +232,9 @@ Always put the action block FIRST, then your reply.`;
                     res.end(JSON.stringify({ error: 'Change request not found or already processed.' }));
                     return;
                 }
-
                 const { instruction, file } = changeReq;
                 const commitMessage = `AI suggested change: ${instruction}`;
                 const putRes = await commitFileChange(owner, repo, file, newContent, commitMessage, githubToken);
-                
                 if (putRes.ok) {
                     await admin.database().ref(`codeChangeRequests/${id}/status`).set('approved');
                     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -277,6 +252,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
+    // ── Scan & static files ──
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -287,7 +263,6 @@ Always put the action block FIRST, then your reply.`;
         }
         return;
     }
-    
     if (safePath === '/stocks' || safePath === '/stocks.html') {
         const filePath = path.join(__dirname, 'stocks.html');
         fs.readFile(filePath, (err, data) => {
@@ -296,44 +271,27 @@ Always put the action block FIRST, then your reply.`;
         });
         return;
     }
-    
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
-    
     if (!filePath.startsWith(path.join(__dirname))) { res.writeHead(403); res.end('Forbidden'); return; }
-    
     const ext = path.extname(filePath);
     const contentTypes = { '.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json' };
     const contentType = contentTypes[ext] || 'text/plain';
-    
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) { res.writeHead(404); res.end('Not Found'); return; }
         res.writeHead(200, { 'Content-Type': contentType }); 
         res.end(data);
     });
 }).listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server ready on port ${PORT} (Bound to 0.0.0.0)`);
+    console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// ── Background Services (All Active) ──
-const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
-sentimentJob.unref();
-
-const liveTicks = require('./services/liveTicks');
-const healthMonitor = require('./services/healthMonitor');
-const selfHealer = require('./services/selfHealer');
-
+// Scanner (on demand)
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
-
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
-
 (async () => {
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
-    console.log('✅ Scanner started');
-    liveTicks.start();
-    healthMonitor.start();
-    selfHealer.start();
-    console.log('✅ HealthMonitor, SelfHealer, LiveTicks started');
+    console.log('✅ Scanner ready');
 })();
