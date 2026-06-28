@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
+const { spawn } = require('child_process');   // ✅ Added
 
 let masterScan;
 
@@ -318,7 +319,7 @@ Always put the action block FIRST, then your reply.`;
 const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'inherit', detached:true });
 sentimentJob.unref();
 
-const liveTicks = require('./services/liveTicks');   // ✅ Uncommented
+const liveTicks = require('./services/liveTicks');
 const healthMonitor = require('./services/healthMonitor');
 const selfHealer = require('./services/selfHealer');
 
@@ -331,7 +332,7 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
     await restoreState(firebaseGet);
     if (typeof masterScan === 'function') masterScan();
     console.log('✅ Scanner started');
-    liveTicks.start();         // ✅ Started
+    liveTicks.start();
     healthMonitor.start();
     selfHealer.start();
     console.log('✅ HealthMonitor, SelfHealer, LiveTicks started');
