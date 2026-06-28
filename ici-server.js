@@ -102,7 +102,8 @@ Always put the action block FIRST, then your reply.`;
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            "model": "deepseek/deepseek-chat:free",
+                            // ✅ Dynamic model from environment, fallback to free Cohere
+                            "model": process.env.AI_MODEL || "cohere/north-mini-code:free",
                             "messages": messages
                         })
                     });
