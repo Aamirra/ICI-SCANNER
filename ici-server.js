@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
+const { sendWhatsAppAlert } = require('./services/whatsappBot'); // ✅ WhatsApp bot imported
 
 let masterScan;
 
@@ -70,7 +71,7 @@ http.createServer((req, res) => {
 
                 const systemPrompt = `You are the AI assistant for the "ICI Scanner" trading dashboard. You can propose actions using [ACTION:...] format. Available actions:
 - send_telegram: parameters {"text":"message"}
-- send_whatsapp: parameters {"text":"message", "number":"optional"}
+- send_whatsapp: parameters {"text":"message"}
 - run_scan: parameters {}
 - toggle_alert: parameters {"type":"telegram"|"whatsapp", "enable":true|false}
 - create_code_change: parameters {"instruction":"detailed change description", "file":"filename.js"}
@@ -143,6 +144,7 @@ Always put the action block FIRST, then your reply.`;
             try {
                 const { action, params } = JSON.parse(body);
                 let result = { success: false, message: 'Unknown action' };
+
                 if (action === 'send_telegram') {
                     const token = process.env.BOT_TOKEN;
                     const chatId = process.env.CHAT_ID;
@@ -160,16 +162,30 @@ Always put the action block FIRST, then your reply.`;
                             { success: true, message: 'Telegram message sent!' } :
                             { success: false, message: 'Telegram error: ' + tgData.description };
                     }
-                } else if (action === 'send_whatsapp') {
-                    result = { success: false, message: 'WhatsApp service not configured yet.' };
-                } else if (action === 'run_scan') {
+                }
+                // ✅ WhatsApp action integrated
+                else if (action === 'send_whatsapp') {
+                    const text = params?.text;
+                    if (!text) {
+                        result = { success: false, message: 'Message text is required.' };
+                    } else {
+                        try {
+                            await sendWhatsAppAlert(text);
+                            result = { success: true, message: 'WhatsApp message sent!' };
+                        } catch (e) {
+                            result = { success: false, message: 'WhatsApp error: ' + e.message };
+                        }
+                    }
+                }
+                else if (action === 'run_scan') {
                     if (masterScan && typeof masterScan === 'function') {
                         masterScan();
                         result = { success: true, message: 'Scan started!' };
                     } else {
                         result = { success: false, message: 'Scan function not available.' };
                     }
-                } else if (action === 'toggle_alert') {
+                }
+                else if (action === 'toggle_alert') {
                     const alertType = params?.type;
                     const enable = params?.enable;
                     if (alertType && typeof enable === 'boolean') {
@@ -178,7 +194,8 @@ Always put the action block FIRST, then your reply.`;
                     } else {
                         result = { success: false, message: 'Invalid parameters.' };
                     }
-                } else if (action === 'create_code_change') {
+                }
+                else if (action === 'create_code_change') {
                     const instruction = params?.instruction;
                     const file = params?.file;
                     if (!instruction || !file) {
@@ -193,9 +210,11 @@ Always put the action block FIRST, then your reply.`;
                         });
                         result = { success: true, message: 'Code change request created. Pending panel mein dekhein.' };
                     }
-                } else if (action === 'set_theme') {
+                }
+                else if (action === 'set_theme') {
                     result = { success: false, message: 'Theme change not supported.' };
                 }
+
                 res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
             } catch (error) {
