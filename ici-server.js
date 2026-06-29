@@ -272,7 +272,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (FIXED with async wrapper) ──
+    // ── Crypto News Endpoint (Improved Matching) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
         (async () => {
             const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
@@ -318,9 +318,13 @@ Always put the action block FIRST, then your reply.`;
             try {
                 const newsRes = await fetch('https://api.coingecko.com/api/v3/news');
                 const allNews = await newsRes.json();
-                const filtered = allNews.data ? allNews.data.filter(item =>
-                    item.tags && item.tags.some(tag => tag.toLowerCase() === coinName.toLowerCase())
-                ) : [];
+                const filtered = allNews.data ? allNews.data.filter(item => {
+                    const title = (item.title || '').toLowerCase();
+                    const desc = (item.description || '').toLowerCase();
+                    const tags = (item.tags || []).map(t => t.toLowerCase());
+                    const coinLower = coinName.toLowerCase();
+                    return title.includes(coinLower) || desc.includes(coinLower) || tags.includes(coinLower);
+                }) : [];
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(filtered.slice(0, 10)));
             } catch (e) {
