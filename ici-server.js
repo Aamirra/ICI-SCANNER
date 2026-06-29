@@ -291,6 +291,17 @@ Always put the action block FIRST, then your reply.`;
         });
         return;
     }
+
+    // ✅ NEW: Crypto route
+    if (safePath === '/crypto' || safePath === '/crypto.html') {
+        const filePath = path.join(__dirname, 'crypto.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) { res.writeHead(404); res.end('Crypto page not found'); return; }
+            res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(data);
+        });
+        return;
+    }
+
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
     if (!filePath.startsWith(path.join(__dirname))) { res.writeHead(403); res.end('Forbidden'); return; }
