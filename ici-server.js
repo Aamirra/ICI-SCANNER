@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
-const { sendWhatsAppAlert } = require('./services/whatsappBot'); // ✅ WhatsApp bot imported
+const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
 let masterScan;
 
@@ -25,7 +25,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ── GitHub Helper ──
 async function commitFileChange(owner, repo, filePath, newContent, commitMessage, token) {
     const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
     const getRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
@@ -50,7 +49,7 @@ async function commitFileChange(owner, repo, filePath, newContent, commitMessage
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
-    // ── AI Chat Proxy ──
+    // AI Chat endpoint (same as before)
     if (req.method === 'POST' && safePath === '/api/chat') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -103,7 +102,6 @@ Always put the action block FIRST, then your reply.`;
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            // ✅ Dynamic model from environment, fallback to free Cohere
                             "model": process.env.AI_MODEL || "cohere/north-mini-code:free",
                             "messages": messages
                         })
@@ -136,7 +134,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Action Executor ──
+    // Action executor (same)
     if (req.method === 'POST' && safePath === '/api/execute-action') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -162,9 +160,7 @@ Always put the action block FIRST, then your reply.`;
                             { success: true, message: 'Telegram message sent!' } :
                             { success: false, message: 'Telegram error: ' + tgData.description };
                     }
-                }
-                // ✅ WhatsApp action integrated
-                else if (action === 'send_whatsapp') {
+                } else if (action === 'send_whatsapp') {
                     const text = params?.text;
                     if (!text) {
                         result = { success: false, message: 'Message text is required.' };
@@ -176,16 +172,14 @@ Always put the action block FIRST, then your reply.`;
                             result = { success: false, message: 'WhatsApp error: ' + e.message };
                         }
                     }
-                }
-                else if (action === 'run_scan') {
+                } else if (action === 'run_scan') {
                     if (masterScan && typeof masterScan === 'function') {
                         masterScan();
                         result = { success: true, message: 'Scan started!' };
                     } else {
                         result = { success: false, message: 'Scan function not available.' };
                     }
-                }
-                else if (action === 'toggle_alert') {
+                } else if (action === 'toggle_alert') {
                     const alertType = params?.type;
                     const enable = params?.enable;
                     if (alertType && typeof enable === 'boolean') {
@@ -194,8 +188,7 @@ Always put the action block FIRST, then your reply.`;
                     } else {
                         result = { success: false, message: 'Invalid parameters.' };
                     }
-                }
-                else if (action === 'create_code_change') {
+                } else if (action === 'create_code_change') {
                     const instruction = params?.instruction;
                     const file = params?.file;
                     if (!instruction || !file) {
@@ -210,8 +203,7 @@ Always put the action block FIRST, then your reply.`;
                         });
                         result = { success: true, message: 'Code change request created. Pending panel mein dekhein.' };
                     }
-                }
-                else if (action === 'set_theme') {
+                } else if (action === 'set_theme') {
                     result = { success: false, message: 'Theme change not supported.' };
                 }
 
@@ -225,7 +217,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Approve Code Change ──
+    // Approve code change (same)
     if (req.method === 'POST' && safePath === '/api/approve-code-change') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -272,7 +264,64 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Scan & static files ──
+    // ✅ Crypto News Endpoint
+    if (req.method === 'GET' && safePath === '/api/crypto-news') {
+        const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+        const symbol = urlParams.get('symbol') || 'BTCUSD';
+
+        const symbolToCoinName = {
+            'BTCUSD': 'Bitcoin', 'ETHUSD': 'Ethereum', 'LTCUSD': 'Litecoin', 'BCHUSD': 'Bitcoin Cash',
+            'XRPUSD': 'XRP', 'ADAUSD': 'Cardano', 'DOTUSD': 'Polkadot', 'LINKUSD': 'Chainlink',
+            'UNIUSD': 'Uniswap', 'SOLUSD': 'Solana', 'MATICUSD': 'Polygon', 'AVAXUSD': 'Avalanche',
+            'ATOMUSD': 'Cosmos', 'FILUSD': 'Filecoin', 'VETUSD': 'VeChain', 'ETCUSD': 'Ethereum Classic',
+            'TRXUSD': 'TRON', 'XLMUSD': 'Stellar', 'ICPUSD': 'Internet Computer', 'THETAUSD': 'Theta Network',
+            'XTZUSD': 'Tezos', 'EOSUSD': 'EOS', 'SANDUSD': 'The Sandbox', 'MANAUSD': 'Decentraland',
+            'DOGEUSD': 'Dogecoin', 'SHIBUSD': 'Shiba Inu', 'PEPEUSD': 'Pepe', 'BONKUSD': 'Bonk',
+            'FLOKIUSD': 'Floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'The Graph', 'ENJUSD': 'Enjin Coin',
+            'CHZUSD': 'Chiliz', 'BATUSD': 'Basic Attention Token', 'ZRXUSD': '0x', 'OMGUSD': 'OMG Network',
+            'DASHUSD': 'Dash', 'ZECUSD': 'Zcash', 'BTGUSD': 'Bitcoin Gold', 'DCRUSD': 'Decred',
+            'XVGUSD': 'Verge', 'SCUSD': 'Siacoin', 'SNXUSD': 'Synthetix', 'COMPUSD': 'Compound',
+            'MKRUSD': 'Maker', 'AAVEUSD': 'Aave', 'YFIUSD': 'yearn.finance', 'SUSHIUSD': 'SushiSwap',
+            'CRVUSD': 'Curve DAO', 'RENUSD': 'Ren', 'KNCUSD': 'Kyber Network Crystal', 'BANDUSD': 'Band Protocol',
+            'NMRUSD': 'Numeraire', 'OCEANUSD': 'Ocean Protocol', 'FETUSD': 'Fetch.ai', 'AGIXUSD': 'SingularityNET',
+            'BNBUSD': 'BNB', 'CAKEUSD': 'PancakeSwap', 'RUNEUSD': 'THORChain', 'ALGOUSD': 'Algorand',
+            'NEARUSD': 'NEAR Protocol', 'FLOWUSD': 'Flow', 'APTUSD': 'Aptos', 'OPUSD': 'Optimism',
+            'ARBUSD': 'Arbitrum', 'SUIUSD': 'Sui', 'INJUSD': 'Injective', 'TIAUSD': 'Celestia',
+            'SEIUSD': 'Sei', 'BLURUSD': 'Blur', 'PYTHUSD': 'Pyth Network', 'JTOUSD': 'Jito',
+            'ORDIUSD': 'Ordinals', '1000SATSUSD': 'SATS (Ordinals)', 'BEAMUSD': 'Beam', 'RNDRUSD': 'Render Token',
+            'IMXUSD': 'Immutable', 'MINAUSD': 'Mina', 'GALAUSD': 'Gala', 'AXSUSD': 'Axie Infinity',
+            'APEUSD': 'ApeCoin', 'ENSUSD': 'Ethereum Name Service', 'LDOUSD': 'Lido DAO',
+            'STXUSD': 'Stacks', 'CFXUSD': 'Conflux', 'KLAYUSD': 'Klaytn', 'FTMUSD': 'Fantom',
+            'HBARUSD': 'Hedera', 'EGLDUSD': 'Elrond', 'QNTUSD': 'Quant', 'ARUSD': 'Arweave',
+            'ZILUSD': 'Zilliqa', 'KSMUSD': 'Kusama', 'ANTUSD': 'Aragon', 'IOTXUSD': 'IoTeX',
+            'CELOUSD': 'Celo', 'ANKRUSD': 'Ankr', 'SKLUSD': 'SKALE', 'SPELLUSD': 'Spell Token',
+            'JOEUSD': 'JOE', 'GMXUSD': 'GMX', 'PENDLEUSD': 'Pendle', 'SSVUSD': 'SSV Network',
+            'FXSUSD': 'Frax Share', 'LQTYUSD': 'Liquity', 'MASKUSD': 'Mask Network'
+        };
+
+        const coinName = symbolToCoinName[symbol];
+        if (!coinName) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Symbol not supported for news' }));
+            return;
+        }
+
+        try {
+            const newsRes = await fetch('https://api.coingecko.com/api/v3/news');
+            const allNews = await newsRes.json();
+            const filtered = allNews.data ? allNews.data.filter(item =>
+                item.tags && item.tags.some(tag => tag.toLowerCase() === coinName.toLowerCase())
+            ) : [];
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(filtered.slice(0, 10)));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to fetch news' }));
+        }
+        return;
+    }
+
+    // Scan & static files
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (masterScan && typeof masterScan.isBusy === 'function' && masterScan.isBusy()) {
@@ -291,8 +340,6 @@ Always put the action block FIRST, then your reply.`;
         });
         return;
     }
-
-    // ✅ NEW: Crypto route
     if (safePath === '/crypto' || safePath === '/crypto.html') {
         const filePath = path.join(__dirname, 'crypto.html');
         fs.readFile(filePath, (err, data) => {
@@ -301,7 +348,6 @@ Always put the action block FIRST, then your reply.`;
         });
         return;
     }
-
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
     if (!filePath.startsWith(path.join(__dirname))) { res.writeHead(403); res.end('Forbidden'); return; }
@@ -317,7 +363,6 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// Scanner (on demand)
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
