@@ -455,7 +455,8 @@ function render() {
         const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
         const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
-        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); toggleAlert('${p.n}')">🔕</span>`;
+        // ✅ Fixed: per-pair alert bell uses togglePairAlert to avoid conflict with header toggle
+        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
         // ✅ FIXED: Now supports both "price" and "currentPrice" fields
         const liveM = liveMarketData && liveMarketData[p.n];
         const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || '') : '';
@@ -498,7 +499,8 @@ function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-function toggleAlert(pair) { console.log('Alert toggle',pair); }
+// ✅ Fixed: renamed from toggleAlert to togglePairAlert to avoid overriding header toggle function
+function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
 // ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
