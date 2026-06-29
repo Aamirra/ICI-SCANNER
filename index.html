@@ -18,13 +18,13 @@
         .brand-icon { width:36px; height:36px; background:var(--acc); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
         .brand-text h1 { font-size:16px; font-weight:700; line-height:1.2; }
         .brand-text span { font-size:12px; color:var(--muted); }
-        .header-actions { display:flex; gap:8px; align-items:center; }
+        .header-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
         .icon-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--txt); }
         .alert-toggle { padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); }
         .alert-toggle.active { background:var(--green); color:#fff; border-color:var(--green); }
         .alert-toggle.inactive { background:var(--red); color:#fff; border-color:var(--red); }
         .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
-        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); text-decoration:none; display:inline-block; }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
@@ -70,7 +70,7 @@
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
-        /* ── AI Assistant Panel (always visible) ── */
+        /* ── AI Assistant Panel ── */
         .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
         .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
         .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
@@ -126,6 +126,7 @@
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
+        <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
         <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
@@ -455,7 +456,6 @@ function render() {
         const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
         const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
-        // ✅ Fixed: per-pair alert bell uses togglePairAlert to avoid conflict with header toggle
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
         // ✅ FIXED: Now supports both "price" and "currentPrice" fields
         const liveM = liveMarketData && liveMarketData[p.n];
@@ -499,7 +499,6 @@ function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-// ✅ Fixed: renamed from toggleAlert to togglePairAlert to avoid overriding header toggle function
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
 // ── Firebase Listeners ──
