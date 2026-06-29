@@ -118,6 +118,8 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <!-- ✅ News Icon -->
+            <button class="icon-btn" onclick="openNewsModal()" title="Crypto News">📰</button>
             <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
             <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
         </div>
@@ -194,6 +196,19 @@
         <div class="approval-btns">
             <button class="reject-btn" onclick="rejectAction()">Reject</button>
             <button class="approve-btn" onclick="approveAction()">Approve</button>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ News Modal -->
+<div class="modal" id="newsModal" onclick="closeNewsModal()">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-height:85vh;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;color:var(--gold)">📰 Crypto News</h3>
+            <button onclick="closeNewsModal()" style="background:none;border:none;font-size:18px;color:var(--red);cursor:pointer;">✕</button>
+        </div>
+        <div id="newsContentModal" style="max-height:60vh;overflow-y:auto;">
+            <div style="color:var(--muted);">Loading news...</div>
         </div>
     </div>
 </div>
@@ -440,7 +455,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart (with Binance Futures perpetual symbol) ──
+// ── Chart (Binance Futures perpetual) ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -451,21 +466,8 @@ function openChart(idx) {
     document.getElementById('chartPairName').textContent=symbol;
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
-    // ✅ Binance Futures perpetual chart
     const futuresSymbol = `BINANCE:${symbol.replace('USD', 'USDT')}.P`;
-    new TradingView.widget({
-        autosize: true,
-        symbol: futuresSymbol,
-        interval: "60",
-        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id: "tv_chart_container",
-        studies: [
-            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
-            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
-            {id:"WilliamFractal@tv-basicstudies"}
-        ]
-    });
+    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
@@ -476,6 +478,39 @@ function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
+
+// ── News Modal Functions ──
+async function openNewsModal() {
+    document.getElementById('newsModal').classList.add('open');
+    const container = document.getElementById('newsContentModal');
+    container.innerHTML = '<div style="color:var(--muted);">Loading news...</div>';
+    try {
+        const res = await fetch('/api/crypto-news?symbol=BTCUSD');
+        const news = await res.json();
+        if (!Array.isArray(news) || news.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center;">No recent major news.</div>';
+            return;
+        }
+        let html = '';
+        news.forEach(item => {
+            const title = item.title || 'No title';
+            const url = item.url || '#';
+            const source = item.source || 'Unknown';
+            const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+            html += `<div style="padding:10px;border-bottom:1px solid var(--border);">
+                <a href="${url}" target="_blank" style="color:var(--acc);font-weight:600;text-decoration:none;">${title}</a>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">Failed to load news</div>';
+    }
+}
+
+function closeNewsModal() {
+    document.getElementById('newsModal').classList.remove('open');
+}
 
 // ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
