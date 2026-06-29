@@ -32,12 +32,19 @@ console.log('✅ HealthMonitor & SelfHealer started');
 
 // ✅ Crypto Scanner (historical data) — every 15 minutes
 const { runCryptoScan } = require('./services/cryptoScanner');
-// Run after 30 sec, then every 15 minutes
 setTimeout(() => {
     runCryptoScan();
     setInterval(runCryptoScan, 15 * 60 * 1000); // 15 minutes
 }, 30000);
 console.log('✅ Crypto Scanner scheduled every 15 minutes');
+
+// ✅ Crypto News Alert — every 2 minutes
+const { fetchAndSendNews } = require('./services/cryptoNewsAlert');
+setTimeout(() => {
+    fetchAndSendNews();
+    setInterval(fetchAndSendNews, 2 * 60 * 1000); // 2 minutes
+}, 10000);
+console.log('✅ Crypto News Alert scheduled every 2 minutes');
 
 // Minimal HTTP server for Render health check
 const PORT = process.env.PORT || 3000;
