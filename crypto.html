@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ICI Crypto</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
+        body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
+        [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
+        [data-theme="dark"] { --bg:#0f172a; --surface:#1e293b; --border:#334155; --txt:#f8fafc; --acc:#3b82f6; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#94a3b8; --pill-bg:#1e293b; }
+        .phone-container { width:100%; max-width:450px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
+        .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .brand-icon { width:36px; height:36px; background:var(--acc); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
+        .brand-text h1 { font-size:16px; font-weight:700; line-height:1.2; }
+        .brand-text span { font-size:12px; color:var(--muted); }
+        .header-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .icon-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--txt); }
+        .alert-toggle { padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); }
+        .alert-toggle.active { background:var(--green); color:#fff; border-color:var(--green); }
+        .alert-toggle.inactive { background:var(--red); color:#fff; border-color:var(--red); }
+        .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
+        .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
+        .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
+        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; }
+        .counters-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:16px; }
+        .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 4px; text-align:center; cursor:pointer; }
+        .count-card .num { font-size:18px; font-weight:700; margin-bottom:2px; color:var(--txt); }
+        .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
+        .search-container { margin-bottom:16px; }
+        .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
+        .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+        .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
+        .item-row { border-bottom:1px solid var(--border); }
+        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
+        .item-main:hover { background:var(--pill-bg); }
+        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
+        .dots-container { display:flex; gap:4px; justify-content:center; }
+        .trend-dot { width:8px; height:8px; border-radius:50%; }
+        .trend-dot.g { background:var(--green); } .trend-dot.r { background:var(--red); }
+        .sentiment-wrapper { padding:0 4px; }
+        .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
+        .sent-red { background:var(--red); } .sent-green { background:var(--green); }
+        .change-val { font-size:13px; font-weight:600; }
+        .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
+        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
+        .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
+        .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
+        .compact-metric .val { font-weight:600; color:var(--txt); }
+        .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
+        .modal.open { display:flex; }
+        .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
+        body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
+        body.desktop-mode .phone-container { max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
+        body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
+        body.desktop-mode #tv_chart_container { min-height:0; }
+        body.desktop-mode #chartCloseBtn { display:none !important; }
+        body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
+        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
+        .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
+        .toggle-4h.active { background:var(--acc); color:#fff; }
+        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
+        .watchlist-star.active { color: #f59e0b !important; }
+        .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
+        /* ── AI Assistant Panel ── */
+        .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
+        .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
+        .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
+        .ai-body.collapsed { max-height: 0; }
+        .error-list-embedded { padding: 4px 12px; border-bottom: 1px solid var(--border); display: none; }
+        .error-list-embedded.has-errors { display: block; }
+        .error-item { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+        .chat-section { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+        .chat-messages-embedded { max-height: 120px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
+        .chat-message-embedded { margin-bottom: 6px; }
+        .chat-message-embedded.user { text-align: right; }
+        .chat-message-embedded.assistant { text-align: left; }
+        .chat-message-embedded span { display: inline-block; padding: 4px 8px; border-radius: 10px; max-width: 85%; word-wrap: break-word; }
+        .chat-message-embedded.user span { background: var(--acc); color: #fff; }
+        .chat-message-embedded.assistant span { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+        .chat-input-embedded { display: flex; gap: 6px; }
+        .chat-input-embedded input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--pill-bg); color: var(--txt); outline: none; }
+        .chat-input-embedded button { padding: 6px 10px; background: var(--acc); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .pending-code-changes { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; margin-bottom: 12px; padding: 8px 12px; font-size: 12px; display: none; }
+        .pending-code-changes.visible { display: block; }
+        .pending-header { font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+        .pending-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+        .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .btn-approve { background: var(--green); }
+        .btn-reject { background: var(--red); }
+        /* ── Approval Overlay ── */
+        .approval-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; }
+        .approval-overlay.open { display:flex; }
+        .approval-box { background:var(--surface); border-radius:16px; padding:20px; max-width:360px; width:90%; color:var(--txt); }
+        .approval-box h3 { margin:0 0 8px; font-size:16px; }
+        .approval-box p { font-size:13px; color:var(--muted); margin-bottom:16px; }
+        .approval-btns { display:flex; gap:8px; justify-content:flex-end; }
+        .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
+        .approve-btn { background:var(--green); color:#fff; }
+        .reject-btn { background:var(--red); color:#fff; }
+    </style>
+</head>
+<body>
+<div class="phone-container" id="app">
+    <div class="header-row">
+        <div class="brand">
+            <div class="brand-icon">₿</div>
+            <div class="brand-text"><h1>ICI Crypto</h1><span>clean v2</span></div>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
+        </div>
+    </div>
+
+    <div class="pills-row">
+        <button class="pill active-blue" onclick="setFilter('all')">All Crypto</button>
+        <a href="/" class="pill" style="text-decoration:none">💱 Forex</a>
+        <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
+        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
+        <div class="cloud-status" id="statusDot">● Cloud active</div>
+    </div>
+
+    <!-- ✅ AI Assistant Panel -->
+    <div class="ai-assistant-panel">
+        <div class="ai-header" onclick="toggleAIAssistant()">
+            <span>🤖 AI Assistant</span>
+            <span style="font-size:14px;">▼</span>
+        </div>
+        <div class="ai-body" id="aiBody">
+            <div class="error-list-embedded" id="errorListEmbedded"></div>
+            <div class="chat-section">
+                <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
+                <div class="chat-input-embedded">
+                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendOpenRouterChat()">
+                    <button onclick="sendOpenRouterChat()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Code Changes -->
+    <div class="pending-code-changes" id="pendingCodePanel">
+        <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
+        <div id="pendingCodeList"></div>
+    </div>
+
+    <div class="sync-info">
+        ✔ Cloud synced
+        <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
+    </div>
+
+    <div class="counters-grid">
+        <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
+        <div class="count-card" onclick="setFilter('bear')"><div class="num" style="color:var(--red)" id="rc">0</div><div class="label">Bearish</div></div>
+        <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
+        <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount">0</div><div class="label">Target</div></div>
+        <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
+    </div>
+
+    <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
+    <div class="table-header">
+        <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
+    </div>
+    <div id="pairsContainer"></div>
+</div>
+
+<!-- Chart Overlay -->
+<div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
+    <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
+        <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
+    </div>
+    <div id="tv_chart_container" style="flex:1"></div>
+</div>
+
+<!-- Approval Overlay -->
+<div class="approval-overlay" id="approvalOverlay">
+    <div class="approval-box">
+        <h3>⚠️ AI Action Approval</h3>
+        <p id="approvalMessage"></p>
+        <div class="approval-btns">
+            <button class="reject-btn" onclick="rejectAction()">Reject</button>
+            <button class="approve-btn" onclick="approveAction()">Approve</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="Alerts.js"></script>
+<script>
+// ── Firebase Init ──
+firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
+const db = firebase.database();
+
+// ── Crypto Pairs List (100 symbols) ──
+const PAIRS = [
+    {n:'BTCUSD'},{n:'ETHUSD'},{n:'LTCUSD'},{n:'BCHUSD'},{n:'XRPUSD'},{n:'ADAUSD'},
+    {n:'DOTUSD'},{n:'LINKUSD'},{n:'UNIUSD'},{n:'SOLUSD'},{n:'MATICUSD'},{n:'AVAXUSD'},
+    {n:'ATOMUSD'},{n:'FILUSD'},{n:'VETUSD'},{n:'ETCUSD'},{n:'TRXUSD'},{n:'XLMUSD'},
+    {n:'ICPUSD'},{n:'THETAUSD'},{n:'XTZUSD'},{n:'EOSUSD'},{n:'SANDUSD'},{n:'MANAUSD'},
+    {n:'DOGEUSD'},{n:'SHIBUSD'},{n:'PEPEUSD'},{n:'BONKUSD'},{n:'FLOKIUSD'},{n:'WIFUSD'},
+    {n:'GRTUSD'},{n:'ENJUSD'},{n:'CHZUSD'},{n:'BATUSD'},{n:'ZRXUSD'},{n:'OMGUSD'},
+    {n:'DASHUSD'},{n:'ZECUSD'},{n:'BTGUSD'},{n:'DCRUSD'},{n:'XVGUSD'},{n:'SCUSD'},
+    {n:'SNXUSD'},{n:'COMPUSD'},{n:'MKRUSD'},{n:'AAVEUSD'},{n:'YFIUSD'},{n:'SUSHIUSD'},
+    {n:'CRVUSD'},{n:'RENUSD'},{n:'KNCUSD'},{n:'BANDUSD'},{n:'NMRUSD'},{n:'OCEANUSD'},
+    {n:'FETUSD'},{n:'AGIXUSD'},{n:'BNBUSD'},{n:'CAKEUSD'},{n:'RUNEUSD'},{n:'ALGOUSD'},
+    {n:'NEARUSD'},{n:'FLOWUSD'},{n:'APTUSD'},{n:'OPUSD'},{n:'ARBUSD'},{n:'SUIUSD'},
+    {n:'INJUSD'},{n:'TIAUSD'},{n:'SEIUSD'},{n:'BLURUSD'},{n:'PYTHUSD'},{n:'JTOUSD'},
+    {n:'ORDIUSD'},{n:'1000SATSUSD'},{n:'BEAMUSD'},{n:'RNDRUSD'},{n:'IMXUSD'},{n:'MINAUSD'},
+    {n:'GALAUSD'},{n:'AXSUSD'},{n:'SANDUSD'},{n:'MANAUSD'},{n:'APEUSD'},{n:'ENSUSD'},
+    {n:'LDOUSD'},{n:'STXUSD'},{n:'CFXUSD'},{n:'KLAYUSD'},{n:'FTMUSD'},{n:'HBARUSD'},
+    {n:'EGLDUSD'},{n:'QNTUSD'},{n:'ARUSD'},{n:'ZILUSD'},{n:'KSMUSD'},{n:'ANTUSD'},
+    {n:'IOTXUSD'},{n:'CELOUSD'},{n:'ANKRUSD'},{n:'SKLUSD'},{n:'SPELLUSD'},{n:'JOEUSD'},
+    {n:'GMXUSD'},{n:'PENDLEUSD'},{n:'SSVUSD'},{n:'FXSUSD'},{n:'LQTYUSD'},{n:'MASKUSD'}
+];
+
+let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
+let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
+let watchlistSet = new Set();
+let liveMarketData = {};
+let errorLog = [];
+let alertSettings = { telegram: true, whatsapp: true };
+
+// ── Alert Settings ──
+db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
+function updateToggleButtons() {
+    const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
+    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? '🔔 Telegram ON' : '🔕 Telegram OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
+    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? '💬 WhatsApp ON' : '🔕 WhatsApp OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
+}
+function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
+
+// ── Watchlist ──
+db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
+function isInWatchlist(p) { return watchlistSet.has(p); }
+function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
+
+// ── Live Market Data ──
+db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+
+// ── Error Log ──
+db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
+function updateErrorListEmbedded() {
+    const listDiv = document.getElementById('errorListEmbedded');
+    if (!listDiv) return;
+    if (errorLog.length === 0) { listDiv.classList.remove('has-errors'); listDiv.innerHTML = ''; return; }
+    listDiv.classList.add('has-errors');
+    listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
+}
+function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
+
+// ── Pending Code Changes ──
+db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
+    const requests = snap.val() || {};
+    const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
+    if (!panel) return;
+    const items = Object.entries(requests);
+    if (items.length === 0) { panel.classList.remove('visible'); return; }
+    panel.classList.add('visible'); countSpan.textContent = items.length;
+    listDiv.innerHTML = items.map(([id, req]) => `<div class="pending-item">
+        <span style="flex:1;color:var(--txt);">${escapeHtml(req.instruction)}</span>
+        <button class="btn-approve" onclick="approveCodeChange('${id}')">Approve</button>
+        <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
+    </div>`).join('');
+});
+async function approveCodeChange(id) {
+    const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
+    const changeReq = snap.val();
+    if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found or already processed'); return; }
+    const newContent = changeReq.newContent;
+    if (!newContent) { console.error('No newContent in change request'); return; }
+    try {
+        const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
+        const result = await res.json();
+        if (res.ok) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); alert('Code change committed! Render deploy hone ke baad AI update ho jayega.'); }
+        else alert('Error: ' + (result.error || 'Failed'));
+    } catch(e) { console.error(e); alert('Network error'); }
+}
+async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
+
+// ── AI Chat via Server Proxy (with Action Parser) ──
+async function sendOpenRouterChat() {
+    const input = document.getElementById('chatInputEmbedded');
+    const messagesDiv = document.getElementById('chatMessagesEmbedded');
+    const userText = input.value.trim();
+    if (!userText) return;
+    messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
+    input.value = '';
+    messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    try {
+        const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userText }) });
+        const data = await response.json();
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
+        if (!response.ok) {
+            const errMsg = data.error || `HTTP Error ${response.status}`;
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(errMsg)}</span></div>`;
+        } else {
+            const rawResponse = data.response || 'Sorry, no response.';
+            const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
+            let displayText = rawResponse;
+            let pendingAction = null;
+            if (actionMatch) {
+                const actionType = actionMatch[1];
+                const paramsStr = actionMatch[2];
+                displayText = rawResponse.replace(actionMatch[0], '').trim();
+                try {
+                    const params = JSON.parse(paramsStr);
+                    pendingAction = { type: actionType, params };
+                    document.getElementById('approvalMessage').textContent = `AI wants to perform action: "${actionType}" with details: ${paramsStr}. Allow?`;
+                    document.getElementById('approvalOverlay').classList.add('open');
+                    window.__pendingAction = { type: actionType, params };
+                } catch(e) { console.error('Action parse error', e); }
+            }
+            if (displayText) messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
+        }
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch (e) {
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
+    }
+}
+
+async function approveAction() {
+    const action = window.__pendingAction; if (!action) return;
+    document.getElementById('approvalOverlay').classList.remove('open');
+    try {
+        const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
+        const result = await res.json();
+        const messagesDiv = document.getElementById('chatMessagesEmbedded');
+        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch(e) { console.error(e); }
+    window.__pendingAction = null;
+}
+
+function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
+function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ── Scan ──
+function actualScan() {
+    const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+    fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
+    .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
+}
+
+// ── Theme, Desktop, Filter ──
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('ici-crypto-theme', html.getAttribute('data-theme'));
+}
+function toggleDesktopMode() {
+    const isDesktop = document.body.classList.toggle('desktop-mode');
+    document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
+    document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '💻';
+    localStorage.setItem('crypto-desktop-mode', isDesktop ? 'desktop' : 'mobile');
+}
+function setFilter(f) { curF = f; render(); }
+function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
+
+// ── Counts ──
+function updateCounts() {
+    let b=0, r=0;
+    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
+    document.getElementById('bc').textContent=b; document.getElementById('rc').textContent=r; document.getElementById('allCount').textContent=PAIRS.length;
+    let tCount=0;
+    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; if(!show4H && k.includes('_4h_')) continue; tCount++; }
+    document.getElementById('targetCount').textContent=tCount;
+    document.getElementById('tradesCount').textContent=watchlistSet.size;
+}
+function isInTargetList(p) {
+    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; const parts=k.split('_'); if(parts[0]===p) { if(!show4H && k.includes('_4h_')) continue; return true; } }
+    return false;
+}
+
+// ── Render ──
+function render() {
+    const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
+    let filtered;
+    if(curF==='all') filtered = currentPairs;
+    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+    else if(curF==='target') filtered = currentPairs.filter(p=>isInTargetList(p.n));
+    else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
+    else filtered = currentPairs;
+    currentDisplayPairs = filtered.map(p=>p.n);
+
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
+        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
+        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
+        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
+        const changeClass=t.longTermTrend>=0?'up':'down';
+        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
+        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf=>{
+            const liveM = liveMarketData && liveMarketData[p.n];
+            if(liveM && liveM[tf]) return liveM[tf];
+            return m[tf] || '';
+        });
+        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
+        const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
+        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
+        const liveM = liveMarketData && liveMarketData[p.n];
+        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || '') : '';
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+        return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
+            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
+            <div class="row-timeframes dots-container">${dots}</div>
+            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert">${bellHtml}</div>
+        </div><div class="compact-details">
+            <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+            <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+            <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+            <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+        </div></div>`;
+    }).join('');
+    updateCounts();
+}
+
+// ── Chart ──
+function openChartForPair(pairName) {
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
+    openChart(chartIdx);
+}
+function openChart(idx) {
+    chartIdx=idx; const symbol=chartPairs[idx];
+    document.getElementById('chartPairName').textContent=symbol;
+    document.getElementById('chartOverlay').style.display='flex';
+    document.getElementById('tv_chart_container').innerHTML='';
+    new TradingView.widget({ autosize:true, symbol:symbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
+}
+function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
+function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
+
+// ── 4H Toggle ──
+function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
+function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
+(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
+
+function togglePairAlert(pair) { console.log('Alert toggle',pair); }
+
+// ── Firebase Listeners ──
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
+db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
+
+(function(){
+    const saved=localStorage.getItem('ici-crypto-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+    if(localStorage.getItem('crypto-desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
+})();
+updateToggleButtons();
+</script>
+</body>
+</html>
