@@ -29,6 +29,21 @@ const fourHourMinuteAcc = {};
 const liveCloses1H = {};
 const liveCloses4H = {};
 
+// ── Crypto Symbols (100) ──
+const CRYPTO_PAIRS = [
+    'BTCUSD','ETHUSD','LTCUSD','BCHUSD','XRPUSD','ADAUSD','DOTUSD','LINKUSD','UNIUSD','SOLUSD',
+    'MATICUSD','AVAXUSD','ATOMUSD','FILUSD','VETUSD','ETCUSD','TRXUSD','XLMUSD','ICPUSD','THETAUSD',
+    'XTZUSD','EOSUSD','SANDUSD','MANAUSD','DOGEUSD','SHIBUSD','PEPEUSD','BONKUSD','FLOKIUSD','WIFUSD',
+    'GRTUSD','ENJUSD','CHZUSD','BATUSD','ZRXUSD','OMGUSD','DASHUSD','ZECUSD','BTGUSD','DCRUSD',
+    'XVGUSD','SCUSD','SNXUSD','COMPUSD','MKRUSD','AAVEUSD','YFIUSD','SUSHIUSD','CRVUSD','RENUSD',
+    'KNCUSD','BANDUSD','NMRUSD','OCEANUSD','FETUSD','AGIXUSD','BNBUSD','CAKEUSD','RUNEUSD','ALGOUSD',
+    'NEARUSD','FLOWUSD','APTUSD','OPUSD','ARBUSD','SUIUSD','INJUSD','TIAUSD','SEIUSD','BLURUSD',
+    'PYTHUSD','JTOUSD','ORDIUSD','1000SATSUSD','BEAMUSD','RNDRUSD','IMXUSD','MINAUSD','GALAUSD',
+    'AXSUSD','APEUSD','ENSUSD','LDOUSD','STXUSD','CFXUSD','KLAYUSD','FTMUSD','HBARUSD','EGLDUSD',
+    'QNTUSD','ARUSD','ZILUSD','KSMUSD','ANTUSD','IOTXUSD','CELOUSD','ANKRUSD','SKLUSD','SPELLUSD',
+    'JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD','LQTYUSD','MASKUSD'
+];
+
 function initFromScanner() {
     for (const pair in RAW_1H) {
         if (RAW_1H[pair] && RAW_1H[pair].closes) liveCloses1H[pair] = [...RAW_1H[pair].closes];
@@ -56,7 +71,7 @@ function updateMinuteCandle(pair, price) {
 function finalizeHourlyCandle(pair) {
     const minutes = minuteCandles[pair];
     if (!minutes || minutes.length === 0) return null;
-    const hourly = {
+    return {
         o: minutes[0].o,
         h: Math.max(...minutes.map(m => m.h)),
         l: Math.min(...minutes.map(m => m.l)),
@@ -64,8 +79,6 @@ function finalizeHourlyCandle(pair) {
         v: minutes.reduce((sum, m) => sum + (m.v || 0), 0),
         time: Date.now()
     };
-    minuteCandles[pair] = [];
-    return hourly;
 }
 
 function updateFourHourBuffer(pair, price) {
@@ -86,15 +99,13 @@ function updateFourHourBuffer(pair, price) {
 function finalizeFourHourCandle(pair) {
     const arr = fourHourMinuteAcc[pair];
     if (!arr || arr.length === 0) return null;
-    const fourH = {
+    return {
         o: arr[0].o,
         h: Math.max(...arr.map(m => m.h)),
         l: Math.min(...arr.map(m => m.l)),
         c: arr[arr.length - 1].c,
         time: Date.now()
     };
-    fourHourMinuteAcc[pair] = [];
-    return fourH;
 }
 
 function computeLiveSignals(pair) {
@@ -128,12 +139,10 @@ async function pushLiveSignals() {
         }
     }
     if (Object.keys(updates).length > 0) {
-        await admin.database().ref().update(updates)
-            .catch(e => console.error('[LiveTicks] Firebase update error:', e.message));
+        await admin.database().ref().update(updates).catch(e => console.error('[LiveTicks] Firebase update error:', e.message));
     }
 }
 
-// Custom alerts check (same as before)
 async function checkCustomAlerts(signals) {
     const db = admin.database();
     const rulesSnap = await db.ref('customAlertRules').once('value');
@@ -161,14 +170,12 @@ function connectFinnhub() {
     ws.on('open', () => {
         console.log('[LiveTicks] Finnhub WebSocket connected');
         config.PAIRS.forEach(p => {
-            if (p.n === 'XAUUSD') {
-                ws.send(JSON.stringify({ type: 'subscribe', symbol: 'OANDA:XAU_USD' }));
-            } else if (['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD',
+            if (p.n === 'XAUUSD') ws.send(JSON.stringify({ type: 'subscribe', symbol: 'OANDA:XAU_USD' }));
+            else if (['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD',
                 'EURJPY','GBPJPY','AUDJPY','NZDJPY','CADJPY','CHFJPY',
                 'EURGBP','EURAUD','EURCAD','EURCHF','GBPAUD','GBPCAD','GBPCHF',
                 'AUDCAD','AUDCHF','AUDNZD','NZDCAD','NZDCHF','CADCHF'].includes(p.n)) {
-                const sym = `OANDA:${p.n.slice(0,3)}_${p.n.slice(3)}`;
-                ws.send(JSON.stringify({ type: 'subscribe', symbol: sym }));
+                ws.send(JSON.stringify({ type: 'subscribe', symbol: `OANDA:${p.n.slice(0,3)}_${p.n.slice(3)}` }));
             } else if (['US500','US100','US30','GER40','UK100','JPN225'].includes(p.n)) {
                 const idxMap = { 'US500':'^GSPC', 'US100':'^NDX', 'US30':'^DJI', 'GER40':'^GDAXI', 'UK100':'^FTSE', 'JPN225':'^N225' };
                 ws.send(JSON.stringify({ type: 'subscribe', symbol: idxMap[p.n] }));
@@ -204,21 +211,26 @@ function connectFinnhub() {
 }
 
 function connectBinance() {
-    ['btcusdt', 'ethusdt'].forEach(sym => {
-        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@trade`);
-        ws.on('message', (data) => {
-            try {
-                const msg = JSON.parse(data);
-                const price = parseFloat(msg.p);
-                const pair = sym.replace('usdt', 'usd').toUpperCase();
-                currentPrices[pair] = price;
-                updateMinuteCandle(pair, price);
-                updateFourHourBuffer(pair, price);
-            } catch (e) {}
-        });
-        ws.on('error', () => {});
-        ws.on('close', () => setTimeout(() => connectBinance(), 5000));
+    const streams = CRYPTO_PAIRS.map(p => `${p.toLowerCase().replace('usd','usdt')}@trade`).join('/');
+    const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+    ws.on('open', () => console.log('[LiveTicks] Binance WebSocket connected for all crypto'));
+    ws.on('message', (data) => {
+        try {
+            const msg = JSON.parse(data);
+            if (msg.data && msg.data.e === 'trade') {
+                const trade = msg.data;
+                const price = parseFloat(trade.p);
+                const symbol = trade.s.replace('USDT','USD').toUpperCase();
+                if (CRYPTO_PAIRS.includes(symbol)) {
+                    currentPrices[symbol] = price;
+                    updateMinuteCandle(symbol, price);
+                    updateFourHourBuffer(symbol, price);
+                }
+            }
+        } catch (e) {}
     });
+    ws.on('error', (err) => console.error('[LiveTicks] Binance WS error:', err.message));
+    ws.on('close', () => { console.log('[LiveTicks] Binance WS disconnected – reconnecting in 5s'); setTimeout(connectBinance, 5000); });
 }
 
 let intervalId;
@@ -227,7 +239,6 @@ function startProcessing() {
     intervalId = setInterval(async () => {
         const now = new Date();
         const minute = now.getUTCMinutes();
-
         if (minute === 0) {
             for (const pair of Object.keys(minuteCandles)) {
                 const hourly = finalizeHourlyCandle(pair);
@@ -243,7 +254,6 @@ function startProcessing() {
                     }
                 }
             }
-
             const hour = now.getUTCHours();
             if (hour % 4 === 0) {
                 for (const pair of Object.keys(fourHourMinuteAcc)) {
@@ -262,7 +272,6 @@ function startProcessing() {
                 }
             }
         }
-
         const allSignals = {};
         for (const pair of Object.keys(currentPrices)) {
             const sigs = computeLiveSignals(pair);
