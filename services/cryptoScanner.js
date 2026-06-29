@@ -15,12 +15,10 @@ const CRYPTO_SYMBOLS = [
     'JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD','LQTYUSD','MASKUSD'
 ];
 
-// Helper: convert pair like BTCUSD -> BTCUSDT for Binance API
 function toBinanceSymbol(pair) {
     return pair.replace('USD', 'USDT');
 }
 
-// Fetch candles from Binance
 async function fetchCandles(symbol, interval, limit = 200) {
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const res = await fetch(url);
@@ -29,16 +27,16 @@ async function fetchCandles(symbol, interval, limit = 200) {
         console.error(`[CryptoScanner] Failed to fetch ${symbol} ${interval}:`, data);
         return [];
     }
-    // Return array of { close, high, low, time }
     return data.map(k => ({
         close: parseFloat(k[4]),
         high: parseFloat(k[2]),
         low: parseFloat(k[3]),
+        volume: parseFloat(k[5]),      // base asset volume
+        quoteVolume: parseFloat(k[7]),  // quote asset volume (USDT)
         time: k[0]
     }));
 }
 
-// Calculate EMA of given period on array of numbers
 function calcEMA(values, period) {
     if (values.length < period) return null;
     const k = 2 / (period + 1);
@@ -49,7 +47,6 @@ function calcEMA(values, period) {
     return ema;
 }
 
-// Compute all metrics for a pair given its candles and current price
 function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, currentPrice) {
     const result = {
         technicalMetrics: {},
@@ -68,16 +65,25 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
             const longTermTrend = ((currentPrice - ema200) / ema200) * 100;
             result.technicalMetrics.longTermTrend = Math.round(longTermTrend * 100) / 100;
         }
-        // Volume 7d average
-        const last7volumes = dailyCandles.slice(-7).map(c => c.high); // using high as proxy? No, volume is separate.
-        // Actually Binance candles have volume field (index 5). We didn't include it.
-        // Let's extend candle fetching to include volume.
-        // Better to fetch volume as well. We'll update fetchCandles to return volume.
-        // For now skip or later.
+    }
+
+    // Volume 7d average (base asset)
+    if (dailyCandles.length >= 7) {
+        const last7volumes = dailyCandles.slice(-7).map(c => c.volume);
+        const avgVol = last7volumes.reduce((a, b) => a + b, 0) / 7;
+        result.technicalMetrics.volume7dAvg = Math.round(avgVol);
+    }
+
+    // Dollar volume (last 24h) = last daily candle's quoteVolume (in USDT) or volume * close
+    if (dailyCandles.length >= 1) {
+        const lastDay = dailyCandles[dailyCandles.length - 1];
+        // quoteVolume already in USDT, so dollar volume directly
+        const dollarVol = lastDay.quoteVolume || (lastDay.volume * lastDay.close);
+        result.technicalMetrics.dollarVolume1d = Math.round(dollarVol * 100) / 100;
     }
 
     // 4h metrics
-    if (fourHourCandles.length >= 26) { // ~1 week
+    if (fourHourCandles.length >= 26) {
         const closes = fourHourCandles.map(c => c.close);
         const ema20 = calcEMA(closes, 20);
         if (ema20 && currentPrice) {
@@ -94,8 +100,7 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // shortTermMomentum (10C): percentage change over last 10 days?
-    // We'll use daily closes: (currentPrice - price 10 days ago) / price 10 days ago * 100
+    // shortTermMomentum (10C): percentage change over last 10 days
     if (dailyCandles.length >= 10 && currentPrice) {
         const prevClose = dailyCandles[dailyCandles.length - 10].close;
         if (prevClose > 0) {
@@ -111,8 +116,8 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // 1week signal (using daily EMA20 vs currentPrice)
-    if (dailyCandles.length >= 140) { // ~7*20
+    // 1week signal (using daily EMA20)
+    if (dailyCandles.length >= 140) {
         const closes140 = dailyCandles.map(c => c.close).slice(-140);
         const ema20w = calcEMA(closes140, 20);
         if (ema20w && currentPrice) {
@@ -120,13 +125,9 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // Volume7D and DollarVolume1D require volume data; we'll fetch that in updated fetchCandles (v2)
-    // For now skip those; later can add volume fetching.
-
     return result;
 }
 
-// Main scan function
 async function runCryptoScan() {
     console.log('[CryptoScanner] Starting crypto historical data fetch...');
     const db = admin.database();
@@ -141,13 +142,11 @@ async function runCryptoScan() {
                 fetchCandles(symbol, '1h', 200)
             ]);
 
-            // Get current price from Firebase liveMarketData (set by liveTicks)
             const priceSnap = await db.ref(`liveMarketData/${pair}/price`).once('value');
             const currentPrice = priceSnap.val() || null;
 
             const metrics = computeMetrics(pair, daily, fourH, oneH, currentPrice);
 
-            // Prepare update paths
             if (Object.keys(metrics.technicalMetrics).length > 0) {
                 updates[`technicalMetrics/${pair}`] = metrics.technicalMetrics;
             }
@@ -160,7 +159,6 @@ async function runCryptoScan() {
             console.error(`[CryptoScanner] Error processing ${pair}:`, e.message);
         }
 
-        // Small delay to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
     }
 
