@@ -1,7 +1,7 @@
 # ICI Scanner — Project Summary for AI
 
 ## 🔗 Repositories & Deployments
-- **GitHub Repo**: `https://github.com/AamirMath/Screener-New`
+- **GitHub Repo**: `https://github.com/Aamirra/ICI-SCANNER`
 - **Render Account 1 (New — Main)**: `ici-scanner` → `https://ici-scanner.onrender.com`  
   Start Command: `node ici-server.js`  
   Purpose: Dashboard (Forex + Stocks), AI Chat, Scanner, Telegram/WhatsApp actions
