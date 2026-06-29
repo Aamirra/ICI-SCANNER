@@ -440,7 +440,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart ──
+// ── Chart (with Binance Futures perpetual symbol) ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -451,7 +451,21 @@ function openChart(idx) {
     document.getElementById('chartPairName').textContent=symbol;
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
-    new TradingView.widget({ autosize:true, symbol:symbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
+    // ✅ Binance Futures perpetual chart
+    const futuresSymbol = `BINANCE:${symbol.replace('USD', 'USDT')}.P`;
+    new TradingView.widget({
+        autosize: true,
+        symbol: futuresSymbol,
+        interval: "60",
+        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id: "tv_chart_container",
+        studies: [
+            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
+            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
