@@ -20,7 +20,8 @@ function toBinanceSymbol(pair) {
 }
 
 async function fetchCandles(symbol, interval, limit = 200) {
-    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+    // ✅ Changed to Binance Futures REST API
+    const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const res = await fetch(url);
     const data = await res.json();
     if (!Array.isArray(data)) {
@@ -31,8 +32,8 @@ async function fetchCandles(symbol, interval, limit = 200) {
         close: parseFloat(k[4]),
         high: parseFloat(k[2]),
         low: parseFloat(k[3]),
-        volume: parseFloat(k[5]),      // base asset volume
-        quoteVolume: parseFloat(k[7]),  // quote asset volume (USDT)
+        volume: parseFloat(k[5]),
+        quoteVolume: parseFloat(k[7]),
         time: k[0]
     }));
 }
@@ -53,7 +54,6 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         marketData: {}
     };
 
-    // ---- Daily metrics ----
     if (dailyCandles.length >= 200) {
         const closes200 = dailyCandles.map(c => c.close).slice(-200);
         const ema20 = calcEMA(closes200, 20);
@@ -67,22 +67,18 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // Volume 7d average (base asset)
     if (dailyCandles.length >= 7) {
         const last7volumes = dailyCandles.slice(-7).map(c => c.volume);
         const avgVol = last7volumes.reduce((a, b) => a + b, 0) / 7;
         result.technicalMetrics.volume7dAvg = Math.round(avgVol);
     }
 
-    // Dollar volume (last 24h) = last daily candle's quoteVolume (in USDT) or volume * close
     if (dailyCandles.length >= 1) {
         const lastDay = dailyCandles[dailyCandles.length - 1];
-        // quoteVolume already in USDT, so dollar volume directly
         const dollarVol = lastDay.quoteVolume || (lastDay.volume * lastDay.close);
         result.technicalMetrics.dollarVolume1d = Math.round(dollarVol * 100) / 100;
     }
 
-    // 4h metrics
     if (fourHourCandles.length >= 26) {
         const closes = fourHourCandles.map(c => c.close);
         const ema20 = calcEMA(closes, 20);
@@ -91,7 +87,6 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // 1h metrics
     if (oneHourCandles.length >= 20) {
         const closes = oneHourCandles.map(c => c.close);
         const ema20 = calcEMA(closes, 20);
@@ -100,7 +95,6 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // shortTermMomentum (10C): percentage change over last 10 days
     if (dailyCandles.length >= 10 && currentPrice) {
         const prevClose = dailyCandles[dailyCandles.length - 10].close;
         if (prevClose > 0) {
@@ -108,7 +102,6 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // microMomentum (1HM): last 1 hour change
     if (oneHourCandles.length >= 1 && currentPrice) {
         const prevH = oneHourCandles[oneHourCandles.length - 1].close;
         if (prevH > 0) {
@@ -116,7 +109,6 @@ function computeMetrics(pair, dailyCandles, fourHourCandles, oneHourCandles, cur
         }
     }
 
-    // 1week signal (using daily EMA20)
     if (dailyCandles.length >= 140) {
         const closes140 = dailyCandles.map(c => c.close).slice(-140);
         const ema20w = calcEMA(closes140, 20);
