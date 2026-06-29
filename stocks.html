@@ -24,7 +24,7 @@
         .alert-toggle.active { background:var(--green); color:#fff; border-color:var(--green); }
         .alert-toggle.inactive { background:var(--red); color:#fff; border-color:var(--red); }
         .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
-        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); text-decoration:none; display:inline-block; }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .pill.market-btn { background:var(--pill-bg); color:var(--txt); }
@@ -130,6 +130,7 @@
         <button class="pill market-btn" id="psxBtn" onclick="setMarket('psx')">🇵🇰 PSX</button>
         <button class="pill scan-btn" onclick="manualScan()">🔍 Scan</button>
         <a href="/" class="pill" style="text-decoration:none">🔙 Main</a>
+        <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
     </div>
 
     <!-- ✅ AI Assistant Panel -->
@@ -265,9 +266,9 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
 async function approveCodeChange(id) {
     const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
     const changeReq = snap.val();
-    if (!changeReq || changeReq.status !== 'pending_approval') return;
+    if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found or already processed'); return; }
     const newContent = changeReq.newContent;
-    if (!newContent) return;
+    if (!newContent) { console.error('No newContent in change request'); return; }
     try {
         const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
         const result = await res.json();
