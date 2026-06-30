@@ -1,38 +1,36 @@
 const admin = require('firebase-admin');
 const { sendWhatsAppAlert } = require('./whatsappBot');
 
-// Mapping from our symbol to CoinGecko coin name
 const SYMBOL_TO_COIN = {
-    'BTCUSD': 'Bitcoin', 'ETHUSD': 'Ethereum', 'LTCUSD': 'Litecoin', 'BCHUSD': 'Bitcoin Cash',
-    'XRPUSD': 'XRP', 'ADAUSD': 'Cardano', 'DOTUSD': 'Polkadot', 'LINKUSD': 'Chainlink',
-    'UNIUSD': 'Uniswap', 'SOLUSD': 'Solana', 'MATICUSD': 'Polygon', 'AVAXUSD': 'Avalanche',
-    'ATOMUSD': 'Cosmos', 'FILUSD': 'Filecoin', 'VETUSD': 'VeChain', 'ETCUSD': 'Ethereum Classic',
-    'TRXUSD': 'TRON', 'XLMUSD': 'Stellar', 'ICPUSD': 'Internet Computer', 'THETAUSD': 'Theta Network',
-    'XTZUSD': 'Tezos', 'EOSUSD': 'EOS', 'SANDUSD': 'The Sandbox', 'MANAUSD': 'Decentraland',
-    'DOGEUSD': 'Dogecoin', 'SHIBUSD': 'Shiba Inu', 'PEPEUSD': 'Pepe', 'BONKUSD': 'Bonk',
-    'FLOKIUSD': 'Floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'The Graph', 'ENJUSD': 'Enjin Coin',
-    'CHZUSD': 'Chiliz', 'BATUSD': 'Basic Attention Token', 'ZRXUSD': '0x', 'OMGUSD': 'OMG Network',
-    'DASHUSD': 'Dash', 'ZECUSD': 'Zcash', 'BTGUSD': 'Bitcoin Gold', 'DCRUSD': 'Decred',
-    'XVGUSD': 'Verge', 'SCUSD': 'Siacoin', 'SNXUSD': 'Synthetix', 'COMPUSD': 'Compound',
-    'MKRUSD': 'Maker', 'AAVEUSD': 'Aave', 'YFIUSD': 'yearn.finance', 'SUSHIUSD': 'SushiSwap',
-    'CRVUSD': 'Curve DAO', 'RENUSD': 'Ren', 'KNCUSD': 'Kyber Network Crystal', 'BANDUSD': 'Band Protocol',
-    'NMRUSD': 'Numeraire', 'OCEANUSD': 'Ocean Protocol', 'FETUSD': 'Fetch.ai', 'AGIXUSD': 'SingularityNET',
-    'BNBUSD': 'BNB', 'CAKEUSD': 'PancakeSwap', 'RUNEUSD': 'THORChain', 'ALGOUSD': 'Algorand',
-    'NEARUSD': 'NEAR Protocol', 'FLOWUSD': 'Flow', 'APTUSD': 'Aptos', 'OPUSD': 'Optimism',
-    'ARBUSD': 'Arbitrum', 'SUIUSD': 'Sui', 'INJUSD': 'Injective', 'TIAUSD': 'Celestia',
-    'SEIUSD': 'Sei', 'BLURUSD': 'Blur', 'PYTHUSD': 'Pyth Network', 'JTOUSD': 'Jito',
-    'ORDIUSD': 'Ordinals', '1000SATSUSD': 'SATS (Ordinals)', 'BEAMUSD': 'Beam', 'RNDRUSD': 'Render Token',
-    'IMXUSD': 'Immutable', 'MINAUSD': 'Mina', 'GALAUSD': 'Gala', 'AXSUSD': 'Axie Infinity',
-    'APEUSD': 'ApeCoin', 'ENSUSD': 'Ethereum Name Service', 'LDOUSD': 'Lido DAO',
-    'STXUSD': 'Stacks', 'CFXUSD': 'Conflux', 'KLAYUSD': 'Klaytn', 'FTMUSD': 'Fantom',
-    'HBARUSD': 'Hedera', 'EGLDUSD': 'Elrond', 'QNTUSD': 'Quant', 'ARUSD': 'Arweave',
-    'ZILUSD': 'Zilliqa', 'KSMUSD': 'Kusama', 'ANTUSD': 'Aragon', 'IOTXUSD': 'IoTeX',
-    'CELOUSD': 'Celo', 'ANKRUSD': 'Ankr', 'SKLUSD': 'SKALE', 'SPELLUSD': 'Spell Token',
-    'JOEUSD': 'JOE', 'GMXUSD': 'GMX', 'PENDLEUSD': 'Pendle', 'SSVUSD': 'SSV Network',
-    'FXSUSD': 'Frax Share', 'LQTYUSD': 'Liquity', 'MASKUSD': 'Mask Network'
+    'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
+    'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
+    'UNIUSD': 'uniswap', 'SOLUSD': 'solana', 'MATICUSD': 'polygon', 'AVAXUSD': 'avalanche',
+    'ATOMUSD': 'cosmos', 'FILUSD': 'filecoin', 'VETUSD': 'vechain', 'ETCUSD': 'ethereum classic',
+    'TRXUSD': 'tron', 'XLMUSD': 'stellar', 'ICPUSD': 'internet computer', 'THETAUSD': 'theta',
+    'XTZUSD': 'tezos', 'EOSUSD': 'eos', 'SANDUSD': 'the sandbox', 'MANAUSD': 'decentraland',
+    'DOGEUSD': 'dogecoin', 'SHIBUSD': 'shiba inu', 'PEPEUSD': 'pepe', 'BONKUSD': 'bonk',
+    'FLOKIUSD': 'floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'the graph', 'ENJUSD': 'enjin coin',
+    'CHZUSD': 'chiliz', 'BATUSD': 'basic attention token', 'ZRXUSD': '0x', 'OMGUSD': 'omg network',
+    'DASHUSD': 'dash', 'ZECUSD': 'zcash', 'BTGUSD': 'bitcoin gold', 'DCRUSD': 'decred',
+    'XVGUSD': 'verge', 'SCUSD': 'siacoin', 'SNXUSD': 'synthetix', 'COMPUSD': 'compound',
+    'MKRUSD': 'maker', 'AAVEUSD': 'aave', 'YFIUSD': 'yearn finance', 'SUSHIUSD': 'sushiswap',
+    'CRVUSD': 'curve dao', 'RENUSD': 'ren', 'KNCUSD': 'kyber network', 'BANDUSD': 'band protocol',
+    'NMRUSD': 'numeraire', 'OCEANUSD': 'ocean protocol', 'FETUSD': 'fetch.ai', 'AGIXUSD': 'singularitynet',
+    'BNBUSD': 'bnb', 'CAKEUSD': 'pancakeswap', 'RUNEUSD': 'thorchain', 'ALGOUSD': 'algorand',
+    'NEARUSD': 'near protocol', 'FLOWUSD': 'flow', 'APTUSD': 'aptos', 'OPUSD': 'optimism',
+    'ARBUSD': 'arbitrum', 'SUIUSD': 'sui', 'INJUSD': 'injective', 'TIAUSD': 'celestia',
+    'SEIUSD': 'sei', 'BLURUSD': 'blur', 'PYTHUSD': 'pyth network', 'JTOUSD': 'jito',
+    'ORDIUSD': 'ordinals', '1000SATSUSD': 'sats', 'BEAMUSD': 'beam', 'RNDRUSD': 'render token',
+    'IMXUSD': 'immutable', 'MINAUSD': 'mina', 'GALAUSD': 'gala', 'AXSUSD': 'axie infinity',
+    'APEUSD': 'apecoin', 'ENSUSD': 'ethereum name service', 'LDOUSD': 'lido dao',
+    'STXUSD': 'stacks', 'CFXUSD': 'conflux', 'KLAYUSD': 'klaytn', 'FTMUSD': 'fantom',
+    'HBARUSD': 'hedera', 'EGLDUSD': 'elrond', 'QNTUSD': 'quant', 'ARUSD': 'arweave',
+    'ZILUSD': 'zilliqa', 'KSMUSD': 'kusama', 'ANTUSD': 'aragon', 'IOTXUSD': 'iotex',
+    'CELOUSD': 'celo', 'ANKRUSD': 'ankr', 'SKLUSD': 'skale', 'SPELLUSD': 'spell token',
+    'JOEUSD': 'joe', 'GMXUSD': 'gmx', 'PENDLEUSD': 'pendle', 'SSVUSD': 'ssv network',
+    'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
 };
 
-// Keywords jo major news ki nishani hain
 const MAJOR_KEYWORDS = [
     'hack', 'ban', 'regulation', 'sec', 'lawsuit', 'partnership', 
     'launch', 'mainnet', 'upgrade', 'hard fork', 'delist', 'crash', 
@@ -41,26 +39,18 @@ const MAJOR_KEYWORDS = [
     'delisting', 'merger', 'acquisition', 'whale', 'liquidation', 'rally'
 ];
 
-// Reputable sources
-const REPUTABLE_SOURCES = ['coindesk', 'cointelegraph', 'bloomberg', 'reuters', 'the block', 'decrypt'];
-
 function isMajorNews(item) {
     const title = (item.title || '').toLowerCase();
-    const description = (item.description || '').toLowerCase();
-    const source = (item.source || '').toLowerCase();
-    const text = title + ' ' + description;
-    
-    const hasKeyword = MAJOR_KEYWORDS.some(kw => text.includes(kw));
-    const isReputable = REPUTABLE_SOURCES.some(s => source.includes(s));
-    
-    return hasKeyword || isReputable;
+    const text = title;
+    return MAJOR_KEYWORDS.some(kw => text.includes(kw));
 }
 
 function getAffectedSymbols(item) {
-    const tags = item.tags || [];
+    const title = (item.title || '').toLowerCase();
+    const tags = (item.tags || []).map(t => t.toLowerCase());
     const affected = [];
     for (const [symbol, coinName] of Object.entries(SYMBOL_TO_COIN)) {
-        if (tags.some(tag => tag.toLowerCase() === coinName.toLowerCase())) {
+        if (title.includes(coinName) || tags.some(tag => tag.includes(coinName.replace(/\s/g, '-')))) {
             affected.push(symbol);
         }
     }
@@ -68,27 +58,25 @@ function getAffectedSymbols(item) {
 }
 
 async function fetchAndSendNews() {
-    console.log('[CryptoNewsAlert] Fetching news...');
+    console.log('[CryptoNewsAlert] Fetching news from Coinpaprika...');
     try {
-        const res = await fetch('https://api.coingecko.com/api/v3/news');
-        const data = await res.json();
-        const newsItems = data.data || [];
+        const res = await fetch('https://api.coinpaprika.com/v1/news');
+        const newsArray = await res.json();
+        if (!Array.isArray(newsArray)) return;
         
         const db = admin.database();
         const settingsSnap = await db.ref('alertSettings').once('value');
         const settings = settingsSnap.val() || {};
         
-        for (const item of newsItems) {
+        for (const item of newsArray) {
             if (!isMajorNews(item)) continue;
-            
             const affected = getAffectedSymbols(item);
             if (affected.length === 0) continue;
             
             const title = item.title || 'No title';
             const url = item.url || '#';
-            const source = item.source || 'Unknown';
+            const source = item.source?.name || 'Coinpaprika';
             const symStr = affected.slice(0, 3).join(', ') + (affected.length > 3 ? ` +${affected.length - 3} more` : '');
-            
             const msg = `📰 *Major Crypto News*\n${title}\n\nAffected: ${symStr}\nSource: ${source}\nRead: ${url}`;
             
             if (settings.whatsapp) {
