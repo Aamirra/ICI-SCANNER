@@ -46,6 +46,24 @@ async function commitFileChange(owner, repo, filePath, newContent, commitMessage
     return putRes;
 }
 
+// Simple RSS feed parser for CoinDesk
+async function getCoinDeskNews() {
+    const res = await fetch('https://www.coindesk.com/arc/outboundfeeds/rss/');
+    const xml = await res.text();
+    const items = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null) {
+        const itemXml = match[1];
+        const title = (itemXml.match(/<title>(.*?)<\/title>/i) || [])[1] || 'No title';
+        const link = (itemXml.match(/<link>(.*?)<\/link>/i) || [])[1] || '#';
+        const pubDate = (itemXml.match(/<pubDate>(.*?)<\/pubDate>/i) || [])[1] || '';
+        const description = (itemXml.match(/<description>(.*?)<\/description>/i) || [])[1] || '';
+        items.push({ title, url: link, source: 'CoinDesk', created_at: pubDate, description });
+    }
+    return items;
+}
+
 http.createServer((req, res) => {
     const safePath = req.url.split('?')[0];
 
@@ -264,14 +282,13 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (CryptoPanic Free Public API) ──
+    // ── Crypto News Endpoint (CoinDesk RSS – Guaranteed Free) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
         (async () => {
             try {
                 const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
                 const symbol = urlParams.get('symbol') || 'BTCUSD';
 
-                // Mapping our symbol to coin name for title search
                 const symbolToCoinName = {
                     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
                     'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
@@ -309,31 +326,17 @@ Always put the action block FIRST, then your reply.`;
                     return;
                 }
 
-                // Free public API token (no key needed)
-                const apiUrl = 'https://cryptopanic.com/api/v1/posts/?auth_token=public&kind=news';
-                const newsRes = await fetch(apiUrl);
-                if (!newsRes.ok) {
-                    console.error(`[News] CryptoPanic API error: ${newsRes.status}`);
-                    res.writeHead(502, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'News service temporarily unavailable' }));
-                    return;
-                }
-                const json = await newsRes.json();
-                const articles = json.results || [];
-                const filtered = articles.filter(article => {
-                    const title = (article.title || '').toLowerCase();
-                    return title.includes(coinName);
+                // Fetch CoinDesk RSS
+                const allNews = await getCoinDeskNews();
+                const filtered = allNews.filter(item => {
+                    const title = (item.title || '').toLowerCase();
+                    const desc = (item.description || '').toLowerCase();
+                    return title.includes(coinName) || desc.includes(coinName);
                 });
-                const result = filtered.slice(0, 10).map(article => ({
-                    title: article.title,
-                    url: article.url,
-                    source: article.domain,
-                    created_at: article.published_at
-                }));
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(result));
+                res.end(JSON.stringify(filtered.slice(0, 10)));
             } catch (e) {
-                console.error('[News] Internal error:', e.message || e);
+                console.error('[News] Error:', e.message || e);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Failed to fetch news' }));
             }
