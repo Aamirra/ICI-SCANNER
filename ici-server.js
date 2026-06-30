@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
-const { sendWhatsAppAlert } = require('./services/whatsappBot'); // ✅ WhatsApp bot imported
+const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
 let masterScan;
 
@@ -25,7 +25,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ── GitHub Helper ──
 async function commitFileChange(owner, repo, filePath, newContent, commitMessage, token) {
     const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
     const getRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
@@ -103,7 +102,6 @@ Always put the action block FIRST, then your reply.`;
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            // ✅ Dynamic model from environment, fallback to free Cohere
                             "model": process.env.AI_MODEL || "cohere/north-mini-code:free",
                             "messages": messages
                         })
@@ -162,9 +160,7 @@ Always put the action block FIRST, then your reply.`;
                             { success: true, message: 'Telegram message sent!' } :
                             { success: false, message: 'Telegram error: ' + tgData.description };
                     }
-                }
-                // ✅ WhatsApp action integrated
-                else if (action === 'send_whatsapp') {
+                } else if (action === 'send_whatsapp') {
                     const text = params?.text;
                     if (!text) {
                         result = { success: false, message: 'Message text is required.' };
@@ -176,16 +172,14 @@ Always put the action block FIRST, then your reply.`;
                             result = { success: false, message: 'WhatsApp error: ' + e.message };
                         }
                     }
-                }
-                else if (action === 'run_scan') {
+                } else if (action === 'run_scan') {
                     if (masterScan && typeof masterScan === 'function') {
                         masterScan();
                         result = { success: true, message: 'Scan started!' };
                     } else {
                         result = { success: false, message: 'Scan function not available.' };
                     }
-                }
-                else if (action === 'toggle_alert') {
+                } else if (action === 'toggle_alert') {
                     const alertType = params?.type;
                     const enable = params?.enable;
                     if (alertType && typeof enable === 'boolean') {
@@ -194,8 +188,7 @@ Always put the action block FIRST, then your reply.`;
                     } else {
                         result = { success: false, message: 'Invalid parameters.' };
                     }
-                }
-                else if (action === 'create_code_change') {
+                } else if (action === 'create_code_change') {
                     const instruction = params?.instruction;
                     const file = params?.file;
                     if (!instruction || !file) {
@@ -210,8 +203,7 @@ Always put the action block FIRST, then your reply.`;
                         });
                         result = { success: true, message: 'Code change request created. Pending panel mein dekhein.' };
                     }
-                }
-                else if (action === 'set_theme') {
+                } else if (action === 'set_theme') {
                     result = { success: false, message: 'Theme change not supported.' };
                 }
 
@@ -272,40 +264,41 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (Improved Matching) ──
+    // ── Crypto News Endpoint (Coinpaprika - Free & Working) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
         (async () => {
             const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
             const symbol = urlParams.get('symbol') || 'BTCUSD';
 
+            // Mapping our symbol to coin name (used for title/tag search)
             const symbolToCoinName = {
-                'BTCUSD': 'Bitcoin', 'ETHUSD': 'Ethereum', 'LTCUSD': 'Litecoin', 'BCHUSD': 'Bitcoin Cash',
-                'XRPUSD': 'XRP', 'ADAUSD': 'Cardano', 'DOTUSD': 'Polkadot', 'LINKUSD': 'Chainlink',
-                'UNIUSD': 'Uniswap', 'SOLUSD': 'Solana', 'MATICUSD': 'Polygon', 'AVAXUSD': 'Avalanche',
-                'ATOMUSD': 'Cosmos', 'FILUSD': 'Filecoin', 'VETUSD': 'VeChain', 'ETCUSD': 'Ethereum Classic',
-                'TRXUSD': 'TRON', 'XLMUSD': 'Stellar', 'ICPUSD': 'Internet Computer', 'THETAUSD': 'Theta Network',
-                'XTZUSD': 'Tezos', 'EOSUSD': 'EOS', 'SANDUSD': 'The Sandbox', 'MANAUSD': 'Decentraland',
-                'DOGEUSD': 'Dogecoin', 'SHIBUSD': 'Shiba Inu', 'PEPEUSD': 'Pepe', 'BONKUSD': 'Bonk',
-                'FLOKIUSD': 'Floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'The Graph', 'ENJUSD': 'Enjin Coin',
-                'CHZUSD': 'Chiliz', 'BATUSD': 'Basic Attention Token', 'ZRXUSD': '0x', 'OMGUSD': 'OMG Network',
-                'DASHUSD': 'Dash', 'ZECUSD': 'Zcash', 'BTGUSD': 'Bitcoin Gold', 'DCRUSD': 'Decred',
-                'XVGUSD': 'Verge', 'SCUSD': 'Siacoin', 'SNXUSD': 'Synthetix', 'COMPUSD': 'Compound',
-                'MKRUSD': 'Maker', 'AAVEUSD': 'Aave', 'YFIUSD': 'yearn.finance', 'SUSHIUSD': 'SushiSwap',
-                'CRVUSD': 'Curve DAO', 'RENUSD': 'Ren', 'KNCUSD': 'Kyber Network Crystal', 'BANDUSD': 'Band Protocol',
-                'NMRUSD': 'Numeraire', 'OCEANUSD': 'Ocean Protocol', 'FETUSD': 'Fetch.ai', 'AGIXUSD': 'SingularityNET',
-                'BNBUSD': 'BNB', 'CAKEUSD': 'PancakeSwap', 'RUNEUSD': 'THORChain', 'ALGOUSD': 'Algorand',
-                'NEARUSD': 'NEAR Protocol', 'FLOWUSD': 'Flow', 'APTUSD': 'Aptos', 'OPUSD': 'Optimism',
-                'ARBUSD': 'Arbitrum', 'SUIUSD': 'Sui', 'INJUSD': 'Injective', 'TIAUSD': 'Celestia',
-                'SEIUSD': 'Sei', 'BLURUSD': 'Blur', 'PYTHUSD': 'Pyth Network', 'JTOUSD': 'Jito',
-                'ORDIUSD': 'Ordinals', '1000SATSUSD': 'SATS (Ordinals)', 'BEAMUSD': 'Beam', 'RNDRUSD': 'Render Token',
-                'IMXUSD': 'Immutable', 'MINAUSD': 'Mina', 'GALAUSD': 'Gala', 'AXSUSD': 'Axie Infinity',
-                'APEUSD': 'ApeCoin', 'ENSUSD': 'Ethereum Name Service', 'LDOUSD': 'Lido DAO',
-                'STXUSD': 'Stacks', 'CFXUSD': 'Conflux', 'KLAYUSD': 'Klaytn', 'FTMUSD': 'Fantom',
-                'HBARUSD': 'Hedera', 'EGLDUSD': 'Elrond', 'QNTUSD': 'Quant', 'ARUSD': 'Arweave',
-                'ZILUSD': 'Zilliqa', 'KSMUSD': 'Kusama', 'ANTUSD': 'Aragon', 'IOTXUSD': 'IoTeX',
-                'CELOUSD': 'Celo', 'ANKRUSD': 'Ankr', 'SKLUSD': 'SKALE', 'SPELLUSD': 'Spell Token',
-                'JOEUSD': 'JOE', 'GMXUSD': 'GMX', 'PENDLEUSD': 'Pendle', 'SSVUSD': 'SSV Network',
-                'FXSUSD': 'Frax Share', 'LQTYUSD': 'Liquity', 'MASKUSD': 'Mask Network'
+                'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
+                'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
+                'UNIUSD': 'uniswap', 'SOLUSD': 'solana', 'MATICUSD': 'polygon', 'AVAXUSD': 'avalanche',
+                'ATOMUSD': 'cosmos', 'FILUSD': 'filecoin', 'VETUSD': 'vechain', 'ETCUSD': 'ethereum classic',
+                'TRXUSD': 'tron', 'XLMUSD': 'stellar', 'ICPUSD': 'internet computer', 'THETAUSD': 'theta',
+                'XTZUSD': 'tezos', 'EOSUSD': 'eos', 'SANDUSD': 'the sandbox', 'MANAUSD': 'decentraland',
+                'DOGEUSD': 'dogecoin', 'SHIBUSD': 'shiba inu', 'PEPEUSD': 'pepe', 'BONKUSD': 'bonk',
+                'FLOKIUSD': 'floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'the graph', 'ENJUSD': 'enjin coin',
+                'CHZUSD': 'chiliz', 'BATUSD': 'basic attention token', 'ZRXUSD': '0x', 'OMGUSD': 'omg network',
+                'DASHUSD': 'dash', 'ZECUSD': 'zcash', 'BTGUSD': 'bitcoin gold', 'DCRUSD': 'decred',
+                'XVGUSD': 'verge', 'SCUSD': 'siacoin', 'SNXUSD': 'synthetix', 'COMPUSD': 'compound',
+                'MKRUSD': 'maker', 'AAVEUSD': 'aave', 'YFIUSD': 'yearn finance', 'SUSHIUSD': 'sushiswap',
+                'CRVUSD': 'curve dao', 'RENUSD': 'ren', 'KNCUSD': 'kyber network', 'BANDUSD': 'band protocol',
+                'NMRUSD': 'numeraire', 'OCEANUSD': 'ocean protocol', 'FETUSD': 'fetch.ai', 'AGIXUSD': 'singularitynet',
+                'BNBUSD': 'bnb', 'CAKEUSD': 'pancakeswap', 'RUNEUSD': 'thorchain', 'ALGOUSD': 'algorand',
+                'NEARUSD': 'near protocol', 'FLOWUSD': 'flow', 'APTUSD': 'aptos', 'OPUSD': 'optimism',
+                'ARBUSD': 'arbitrum', 'SUIUSD': 'sui', 'INJUSD': 'injective', 'TIAUSD': 'celestia',
+                'SEIUSD': 'sei', 'BLURUSD': 'blur', 'PYTHUSD': 'pyth network', 'JTOUSD': 'jito',
+                'ORDIUSD': 'ordinals', '1000SATSUSD': 'sats', 'BEAMUSD': 'beam', 'RNDRUSD': 'render token',
+                'IMXUSD': 'immutable', 'MINAUSD': 'mina', 'GALAUSD': 'gala', 'AXSUSD': 'axie infinity',
+                'APEUSD': 'apecoin', 'ENSUSD': 'ethereum name service', 'LDOUSD': 'lido dao',
+                'STXUSD': 'stacks', 'CFXUSD': 'conflux', 'KLAYUSD': 'klaytn', 'FTMUSD': 'fantom',
+                'HBARUSD': 'hedera', 'EGLDUSD': 'elrond', 'QNTUSD': 'quant', 'ARUSD': 'arweave',
+                'ZILUSD': 'zilliqa', 'KSMUSD': 'kusama', 'ANTUSD': 'aragon', 'IOTXUSD': 'iotex',
+                'CELOUSD': 'celo', 'ANKRUSD': 'ankr', 'SKLUSD': 'skale', 'SPELLUSD': 'spell token',
+                'JOEUSD': 'joe', 'GMXUSD': 'gmx', 'PENDLEUSD': 'pendle', 'SSVUSD': 'ssv network',
+                'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
             };
 
             const coinName = symbolToCoinName[symbol];
@@ -316,17 +309,24 @@ Always put the action block FIRST, then your reply.`;
             }
 
             try {
-                const newsRes = await fetch('https://api.coingecko.com/api/v3/news');
-                const allNews = await newsRes.json();
-                const filtered = allNews.data ? allNews.data.filter(item => {
+                const newsRes = await fetch('https://api.coinpaprika.com/v1/news');
+                const newsArray = await newsRes.json();
+                // Filter by coin name in title (coinpaprika news items have 'title' and 'tags' with coin ids)
+                const filtered = Array.isArray(newsArray) ? newsArray.filter(item => {
                     const title = (item.title || '').toLowerCase();
-                    const desc = (item.description || '').toLowerCase();
                     const tags = (item.tags || []).map(t => t.toLowerCase());
                     const coinLower = coinName.toLowerCase();
-                    return title.includes(coinLower) || desc.includes(coinLower) || tags.includes(coinLower);
+                    return title.includes(coinLower) || tags.some(tag => tag.includes(coinLower.replace(/\s/g, '-')));
                 }) : [];
+                // Convert to similar format expected by frontend
+                const result = filtered.slice(0, 10).map(item => ({
+                    title: item.title,
+                    url: item.url,
+                    source: item.source?.name || 'Coinpaprika',
+                    created_at: item.published_at || item.date
+                }));
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(filtered.slice(0, 10)));
+                res.end(JSON.stringify(result));
             } catch (e) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Failed to fetch news' }));
@@ -377,7 +377,6 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// Scanner (on demand)
 masterScan = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
