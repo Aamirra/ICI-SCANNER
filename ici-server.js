@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
-// WhatsApp bot import – agar yahan crash hota hai to temporaray comment karein
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
 let masterScan;
@@ -135,7 +134,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Action Executor (same as before) ──
+    // ── Action Executor ──
     if (req.method === 'POST' && safePath === '/api/execute-action') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -218,7 +217,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Approve Code Change (same) ──
+    // ── Approve Code Change ──
     if (req.method === 'POST' && safePath === '/api/approve-code-change') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -265,15 +264,14 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (Fixed + Error Logging) ──
+    // ── Crypto News Endpoint (CryptoPanic Free Public API) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
-        console.log('[News] Request received');
         (async () => {
             try {
                 const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
                 const symbol = urlParams.get('symbol') || 'BTCUSD';
 
-                // Simple mapping
+                // Mapping our symbol to coin name for title search
                 const symbolToCoinName = {
                     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
                     'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
@@ -311,37 +309,27 @@ Always put the action block FIRST, then your reply.`;
                     return;
                 }
 
-                console.log(`[News] Fetching news for ${coinName}...`);
-                const newsRes = await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN');
+                // Free public API token (no key needed)
+                const apiUrl = 'https://cryptopanic.com/api/v1/posts/?auth_token=public&kind=news';
+                const newsRes = await fetch(apiUrl);
                 if (!newsRes.ok) {
-                    console.error(`[News] CryptoCompare API error: ${newsRes.status}`);
+                    console.error(`[News] CryptoPanic API error: ${newsRes.status}`);
                     res.writeHead(502, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'News service temporarily unavailable' }));
                     return;
                 }
                 const json = await newsRes.json();
-                const articles = json.Data;
-                if (!Array.isArray(articles)) {
-                    console.error('[News] Unexpected API response:', json);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify([]));
-                    return;
-                }
-
+                const articles = json.results || [];
                 const filtered = articles.filter(article => {
                     const title = (article.title || '').toLowerCase();
-                    const body = (article.body || '').toLowerCase();
-                    return title.includes(coinName) || body.includes(coinName);
+                    return title.includes(coinName);
                 });
-
                 const result = filtered.slice(0, 10).map(article => ({
                     title: article.title,
                     url: article.url,
-                    source: article.source,
-                    created_at: new Date(article.published_on * 1000).toISOString()
+                    source: article.domain,
+                    created_at: article.published_at
                 }));
-
-                console.log(`[News] Returning ${result.length} articles`);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
             } catch (e) {
