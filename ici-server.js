@@ -264,13 +264,13 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (Coinpaprika - Free & Working) ──
+    // ── Crypto News Endpoint (CryptoCompare - Free, No Key Required) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
         (async () => {
             const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
             const symbol = urlParams.get('symbol') || 'BTCUSD';
 
-            // Mapping our symbol to coin name (used for title/tag search)
+            // Mapping from our symbol to coin name for title matching (lowercase)
             const symbolToCoinName = {
                 'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
                 'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
@@ -309,21 +309,19 @@ Always put the action block FIRST, then your reply.`;
             }
 
             try {
-                const newsRes = await fetch('https://api.coinpaprika.com/v1/news');
-                const newsArray = await newsRes.json();
-                // Filter by coin name in title (coinpaprika news items have 'title' and 'tags' with coin ids)
-                const filtered = Array.isArray(newsArray) ? newsArray.filter(item => {
-                    const title = (item.title || '').toLowerCase();
-                    const tags = (item.tags || []).map(t => t.toLowerCase());
-                    const coinLower = coinName.toLowerCase();
-                    return title.includes(coinLower) || tags.some(tag => tag.includes(coinLower.replace(/\s/g, '-')));
-                }) : [];
-                // Convert to similar format expected by frontend
-                const result = filtered.slice(0, 10).map(item => ({
-                    title: item.title,
-                    url: item.url,
-                    source: item.source?.name || 'Coinpaprika',
-                    created_at: item.published_at || item.date
+                const newsRes = await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN');
+                const json = await newsRes.json();
+                const articles = json.Data || [];
+                const filtered = articles.filter(article => {
+                    const title = (article.title || '').toLowerCase();
+                    const body = (article.body || '').toLowerCase();
+                    return title.includes(coinName) || body.includes(coinName);
+                });
+                const result = filtered.slice(0, 10).map(article => ({
+                    title: article.title,
+                    url: article.url,
+                    source: article.source,
+                    created_at: new Date(article.published_on * 1000).toISOString()
                 }));
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
