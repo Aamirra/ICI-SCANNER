@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
+// WhatsApp bot import – agar yahan crash hota hai to temporaray comment karein
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
 let masterScan;
@@ -134,7 +135,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Action Executor ──
+    // ── Action Executor (same as before) ──
     if (req.method === 'POST' && safePath === '/api/execute-action') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -217,7 +218,7 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Approve Code Change ──
+    // ── Approve Code Change (same) ──
     if (req.method === 'POST' && safePath === '/api/approve-code-change') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -264,68 +265,87 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── Crypto News Endpoint (CryptoCompare - Free, No Key Required) ──
+    // ── Crypto News Endpoint (Fixed + Error Logging) ──
     if (req.method === 'GET' && safePath === '/api/crypto-news') {
+        console.log('[News] Request received');
         (async () => {
-            const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
-            const symbol = urlParams.get('symbol') || 'BTCUSD';
-
-            // Mapping from our symbol to coin name for title matching (lowercase)
-            const symbolToCoinName = {
-                'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
-                'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
-                'UNIUSD': 'uniswap', 'SOLUSD': 'solana', 'MATICUSD': 'polygon', 'AVAXUSD': 'avalanche',
-                'ATOMUSD': 'cosmos', 'FILUSD': 'filecoin', 'VETUSD': 'vechain', 'ETCUSD': 'ethereum classic',
-                'TRXUSD': 'tron', 'XLMUSD': 'stellar', 'ICPUSD': 'internet computer', 'THETAUSD': 'theta',
-                'XTZUSD': 'tezos', 'EOSUSD': 'eos', 'SANDUSD': 'the sandbox', 'MANAUSD': 'decentraland',
-                'DOGEUSD': 'dogecoin', 'SHIBUSD': 'shiba inu', 'PEPEUSD': 'pepe', 'BONKUSD': 'bonk',
-                'FLOKIUSD': 'floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'the graph', 'ENJUSD': 'enjin coin',
-                'CHZUSD': 'chiliz', 'BATUSD': 'basic attention token', 'ZRXUSD': '0x', 'OMGUSD': 'omg network',
-                'DASHUSD': 'dash', 'ZECUSD': 'zcash', 'BTGUSD': 'bitcoin gold', 'DCRUSD': 'decred',
-                'XVGUSD': 'verge', 'SCUSD': 'siacoin', 'SNXUSD': 'synthetix', 'COMPUSD': 'compound',
-                'MKRUSD': 'maker', 'AAVEUSD': 'aave', 'YFIUSD': 'yearn finance', 'SUSHIUSD': 'sushiswap',
-                'CRVUSD': 'curve dao', 'RENUSD': 'ren', 'KNCUSD': 'kyber network', 'BANDUSD': 'band protocol',
-                'NMRUSD': 'numeraire', 'OCEANUSD': 'ocean protocol', 'FETUSD': 'fetch.ai', 'AGIXUSD': 'singularitynet',
-                'BNBUSD': 'bnb', 'CAKEUSD': 'pancakeswap', 'RUNEUSD': 'thorchain', 'ALGOUSD': 'algorand',
-                'NEARUSD': 'near protocol', 'FLOWUSD': 'flow', 'APTUSD': 'aptos', 'OPUSD': 'optimism',
-                'ARBUSD': 'arbitrum', 'SUIUSD': 'sui', 'INJUSD': 'injective', 'TIAUSD': 'celestia',
-                'SEIUSD': 'sei', 'BLURUSD': 'blur', 'PYTHUSD': 'pyth network', 'JTOUSD': 'jito',
-                'ORDIUSD': 'ordinals', '1000SATSUSD': 'sats', 'BEAMUSD': 'beam', 'RNDRUSD': 'render token',
-                'IMXUSD': 'immutable', 'MINAUSD': 'mina', 'GALAUSD': 'gala', 'AXSUSD': 'axie infinity',
-                'APEUSD': 'apecoin', 'ENSUSD': 'ethereum name service', 'LDOUSD': 'lido dao',
-                'STXUSD': 'stacks', 'CFXUSD': 'conflux', 'KLAYUSD': 'klaytn', 'FTMUSD': 'fantom',
-                'HBARUSD': 'hedera', 'EGLDUSD': 'elrond', 'QNTUSD': 'quant', 'ARUSD': 'arweave',
-                'ZILUSD': 'zilliqa', 'KSMUSD': 'kusama', 'ANTUSD': 'aragon', 'IOTXUSD': 'iotex',
-                'CELOUSD': 'celo', 'ANKRUSD': 'ankr', 'SKLUSD': 'skale', 'SPELLUSD': 'spell token',
-                'JOEUSD': 'joe', 'GMXUSD': 'gmx', 'PENDLEUSD': 'pendle', 'SSVUSD': 'ssv network',
-                'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
-            };
-
-            const coinName = symbolToCoinName[symbol];
-            if (!coinName) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Symbol not supported for news' }));
-                return;
-            }
-
             try {
+                const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+                const symbol = urlParams.get('symbol') || 'BTCUSD';
+
+                // Simple mapping
+                const symbolToCoinName = {
+                    'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
+                    'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
+                    'UNIUSD': 'uniswap', 'SOLUSD': 'solana', 'MATICUSD': 'polygon', 'AVAXUSD': 'avalanche',
+                    'ATOMUSD': 'cosmos', 'FILUSD': 'filecoin', 'VETUSD': 'vechain', 'ETCUSD': 'ethereum classic',
+                    'TRXUSD': 'tron', 'XLMUSD': 'stellar', 'ICPUSD': 'internet computer', 'THETAUSD': 'theta',
+                    'XTZUSD': 'tezos', 'EOSUSD': 'eos', 'SANDUSD': 'the sandbox', 'MANAUSD': 'decentraland',
+                    'DOGEUSD': 'dogecoin', 'SHIBUSD': 'shiba inu', 'PEPEUSD': 'pepe', 'BONKUSD': 'bonk',
+                    'FLOKIUSD': 'floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'the graph', 'ENJUSD': 'enjin coin',
+                    'CHZUSD': 'chiliz', 'BATUSD': 'basic attention token', 'ZRXUSD': '0x', 'OMGUSD': 'omg network',
+                    'DASHUSD': 'dash', 'ZECUSD': 'zcash', 'BTGUSD': 'bitcoin gold', 'DCRUSD': 'decred',
+                    'XVGUSD': 'verge', 'SCUSD': 'siacoin', 'SNXUSD': 'synthetix', 'COMPUSD': 'compound',
+                    'MKRUSD': 'maker', 'AAVEUSD': 'aave', 'YFIUSD': 'yearn finance', 'SUSHIUSD': 'sushiswap',
+                    'CRVUSD': 'curve dao', 'RENUSD': 'ren', 'KNCUSD': 'kyber network', 'BANDUSD': 'band protocol',
+                    'NMRUSD': 'numeraire', 'OCEANUSD': 'ocean protocol', 'FETUSD': 'fetch.ai', 'AGIXUSD': 'singularitynet',
+                    'BNBUSD': 'bnb', 'CAKEUSD': 'pancakeswap', 'RUNEUSD': 'thorchain', 'ALGOUSD': 'algorand',
+                    'NEARUSD': 'near protocol', 'FLOWUSD': 'flow', 'APTUSD': 'aptos', 'OPUSD': 'optimism',
+                    'ARBUSD': 'arbitrum', 'SUIUSD': 'sui', 'INJUSD': 'injective', 'TIAUSD': 'celestia',
+                    'SEIUSD': 'sei', 'BLURUSD': 'blur', 'PYTHUSD': 'pyth network', 'JTOUSD': 'jito',
+                    'ORDIUSD': 'ordinals', '1000SATSUSD': 'sats', 'BEAMUSD': 'beam', 'RNDRUSD': 'render token',
+                    'IMXUSD': 'immutable', 'MINAUSD': 'mina', 'GALAUSD': 'gala', 'AXSUSD': 'axie infinity',
+                    'APEUSD': 'apecoin', 'ENSUSD': 'ethereum name service', 'LDOUSD': 'lido dao',
+                    'STXUSD': 'stacks', 'CFXUSD': 'conflux', 'KLAYUSD': 'klaytn', 'FTMUSD': 'fantom',
+                    'HBARUSD': 'hedera', 'EGLDUSD': 'elrond', 'QNTUSD': 'quant', 'ARUSD': 'arweave',
+                    'ZILUSD': 'zilliqa', 'KSMUSD': 'kusama', 'ANTUSD': 'aragon', 'IOTXUSD': 'iotex',
+                    'CELOUSD': 'celo', 'ANKRUSD': 'ankr', 'SKLUSD': 'skale', 'SPELLUSD': 'spell token',
+                    'JOEUSD': 'joe', 'GMXUSD': 'gmx', 'PENDLEUSD': 'pendle', 'SSVUSD': 'ssv network',
+                    'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
+                };
+
+                const coinName = symbolToCoinName[symbol];
+                if (!coinName) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Symbol not supported for news' }));
+                    return;
+                }
+
+                console.log(`[News] Fetching news for ${coinName}...`);
                 const newsRes = await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN');
+                if (!newsRes.ok) {
+                    console.error(`[News] CryptoCompare API error: ${newsRes.status}`);
+                    res.writeHead(502, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'News service temporarily unavailable' }));
+                    return;
+                }
                 const json = await newsRes.json();
-                const articles = json.Data || [];
+                const articles = json.Data;
+                if (!Array.isArray(articles)) {
+                    console.error('[News] Unexpected API response:', json);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify([]));
+                    return;
+                }
+
                 const filtered = articles.filter(article => {
                     const title = (article.title || '').toLowerCase();
                     const body = (article.body || '').toLowerCase();
                     return title.includes(coinName) || body.includes(coinName);
                 });
+
                 const result = filtered.slice(0, 10).map(article => ({
                     title: article.title,
                     url: article.url,
                     source: article.source,
                     created_at: new Date(article.published_on * 1000).toISOString()
                 }));
+
+                console.log(`[News] Returning ${result.length} articles`);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(result));
             } catch (e) {
+                console.error('[News] Internal error:', e.message || e);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Failed to fetch news' }));
             }
