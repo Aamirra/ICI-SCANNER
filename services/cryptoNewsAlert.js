@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const { sendWhatsAppAlert } = require('./whatsappBot');
 
+// Mapping from our symbol to CoinGecko/CoinDesk coin name (for tags/search)
 const SYMBOL_TO_COIN = {
     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
     'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
@@ -32,8 +33,8 @@ const SYMBOL_TO_COIN = {
 };
 
 const MAJOR_KEYWORDS = [
-    'hack', 'ban', 'regulation', 'sec', 'lawsuit', 'partnership', 
-    'launch', 'mainnet', 'upgrade', 'hard fork', 'delist', 'crash', 
+    'hack', 'ban', 'regulation', 'sec', 'lawsuit', 'partnership',
+    'launch', 'mainnet', 'upgrade', 'hard fork', 'delist', 'crash',
     'surge', 'dump', 'all-time high', 'breaking', 'shutdown', 'arrest',
     'fraud', 'scam', 'exploit', 'vulnerability', 'audit', 'listing',
     'delisting', 'merger', 'acquisition', 'whale', 'liquidation', 'rally'
@@ -41,44 +42,88 @@ const MAJOR_KEYWORDS = [
 
 function isMajorNews(item) {
     const title = (item.title || '').toLowerCase();
-    const text = title;
+    const desc = (item.description || '').toLowerCase();
+    const text = title + ' ' + desc;
     return MAJOR_KEYWORDS.some(kw => text.includes(kw));
 }
 
 function getAffectedSymbols(item) {
     const title = (item.title || '').toLowerCase();
-    const tags = (item.tags || []).map(t => t.toLowerCase());
+    const desc = (item.description || '').toLowerCase();
+    const text = title + ' ' + desc;
     const affected = [];
     for (const [symbol, coinName] of Object.entries(SYMBOL_TO_COIN)) {
-        if (title.includes(coinName) || tags.some(tag => tag.includes(coinName.replace(/\s/g, '-')))) {
+        if (text.includes(coinName)) {
             affected.push(symbol);
         }
     }
     return affected;
 }
 
-async function fetchAndSendNews() {
-    console.log('[CryptoNewsAlert] Fetching news from Coinpaprika...');
+// AI translation via OpenRouter
+async function translateToUrdu(text) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) return text; // fallback
+
     try {
-        const res = await fetch('https://api.coinpaprika.com/v1/news');
-        const newsArray = await res.json();
-        if (!Array.isArray(newsArray)) return;
-        
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "cohere/north-mini-code:free",
+                messages: [
+                    { role: "system", content: "Translate the following English news headline into short, natural Roman Urdu (like spoken in Pakistan). Just give the translated text, nothing else." },
+                    { role: "user", content: text }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        const translation = data?.choices?.[0]?.message?.content;
+        if (translation && translation.trim().length > 0) {
+            return translation.trim();
+        }
+    } catch (e) {
+        console.error('[CryptoNewsAlert] Translation error:', e.message);
+    }
+    return text; // fallback to original
+}
+
+async function fetchAndSendNews() {
+    console.log('[CryptoNewsAlert] Fetching news from CoinDesk RSS...');
+    try {
+        const res = await fetch('https://www.coindesk.com/arc/outboundfeeds/rss/');
+        const xml = await res.text();
+        const items = [];
+        const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+        let match;
+        while ((match = itemRegex.exec(xml)) !== null) {
+            const itemXml = match[1];
+            const title = (itemXml.match(/<title>(.*?)<\/title>/i) || [])[1] || 'No title';
+            const description = (itemXml.match(/<description>(.*?)<\/description>/i) || [])[1] || '';
+            const url = (itemXml.match(/<link>(.*?)<\/link>/i) || [])[1] || '#';
+            items.push({ title, description, url });
+        }
+
         const db = admin.database();
         const settingsSnap = await db.ref('alertSettings').once('value');
         const settings = settingsSnap.val() || {};
-        
-        for (const item of newsArray) {
+
+        for (const item of items) {
             if (!isMajorNews(item)) continue;
             const affected = getAffectedSymbols(item);
             if (affected.length === 0) continue;
-            
-            const title = item.title || 'No title';
-            const url = item.url || '#';
-            const source = item.source?.name || 'Coinpaprika';
+
             const symStr = affected.slice(0, 3).join(', ') + (affected.length > 3 ? ` +${affected.length - 3} more` : '');
-            const msg = `📰 *Major Crypto News*\n${title}\n\nAffected: ${symStr}\nSource: ${source}\nRead: ${url}`;
-            
+
+            // Translate title to Urdu
+            const urduTitle = await translateToUrdu(item.title);
+
+            const msg = `📰 *Urdu News*\n${urduTitle}\n\nAffected: ${symStr}\nRead more: ${item.url}`;
+
             if (settings.whatsapp) {
                 try { await sendWhatsAppAlert(msg); } catch(e) {}
             }
@@ -95,9 +140,11 @@ async function fetchAndSendNews() {
                     }
                 } catch(e) {}
             }
-            await new Promise(r => setTimeout(r, 3000));
+
+            // Thoda delay taake rate limit na lage
+            await new Promise(r => setTimeout(r, 5000));
         }
-        console.log('[CryptoNewsAlert] News cycle done.');
+        console.log('[CryptoNewsAlert] Cycle complete.');
     } catch(e) {
         console.error('[CryptoNewsAlert] Error:', e.message);
     }
