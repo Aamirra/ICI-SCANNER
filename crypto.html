@@ -497,8 +497,9 @@ async function openNewsModal() {
             const url = item.url || '#';
             const source = item.source || 'Unknown';
             const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-            html += `<div style="padding:10px;border-bottom:1px solid var(--border);">
-                <a href="${url}" target="_blank" style="color:var(--acc);font-weight:600;text-decoration:none;">${title}</a>
+            // Use onclick on div to ensure link opens in new tab
+            html += `<div class="news-item" onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
+                <div style="color:var(--acc);font-weight:600;text-decoration:none;pointer-events:none;">${title}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
             </div>`;
         });
