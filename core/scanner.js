@@ -44,6 +44,11 @@ const YAHOO_SYMBOL_MAP = {
     'JPN225': '^N225'
 };
 
+// ✅ Convert crypto pair (e.g., BTCUSD) to Yahoo symbol (BTC-USD)
+function yahooCryptoSymbol(pair) {
+    return pair.replace('USD', '-USD');
+}
+
 function fetchYahooCandles(symbol, tf) {
     const yahooSymbol = YAHOO_SYMBOL_MAP[symbol] || symbol;
     // ✅ Fixed interval mapping
@@ -303,8 +308,9 @@ async function fetchBatch(jobs) {
 }
 
 async function fetchTF(p, tf, retryCount = 0) {
-    if (YAHOO_INDICES.includes(p.n)) {
-        console.log(`[fetchTF] Index ${p.n} (${tf}) — switching to Yahoo`);
+    // ✅ Route indices & crypto to Yahoo
+    if (YAHOO_INDICES.includes(p.n) || p.isCrypto) {
+        console.log(`[fetchTF] ${p.n} (${tf}) — routing to Yahoo (${p.isCrypto ? 'crypto' : 'index'})`);
         return fetchTF_Yahoo(p, tf);
     }
 
@@ -378,9 +384,16 @@ async function fetchTF(p, tf, retryCount = 0) {
 }
 
 async function fetchTF_Yahoo(p, tf) {
-    const yahooData = await fetchYahooCandles(p.n, tf);
+    // ✅ For crypto, convert to Yahoo symbol
+    let yahooSymbol;
+    if (p.isCrypto) {
+        yahooSymbol = yahooCryptoSymbol(p.n);
+    } else {
+        yahooSymbol = p.n; // indices already mapped in fetchYahooCandles
+    }
+    const yahooData = await fetchYahooCandles(yahooSymbol, tf);
     if (!yahooData || !yahooData.closes || yahooData.closes.length < 20) {
-        console.warn(`[Yahoo] No data for ${p.n} (${tf})`);
+        console.warn(`[Yahoo] No data for ${p.n} (${yahooSymbol}) (${tf})`);
         return false;
     }
 
@@ -531,7 +544,6 @@ async function masterScan() {
 
 masterScan.isBusy = () => isScanning;
 
-// ✅ Changed last line – export RAW arrays
 module.exports = {
     masterScan,
     RAW_1H,
