@@ -223,6 +223,7 @@ let show4H = true;
 let watchlistSet = new Set();
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
+let liveMarketData = {};   // ✅ Added for live price fallback
 
 // ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
@@ -237,6 +238,9 @@ function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.r
 db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
 function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } render(); }
+
+// ── Live Market Data Listener (for future use) ──
+db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
 
 // ── Error Log ──
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
@@ -397,7 +401,15 @@ function render() {
     tbody.innerHTML = filtered.map(sym => {
         const data = stockData[sym];
         if (!data) return '';
-        const livePrice = data.currentPrice ? data.currentPrice.toFixed(2) : (data.price ? data.price.toFixed(2) : '—');
+
+        // ✅ Fixed: fallback to liveMarketData if available, else use stock data
+        const liveM = liveMarketData && liveMarketData[sym];
+        const mktPrice = data.currentPrice || data.price;
+        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
+            (liveM.price || liveM.currentPrice).toFixed(4) : 
+            (mktPrice ? mktPrice.toFixed(4) : '—');
+        const priceHTML = livePrice !== '—' ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+
         const longTerm = data.longTermTrend != null ? (data.longTermTrend>0?'+':'') + data.longTermTrend.toFixed(2)+'%' : '—';
         const longClass = data.longTermTrend>=0 ? 'up' : 'down';
         const shortTerm = data.shortTermMomentum != null ? (data.shortTermMomentum>0?'+':'') + data.shortTermMomentum.toFixed(2)+'%' : '—';
@@ -413,7 +425,6 @@ function render() {
         const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const watchlistStar = `<span class="watchlist-star ${isInWatchlist(sym)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${sym}')">${isInWatchlist(sym)?'⭐':'☆'}</span>`;
         const bellHtml = `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${sym}')">🔕</span>`;
-        const priceHTML = livePrice !== '—' ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
         return `<div class="item-row">
             <div class="item-main" onclick="openStockChartFromTable('${sym}')">
                 <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${sym}${priceHTML}</div>
