@@ -128,6 +128,7 @@
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
         <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
         <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
@@ -431,14 +432,32 @@ function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCas
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
-    document.getElementById('bc').textContent=b; document.getElementById('rc').textContent=r; document.getElementById('allCount').textContent=PAIRS.length;
+    document.getElementById('bc').textContent=b;
+    document.getElementById('rc').textContent=r;
+    document.getElementById('allCount').textContent=PAIRS.length;
+
+    // ✅ Target count – sirf Forex pairs
+    const forexPairs = new Set(PAIRS.map(p=>p.n));
     let tCount=0;
-    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; if(!show4H && k.includes('_4h_')) continue; tCount++; }
-    document.getElementById('targetCount').textContent=tCount;
-    document.getElementById('tradesCount').textContent=watchlistSet.size;
+    for(const [k,s] of Object.entries(PB_STATE)) {
+        if(!s||!s.phase) continue;
+        const pairName = k.split('_')[0];
+        if (forexPairs.has(pairName)) {
+            if (!show4H && k.includes('_4h_')) continue;
+            tCount++;
+        }
+    }
+    document.getElementById('targetCount').textContent = tCount;
+    document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 function isInTargetList(p) {
-    for(const [k,s] of Object.entries(PB_STATE)) { if(!s||!s.phase) continue; const parts=k.split('_'); if(parts[0]===p) { if(!show4H && k.includes('_4h_')) continue; return true; } }
+    const keyBase = `${p}_`;
+    for(const k of Object.keys(PB_STATE)) {
+        if (k.startsWith(keyBase)) {
+            const s = PB_STATE[k];
+            if (s && s.phase && s.phase!=='watching') return true;
+        }
+    }
     return false;
 }
 
@@ -461,9 +480,8 @@ function render() {
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
-        // ✅ Dots: use scanner data (MARKET_DATA) first, then liveMarketData
         const signals = ['1h','4h','1day','1week'].map(tf=>{
-            if (m[tf]) return m[tf];   // scanner data priority
+            if (m[tf]) return m[tf];
             const liveM = liveMarketData && liveMarketData[p.n];
             if (liveM && liveM[tf]) return liveM[tf];
             return '';
@@ -475,7 +493,6 @@ function render() {
         const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
-        // Live price: prefer liveMarketData, fallback to marketData
         const liveM = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
@@ -528,7 +545,6 @@ db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
-    // 🔔 Alerts checker — har marketData update ke baad alerts check karein
     if (typeof checkAllAlerts === 'function') {
         const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
             name,
@@ -541,7 +557,6 @@ db.ref('marketData').on('value', snap => {
     render();
 });
 
-// ✅ Also check alerts when live prices update
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
