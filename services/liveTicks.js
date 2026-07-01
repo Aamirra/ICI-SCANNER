@@ -29,117 +29,47 @@ const fourHourMinuteAcc = {};
 const liveCloses1H = {};
 const liveCloses4H = {};
 
-// ✅ Full mapping from Binance ticker (without USDT) -> our pair name (BTCUSD, etc.)
+// Mapping from Binance ticker -> our pair name
 const BINANCE_TICKER_MAP = {
-    'BTCUSDT': 'BTCUSD',
-    'ETHUSDT': 'ETHUSD',
-    'LTCUSDT': 'LTCUSD',
-    'BCHUSDT': 'BCHUSD',
-    'XRPUSDT': 'XRPUSD',
-    'ADAUSDT': 'ADAUSD',
-    'DOTUSDT': 'DOTUSD',
-    'LINKUSDT': 'LINKUSD',
-    'UNIUSDT': 'UNIUSD',
-    'SOLUSDT': 'SOLUSD',
-    'MATICUSDT': 'MATICUSD',
-    'AVAXUSDT': 'AVAXUSD',
-    'ATOMUSDT': 'ATOMUSD',
-    'FILUSDT': 'FILUSD',
-    'VETUSDT': 'VETUSD',
-    'ETCUSDT': 'ETCUSD',
-    'TRXUSDT': 'TRXUSD',
-    'XLMUSDT': 'XLMUSD',
-    'ICPUSDT': 'ICPUSD',
-    'THETAUSDT': 'THETAUSD',
-    'XTZUSDT': 'XTZUSD',
-    'EOSUSDT': 'EOSUSD',
-    'SANDUSDT': 'SANDUSD',
-    'MANAUSDT': 'MANAUSD',
-    'DOGEUSDT': 'DOGEUSD',
-    'SHIBUSDT': 'SHIBUSD',
-    'PEPEUSDT': 'PEPEUSD',
-    'BONKUSDT': 'BONKUSD',
-    'FLOKIUSDT': 'FLOKIUSD',
-    'WIFUSDT': 'WIFUSD',
-    'GRTUSDT': 'GRTUSD',
-    'ENJUSDT': 'ENJUSD',
-    'CHZUSDT': 'CHZUSD',
-    'BATUSDT': 'BATUSD',
-    'ZRXUSDT': 'ZRXUSD',
-    'OMGUSDT': 'OMGUSD',
-    'DASHUSDT': 'DASHUSD',
-    'ZECUSDT': 'ZECUSD',
-    'BTGUSDT': 'BTGUSD',
-    'DCRUSDT': 'DCRUSD',
-    'XVGUSDT': 'XVGUSD',
-    'SCUSDT': 'SCUSD',
-    'SNXUSDT': 'SNXUSD',
-    'COMPUSDT': 'COMPUSD',
-    'MKRUSDT': 'MKRUSD',
-    'AAVEUSDT': 'AAVEUSD',
-    'YFIUSDT': 'YFIUSD',
-    'SUSHIUSDT': 'SUSHIUSD',
-    'CRVUSDT': 'CRVUSD',
-    'RENUSDT': 'RENUSD',
-    'KNCUSDT': 'KNCUSD',
-    'BANDUSDT': 'BANDUSD',
-    'NMRUSDT': 'NMRUSD',
-    'OCEANUSDT': 'OCEANUSD',
-    'FETUSDT': 'FETUSD',
-    'AGIXUSDT': 'AGIXUSD',
-    'BNBUSDT': 'BNBUSD',
-    'CAKEUSDT': 'CAKEUSD',
-    'RUNEUSDT': 'RUNEUSD',
-    'ALGOUSDT': 'ALGOUSD',
-    'NEARUSDT': 'NEARUSD',
-    'FLOWUSDT': 'FLOWUSD',
-    'APTUSDT': 'APTUSD',
-    'OPUSDT': 'OPUSD',
-    'ARBUSDT': 'ARBUSD',
-    'SUIUSDT': 'SUIUSD',
-    'INJUSDT': 'INJUSD',
-    'TIAUSDT': 'TIAUSD',
-    'SEIUSDT': 'SEIUSD',
-    'BLURUSDT': 'BLURUSD',
-    'PYTHUSDT': 'PYTHUSD',
-    'JTOUSDT': 'JTOUSD',
-    'ORDIUSDT': 'ORDIUSD',
-    '1000SATSUSDT': '1000SATSUSD',
-    'BEAMUSDT': 'BEAMUSD',
-    'RNDRUSDT': 'RNDRUSD',
-    'IMXUSDT': 'IMXUSD',
-    'MINAUSDT': 'MINAUSD',
-    'GALAUSDT': 'GALAUSD',
-    'AXSUSDT': 'AXSUSD',
-    'APEUSDT': 'APEUSD',
-    'ENSUSDT': 'ENSUSD',
-    'LDOUSDT': 'LDOUSD',
-    'STXUSDT': 'STXUSD',
-    'CFXUSDT': 'CFXUSD',
-    'KLAYUSDT': 'KLAYUSD',
-    'FTMUSDT': 'FTMUSD',
-    'HBARUSDT': 'HBARUSD',
-    'EGLDUSDT': 'EGLDUSD',
-    'QNTUSDT': 'QNTUSD',
-    'ARUSDT': 'ARUSD',
-    'ZILUSDT': 'ZILUSD',
-    'KSMUSDT': 'KSMUSD',
-    'ANTUSDT': 'ANTUSD',
-    'IOTXUSDT': 'IOTXUSD',
-    'CELOUSDT': 'CELOUSD',
-    'ANKRUSDT': 'ANKRUSD',
-    'SKLUSDT': 'SKLUSD',
-    'SPELLUSDT': 'SPELLUSD',
-    'JOEUSDT': 'JOEUSD',
-    'GMXUSDT': 'GMXUSD',
-    'PENDLEUSDT': 'PENDLEUSD',
-    'SSVUSDT': 'SSVUSD',
-    'FXSUSDT': 'FXSUSD',
-    'LQTYUSDT': 'LQTYUSD',
-    'MASKUSDT': 'MASKUSD'
+    'BTCUSDT': 'BTCUSD', 'ETHUSDT': 'ETHUSD', 'LTCUSDT': 'LTCUSD', 'BCHUSDT': 'BCHUSD',
+    'XRPUSDT': 'XRPUSD', 'ADAUSDT': 'ADAUSD', 'DOTUSDT': 'DOTUSD', 'LINKUSDT': 'LINKUSD',
+    'UNIUSDT': 'UNIUSD', 'SOLUSDT': 'SOLUSD', 'MATICUSDT': 'MATICUSD', 'AVAXUSDT': 'AVAXUSD',
+    'ATOMUSDT': 'ATOMUSD', 'FILUSDT': 'FILUSD', 'VETUSDT': 'VETUSD', 'ETCUSDT': 'ETCUSD',
+    'TRXUSDT': 'TRXUSD', 'XLMUSDT': 'XLMUSD', 'ICPUSDT': 'ICPUSD', 'THETAUSDT': 'THETAUSD',
+    'XTZUSDT': 'XTZUSD', 'EOSUSDT': 'EOSUSD', 'SANDUSDT': 'SANDUSD', 'MANAUSDT': 'MANAUSD',
+    'DOGEUSDT': 'DOGEUSD', 'SHIBUSDT': 'SHIBUSD', 'PEPEUSDT': 'PEPEUSD', 'BONKUSDT': 'BONKUSD',
+    'FLOKIUSDT': 'FLOKIUSD', 'WIFUSDT': 'WIFUSD', 'GRTUSDT': 'GRTUSD', 'ENJUSDT': 'ENJUSD',
+    'CHZUSDT': 'CHZUSD', 'BATUSDT': 'BATUSD', 'ZRXUSDT': 'ZRXUSD', 'OMGUSDT': 'OMGUSD',
+    'DASHUSDT': 'DASHUSD', 'ZECUSDT': 'ZECUSD', 'BTGUSDT': 'BTGUSD', 'DCRUSDT': 'DCRUSD',
+    'XVGUSDT': 'XVGUSD', 'SCUSDT': 'SCUSD', 'SNXUSDT': 'SNXUSD', 'COMPUSDT': 'COMPUSD',
+    'MKRUSDT': 'MKRUSD', 'AAVEUSDT': 'AAVEUSD', 'YFIUSDT': 'YFIUSD', 'SUSHIUSDT': 'SUSHIUSD',
+    'CRVUSDT': 'CRVUSD', 'RENUSDT': 'RENUSD', 'KNCUSDT': 'KNCUSD', 'BANDUSDT': 'BANDUSD',
+    'NMRUSDT': 'NMRUSD', 'OCEANUSDT': 'OCEANUSD', 'FETUSDT': 'FETUSD', 'AGIXUSDT': 'AGIXUSD',
+    'BNBUSDT': 'BNBUSD', 'CAKEUSDT': 'CAKEUSD', 'RUNEUSDT': 'RUNEUSD', 'ALGOUSDT': 'ALGOUSD',
+    'NEARUSDT': 'NEARUSD', 'FLOWUSDT': 'FLOWUSD', 'APTUSDT': 'APTUSD', 'OPUSDT': 'OPUSD',
+    'ARBUSDT': 'ARBUSD', 'SUIUSDT': 'SUIUSD', 'INJUSDT': 'INJUSD', 'TIAUSDT': 'TIAUSD',
+    'SEIUSDT': 'SEIUSD', 'BLURUSDT': 'BLURUSD', 'PYTHUSDT': 'PYTHUSD', 'JTOUSDT': 'JTOUSD',
+    'ORDIUSDT': 'ORDIUSD', '1000SATSUSDT': '1000SATSUSD', 'BEAMUSDT': 'BEAMUSD', 'RNDRUSDT': 'RNDRUSD',
+    'IMXUSDT': 'IMXUSD', 'MINAUSDT': 'MINAUSD', 'GALAUSDT': 'GALAUSD', 'AXSUSDT': 'AXSUSD',
+    'APEUSDT': 'APEUSD', 'ENSUSDT': 'ENSUSD', 'LDOUSDT': 'LDOUSD', 'STXUSDT': 'STXUSD',
+    'CFXUSDT': 'CFXUSD', 'KLAYUSDT': 'KLAYUSD', 'FTMUSDT': 'FTMUSD', 'HBARUSDT': 'HBARUSD',
+    'EGLDUSDT': 'EGLDUSD', 'QNTUSDT': 'QNTUSD', 'ARUSDT': 'ARUSD', 'ZILUSDT': 'ZILUSD',
+    'KSMUSDT': 'KSMUSD', 'ANTUSDT': 'ANTUSD', 'IOTXUSDT': 'IOTXUSD', 'CELOUSDT': 'CELOUSD',
+    'ANKRUSDT': 'ANKRUSD', 'SKLUSDT': 'SKLUSD', 'SPELLUSDT': 'SPELLUSD', 'JOEUSDT': 'JOEUSD',
+    'GMXUSDT': 'GMXUSD', 'PENDLEUSDT': 'PENDLEUSD', 'SSVUSDT': 'SSVUSD', 'FXSUSDT': 'FXSUSD',
+    'LQTYUSDT': 'LQTYUSD', 'MASKUSDT': 'MASKUSD'
 };
 
-// ── Candle helpers (unchanged) ──
+// ── Indices (Yahoo) ──
+const INDICES_MAP = {
+    'US500': '^GSPC',
+    'US100': '^NDX',
+    'US30': '^DJI',
+    'GER40': '^GDAXI',
+    'UK100': '^FTSE',
+    'JPN225': '^N225'
+};
+
 function initFromScanner() {
     for (const pair in RAW_1H) {
         if (RAW_1H[pair] && RAW_1H[pair].closes) liveCloses1H[pair] = [...RAW_1H[pair].closes];
@@ -226,40 +156,11 @@ function computeLiveSignals(pair) {
     return signals;
 }
 
-// ── Fetch crypto prices via REST (with direct mapping) ──
-async function fetchCryptoPrices() {
-    try {
-        const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/price');
-        const allTickers = await res.json();
-        if (!Array.isArray(allTickers)) {
-            console.error('[LiveTicks] REST response is not an array:', typeof allTickers, JSON.stringify(allTickers).slice(0,200));
-            return;
-        }
-        let updated = 0;
-        for (const ticker of allTickers) {
-            // Look up in our mapping
-            const pair = BINANCE_TICKER_MAP[ticker.symbol];
-            if (pair) {
-                currentPrices[pair] = parseFloat(ticker.price);
-                updateMinuteCandle(pair, parseFloat(ticker.price));
-                updateFourHourBuffer(pair, parseFloat(ticker.price));
-                updated++;
-            }
-        }
-        console.log(`[LiveTicks] REST: Updated ${updated} crypto prices`);
-    } catch (e) {
-        console.error('[LiveTicks] REST crypto fetch error:', e.message);
-    }
-}
-
 // ── Push prices to Firebase every 5 seconds ──
 async function pushLivePrices() {
     const updates = {};
     for (const [pair, price] of Object.entries(currentPrices)) {
-        updates[`liveMarketData/${pair}`] = {
-            price: price,
-            updatedAt: Date.now()
-        };
+        updates[`liveMarketData/${pair}`] = { price: price, updatedAt: Date.now() };
     }
     if (Object.keys(updates).length > 0) {
         try {
@@ -271,7 +172,68 @@ async function pushLivePrices() {
     }
 }
 
-// ── Finnhub WebSocket (Forex/Indices) unchanged ──
+// ── Fetch indices via Yahoo REST ──
+async function fetchIndicesPrices() {
+    try {
+        for (const [pair, symbol] of Object.entries(INDICES_MAP)) {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
+            const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const json = await res.json();
+            const result = json?.chart?.result?.[0];
+            if (result) {
+                const meta = result.meta;
+                const price = meta.regularMarketPrice;
+                if (price) {
+                    currentPrices[pair] = price;
+                    updateMinuteCandle(pair, price);
+                    updateFourHourBuffer(pair, price);
+                }
+            }
+        }
+        console.log('[LiveTicks] Yahoo: Updated indices prices');
+    } catch (e) {
+        console.error('[LiveTicks] Yahoo indices fetch error:', e.message);
+    }
+}
+
+// ── Connect to Binance Futures WebSocket (single stream) ──
+function connectBinance() {
+    const streams = Object.keys(BINANCE_TICKER_MAP).map(s => `${s.toLowerCase()}@trade`).join('/');
+    const wsUrl = `wss://fstream.binance.com/stream?streams=${streams}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.on('open', () => {
+        console.log('[LiveTicks] Binance Futures WebSocket connected');
+    });
+
+    ws.on('message', (data) => {
+        try {
+            const msg = JSON.parse(data);
+            if (msg.data && msg.data.e === 'trade') {
+                const trade = msg.data;
+                const price = parseFloat(trade.p);
+                const symbol = trade.s; // e.g., BTCUSDT
+                const pair = BINANCE_TICKER_MAP[symbol];
+                if (pair) {
+                    currentPrices[pair] = price;
+                    updateMinuteCandle(pair, price);
+                    updateFourHourBuffer(pair, price);
+                }
+            }
+        } catch (e) {}
+    });
+
+    ws.on('error', (err) => {
+        console.error('[LiveTicks] Binance WS error:', err.message);
+    });
+
+    ws.on('close', () => {
+        console.log('[LiveTicks] Binance WS disconnected – reconnecting in 5s');
+        setTimeout(connectBinance, 5000);
+    });
+}
+
+// ── Finnhub WebSocket for Forex only ──
 function connectFinnhub() {
     const ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
     ws.on('open', () => {
@@ -282,11 +244,7 @@ function connectFinnhub() {
             'EURGBP','EURAUD','EURCAD','EURCHF','GBPAUD','GBPCAD','GBPCHF',
             'AUDCAD','AUDCHF','AUDNZD','NZDCAD','NZDCHF','CADCHF'
         ];
-        forexPairs.forEach(p => {
-            ws.send(JSON.stringify({ type: 'subscribe', symbol: `OANDA:${p.slice(0,3)}_${p.slice(3)}` }));
-        });
-        const indices = { 'US500':'^GSPC', 'US100':'^NDX', 'US30':'^DJI', 'GER40':'^GDAXI', 'UK100':'^FTSE', 'JPN225':'^N225' };
-        Object.values(indices).forEach(sym => ws.send(JSON.stringify({ type: 'subscribe', symbol: sym })));
+        forexPairs.forEach(p => ws.send(JSON.stringify({ type: 'subscribe', symbol: `OANDA:${p.slice(0,3)}_${p.slice(3)}` })));
         ws.send(JSON.stringify({ type: 'subscribe', symbol: 'OANDA:XAU_USD' }));
     });
 
@@ -300,9 +258,6 @@ function connectFinnhub() {
                 if (sym.startsWith('OANDA:')) {
                     const parts = sym.split(':')[1].split('_');
                     pair = parts[0] + parts[1];
-                } else {
-                    const revMap = { '^GSPC':'US500', '^NDX':'US100', '^DJI':'US30', '^GDAXI':'GER40', '^FTSE':'UK100', '^N225':'JPN225' };
-                    pair = revMap[sym];
                 }
                 if (pair) {
                     currentPrices[pair] = price;
@@ -317,7 +272,7 @@ function connectFinnhub() {
     ws.on('close', () => { console.log('[LiveTicks] Finnhub WS disconnected – reconnecting in 5s'); setTimeout(connectFinnhub, 5000); });
 }
 
-// ── Signal & custom alerts (unchanged, runs every 60s) ──
+// ── Signal & custom alerts (every 60s) ──
 async function pushSignalsAndAlerts() {
     const allSignals = {};
     for (const pair of Object.keys(currentPrices)) {
@@ -332,7 +287,6 @@ async function pushSignalsAndAlerts() {
         await admin.database().ref().update(updates).catch(e => console.error('[LiveTicks] Signal update error:', e.message));
     }
 
-    // Custom alerts
     const db = admin.database();
     const rulesSnap = await db.ref('customAlertRules').once('value');
     const rules = rulesSnap.val() || {};
@@ -356,10 +310,11 @@ async function pushSignalsAndAlerts() {
 
 // ── Start ──
 function start() {
-    console.log('[LiveTicks] Starting hybrid live feed (REST crypto with map + WS forex)...');
+    console.log('[LiveTicks] Starting live feed (WS crypto + WS forex + REST indices)...');
     connectFinnhub();
-    fetchCryptoPrices();
-    setInterval(fetchCryptoPrices, 5000);
+    connectBinance();           // single WebSocket for all crypto
+    fetchIndicesPrices();      // initial fetch
+    setInterval(fetchIndicesPrices, 5000);
     setInterval(pushLivePrices, 5000);
 
     setTimeout(() => { initFromScanner(); }, 20000);
