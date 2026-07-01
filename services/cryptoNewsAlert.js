@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const { sendWhatsAppAlert } = require('./whatsappBot');
 
-// Mapping from our symbol to CoinGecko/CoinDesk coin name (for tags/search)
+// Mapping from our symbol to CoinDesk coin name (for tags/search)
 const SYMBOL_TO_COIN = {
     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
     'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
@@ -105,17 +105,30 @@ async function fetchAndSendNews() {
             const title = (itemXml.match(/<title>(.*?)<\/title>/i) || [])[1] || 'No title';
             const description = (itemXml.match(/<description>(.*?)<\/description>/i) || [])[1] || '';
             const url = (itemXml.match(/<link>(.*?)<\/link>/i) || [])[1] || '#';
-            items.push({ title, description, url });
+            const pubDate = (itemXml.match(/<pubDate>(.*?)<\/pubDate>/i) || [])[1] || '';
+            items.push({ title, description, url, pubDate });
         }
 
         const db = admin.database();
         const settingsSnap = await db.ref('alertSettings').once('value');
         const settings = settingsSnap.val() || {};
 
+        // ✅ Get already sent news IDs from Firebase
+        const sentSnap = await db.ref('sentNews').once('value');
+        const sentNews = sentSnap.val() || {};
+        const sentIds = new Set(Object.keys(sentNews));
+
         for (const item of items) {
             if (!isMajorNews(item)) continue;
             const affected = getAffectedSymbols(item);
             if (affected.length === 0) continue;
+
+            // ✅ Create unique ID for news (title + date)
+            const newsId = Buffer.from(item.title + item.pubDate).toString('base64');
+            if (sentIds.has(newsId)) {
+                console.log(`[CryptoNewsAlert] Skipping already sent: ${item.title}`);
+                continue; // already sent
+            }
 
             const symStr = affected.slice(0, 3).join(', ') + (affected.length > 3 ? ` +${affected.length - 3} more` : '');
 
@@ -140,6 +153,13 @@ async function fetchAndSendNews() {
                     }
                 } catch(e) {}
             }
+
+            // ✅ Mark this news as sent in Firebase
+            await db.ref(`sentNews/${newsId}`).set({
+                title: item.title,
+                sentAt: Date.now(),
+                affected: affected
+            });
 
             // Thoda delay taake rate limit na lage
             await new Promise(r => setTimeout(r, 5000));
