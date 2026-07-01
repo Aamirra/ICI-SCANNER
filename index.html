@@ -35,33 +35,23 @@
         .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
-
-        /* ✅ Table header adjustments */
-        .table-header { display:flex; justify-content:space-between; padding:0 4px 8px 4px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
-        .row-pair { width:24%; } .row-timeframes { width:26%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
-
+        .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+        .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
         .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:10px 4px 6px 4px; cursor:pointer; transition:background 0.2s; }
+        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
         .item-main:hover { background:var(--pill-bg); }
-
-        /* ✅ Pair title now allows wrapping, so price can go below name */
-        .pair-title { 
-            font-size:13px; font-weight:700; display:flex; flex-direction: column; align-items:flex-start; gap:0px; 
-            word-break: break-word; line-height:1.2;
-        }
-        .pair-name { display:flex; align-items:center; gap:4px; }
-        .pair-price { font-size:10px; color:var(--muted); font-weight:500; }
-
+        /* ✅ Fixed: prevent long pair name + price from overlapping timeframes */
+        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
         .trend-dot.g { background:var(--green); } .trend-dot.r { background:var(--red); }
         .sentiment-wrapper { padding:0 4px; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
         .sent-red { background:var(--red); } .sent-green { background:var(--green); }
-        .change-val { font-size:12px; font-weight:600; }
+        .change-val { font-size:13px; font-weight:600; }
         .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
-        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 4px 10px 4px; font-size:10px; color:var(--muted); gap:4px; flex-wrap:wrap; }
-        .compact-metric { display:flex; align-items:center; gap:2px; white-space:nowrap; }
+        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
+        .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
         .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
         .compact-metric .val { font-weight:600; color:var(--txt); }
         .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
@@ -78,7 +68,7 @@
         body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
-        .watchlist-star { cursor:pointer; font-size:13px; margin-right:2px; user-select:none; }
+        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
         /* ── AI Assistant Panel ── */
@@ -456,10 +446,12 @@ function render() {
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
+        // ✅ Dots: use scanner data (MARKET_DATA) first, then liveMarketData
         const signals = ['1h','4h','1day','1week'].map(tf=>{
+            if (m[tf]) return m[tf];   // scanner data priority
             const liveM = liveMarketData && liveMarketData[p.n];
-            if(liveM && liveM[tf]) return liveM[tf];
-            return m[tf] || '';
+            if (liveM && liveM[tf]) return liveM[tf];
+            return '';
         });
         const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
@@ -468,19 +460,15 @@ function render() {
         const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
-
-        // ✅ FIX: Fallback to marketData if liveMarketData is empty
-        const mktData = MARKET_DATA[p.n] || {};
-        const livePriceFromMkt = (mktData.price || mktData.currentPrice)?.toFixed(4) || '';
+        // Live price: prefer liveMarketData, fallback to marketData
         const liveM = liveMarketData && liveMarketData[p.n];
-        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
-        const priceHTML = livePrice ? `<span class="pair-price">${livePrice}</span>` : '';
-
+        const mktPrice = (m.price || m.currentPrice);
+        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
+            (liveM.price || liveM.currentPrice).toFixed(4) : 
+            (mktPrice ? mktPrice.toFixed(4) : '');
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
         return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
-            <div class="row-pair pair-title">
-                <span class="pair-name">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}</span>
-                ${priceHTML}
-            </div>
+            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
             <div class="row-timeframes dots-container">${dots}</div>
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
@@ -523,7 +511,37 @@ function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
-db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
+db.ref('marketData').on('value', snap => {
+    MARKET_DATA = snap.val() || {};
+
+    // 🔔 Alerts checker — har marketData update ke baad alerts check karein
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
+            name,
+            currentPrice: data.currentPrice,
+            ema20: data.ema20,
+            sentiment: data.sentiment, // agar available ho
+        }));
+        checkAllAlerts(pairsArray);
+    }
+
+    render();
+});
+
+// ✅ Also check alerts when live prices update (for real‑time triggers)
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({
+            name,
+            currentPrice: data.price,  // live price
+            ema20: null,                // live feed doesn't have ema20
+            sentiment: data.sentiment,  // if available
+        }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
 (function(){
     const saved=localStorage.getItem('ici-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
