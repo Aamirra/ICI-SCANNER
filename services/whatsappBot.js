@@ -11,7 +11,6 @@ const qrcode = require('qrcode-terminal');
 
 const DB_PATH = 'whatsapp_auth';
 
-// MY_WHATSAPP_NUMBER me group ID ya number hai
 const RAW_TARGET = (process.env.MY_WHATSAPP_NUMBER || '').trim();
 function buildJID(t) {
     if (!t) return null;
@@ -122,7 +121,9 @@ async function connectToWhatsApp() {
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            browser: Browsers.ubuntu('Chrome')
+            browser: Browsers.ubuntu('Chrome'),
+            // ✅ Force mobile mode – triggers passkey prompt on phone
+            mobile: true
         });
 
         sock.ev.on('connection.update', async (update) => {
