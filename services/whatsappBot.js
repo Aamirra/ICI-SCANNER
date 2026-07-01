@@ -11,7 +11,11 @@ const qrcode = require('qrcode-terminal');
 
 const DB_PATH = 'whatsapp_auth';
 
+// 1. Target jahan alert bhejni hai (Aapki Group ID)
 const RAW_TARGET = (process.env.MY_WHATSAPP_NUMBER || '').trim();
+// 2. Bot ka apna phone number jisse login karna hai (Pairing Code ke liye)
+const BOT_PHONE = (process.env.BOT_PHONE_NUMBER || '').trim().replace(/[^0-9]/g, '');
+
 function buildJID(t) {
     if (!t) return null;
     if (t.includes('@')) return t;
@@ -24,7 +28,6 @@ const TARGET_JID = buildJID(RAW_TARGET);
 let sock = null;
 let isConnected = false;
 
-// Firebase Object Serialization Helpers
 const toFirebaseObject = (data) => {
     if (!data) return null;
     return JSON.parse(JSON.stringify(data, (k, v) => {
@@ -88,7 +91,7 @@ async function useFirebaseAuthState() {
 }
 
 async function handleSessionCleanup() {
-    console.log("⚠️ Session Error (405/loggedOut). Cleanup...");
+    console.log("⚠️ Session Error. Cleanup...");
     try { await admin.database().ref(DB_PATH).remove(); } catch (e) {}
     sock = null;
     isConnected = false;
@@ -114,27 +117,27 @@ async function connectToWhatsApp() {
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            // ✅ Fix: Custom browser array taaki WhatsApp device ko anti-bot me block na kare
             browser: ['Ubuntu', 'Chrome', '20.0.04'],
             syncFullHistory: false,
             markOnlineOnConnect: true,
         });
 
-        // 🔥 Naya Pairing Code Logic
+        // 🔥 Pairing Code Configuration
         if (!sock.authState.creds.registered) {
-            const phoneNumber = RAW_TARGET.replace(/[^0-9]/g, ''); // Numbers saaf karne ke liye
-            if (phoneNumber) {
-                console.log(`⏳ Phone number ${phoneNumber} ke liye Pairing Code (Passkey) request ho raha hai...`);
+            if (BOT_PHONE) {
+                console.log(`⏳ Phone number ${BOT_PHONE} ke liye Pairing Code request ho raha hai...`);
                 setTimeout(async () => {
                     try {
-                        const code = await sock.requestPairingCode(phoneNumber);
+                        const code = await sock.requestPairingCode(BOT_PHONE);
                         console.log(`\n======================================`);
                         console.log(`🔑 APKA WHATSAPP PAIRING CODE: ${code}`);
                         console.log(`======================================\n`);
                     } catch (err) {
-                        console.log("❌ Pairing code nahi ban saka:", err.message);
+                        console.log("❌ Pairing code nahi ban saka. QR scan try karein:", err.message);
                     }
                 }, 6000);
+            } else {
+                console.log("⚠️ BOT_PHONE_NUMBER env var nahi mila. Sirf QR code generate hoga.");
             }
         }
 
@@ -142,8 +145,9 @@ async function connectToWhatsApp() {
             try {
                 const { connection, lastDisconnect, qr } = update;
 
-                if (qr && !sock.authState.creds.registered) {
-                    console.log("── Terminal QR (Backup) ──");
+                if (qr && !sock.authState.creds.registered && !BOT_PHONE) {
+                    const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+                    console.log(`\n📱 BROWSER URL:\n👉 ${url}\n`);
                     qrcode.generate(qr, { small: true });
                 }
 
