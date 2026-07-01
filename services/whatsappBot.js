@@ -121,7 +121,11 @@ async function connectToWhatsApp() {
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            browser: Browsers.ubuntu('Chrome'),   // ✅ Standard desktop browser
+            // ✅ Latest working browser identity (macOS + Chrome)
+            browser: Browsers.macOS('Chrome'),
+            // Force multi‑device pairing
+            syncFullHistory: false,
+            markOnlineOnConnect: true,
         });
 
         sock.ev.on('connection.update', async (update) => {
