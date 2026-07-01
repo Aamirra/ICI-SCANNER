@@ -139,7 +139,12 @@
             <span style="font-size:14px;">▼</span>
         </div>
         <div class="ai-body" id="aiBody">
-            <div class="error-list-embedded" id="errorListEmbedded"></div>
+            <div class="error-list-embedded" id="errorListEmbedded">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
+                    <span style="font-weight:600;color:var(--muted)">⚠️ Errors</span>
+                    <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
+                </div>
+            </div>
             <div class="chat-section">
                 <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
                 <div class="chat-input-embedded">
@@ -248,6 +253,16 @@ function updateErrorListEmbedded() {
     listDiv.classList.add('has-errors');
     listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
 }
+
+// ✅ Clear Errors function
+function clearErrors() {
+    if (confirm('Sare errors delete kar dein?')) {
+        db.ref('errorLog').remove()
+            .then(() => console.log('Error log cleared'))
+            .catch(e => console.error(e));
+    }
+}
+
 function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
 
 // ── Pending Code Changes ──
@@ -513,30 +528,28 @@ db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
-
     // 🔔 Alerts checker — har marketData update ke baad alerts check karein
     if (typeof checkAllAlerts === 'function') {
         const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
             name,
             currentPrice: data.currentPrice,
             ema20: data.ema20,
-            sentiment: data.sentiment, // agar available ho
+            sentiment: data.sentiment,
         }));
         checkAllAlerts(pairsArray);
     }
-
     render();
 });
 
-// ✅ Also check alerts when live prices update (for real‑time triggers)
+// ✅ Also check alerts when live prices update
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
         const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({
             name,
-            currentPrice: data.price,  // live price
-            ema20: null,                // live feed doesn't have ema20
-            sentiment: data.sentiment,  // if available
+            currentPrice: data.price,
+            ema20: null,
+            sentiment: data.sentiment,
         }));
         checkAllAlerts(pairsArray);
     }
