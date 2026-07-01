@@ -389,7 +389,7 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// ── Scanner initialization (FIXED) ──
+ ── Scanner initialization (FIXED) ──
 scannerModule = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
