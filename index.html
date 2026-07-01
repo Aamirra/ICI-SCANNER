@@ -457,10 +457,14 @@ function render() {
         const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
-        // ✅ FIXED: Now supports both "price" and "currentPrice" fields
+
+        // ✅ FIX: Fallback to marketData if liveMarketData is empty
+        const mktData = MARKET_DATA[p.n] || {};
+        const livePriceFromMkt = (mktData.price || mktData.currentPrice)?.toFixed(4) || '';
         const liveM = liveMarketData && liveMarketData[p.n];
-        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || '') : '';
+        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+
         return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
             <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
             <div class="row-timeframes dots-container">${dots}</div>
