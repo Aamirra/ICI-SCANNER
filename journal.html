@@ -50,10 +50,9 @@
     <div class="form-section" id="tradeForm">
         <div class="form-row">
             <div style="flex:1 1 100%;">
-                <label>Pair</label>
-                <select id="pairSelect">
-                    <!-- pairs will be populated by JS -->
-                </select>
+                <label>Pair (search)</label>
+                <input list="pairList" id="pairSelect" placeholder="Type or select pair" autocomplete="off">
+                <datalist id="pairList"></datalist>
             </div>
         </div>
         <div class="form-row">
@@ -71,6 +70,9 @@
         <div class="form-row">
             <div><label>Position Size</label><input type="number" id="posSize" step="any" placeholder="e.g. 0.1 lots"></div>
             <div><label>P&L ($)</label><input type="number" id="pnl" step="any" placeholder="Auto-calc if entry/exit given"></div>
+        </div>
+        <div class="form-row">
+            <div class="full"><label>Chart Link (TradingView)</label><input type="url" id="chartLink" placeholder="https://www.tradingview.com/chart/..."></div>
         </div>
         <div class="form-row">
             <div class="full"><label>Notes</label><input type="text" id="notes" placeholder="Optional notes..."></div>
@@ -96,7 +98,7 @@
     <div style="overflow-x:auto;">
         <table class="trade-table" id="tradeTable">
             <thead>
-                <tr><th>Date</th><th>Pair</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Size</th><th>P&L</th><th>Result</th><th></th></tr>
+                <tr><th>Date</th><th>Pair</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Size</th><th>P&L</th><th>Result</th><th>Chart</th><th></th></tr>
             </thead>
             <tbody></tbody>
         </table>
@@ -112,7 +114,7 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-// All pairs (forex, crypto, indices, stocks) – you can edit this list
+// All pairs (forex, crypto, indices, stocks)
 const ALL_PAIRS = [
     'EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD',
     'EURJPY','GBPJPY','AUDJPY','NZDJPY','CADJPY','CHFJPY',
@@ -134,12 +136,12 @@ const ALL_PAIRS = [
     'LQTYUSD','MASKUSD','US500','US100','US30','GER40','UK100','JPN225','USOIL'
 ];
 
-const pairSelect = document.getElementById('pairSelect');
+// Populate datalist
+const pairList = document.getElementById('pairList');
 ALL_PAIRS.forEach(p => {
     const option = document.createElement('option');
     option.value = p;
-    option.textContent = p;
-    pairSelect.appendChild(option);
+    pairList.appendChild(option);
 });
 
 // Set today's date
@@ -147,7 +149,6 @@ document.getElementById('tradeDate').value = new Date().toISOString().slice(0,10
 
 let trades = [];
 
-// Listen to Firebase
 db.ref('trades').on('value', snap => {
     const data = snap.val() || {};
     trades = Object.entries(data).map(([id, t]) => ({ id, ...t })).sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -161,6 +162,7 @@ function renderTable() {
     tbody.innerHTML = trades.map(t => {
         const result = t.pnl > 0 ? '✅ Win' : t.pnl < 0 ? '❌ Loss' : '⚪ B/E';
         const resultClass = t.pnl > 0 ? 'var(--green)' : t.pnl < 0 ? 'var(--red)' : 'var(--muted)';
+        const chartCell = t.chartLink ? `<a href="${t.chartLink}" target="_blank" style="color:var(--acc);font-size:10px;">📈</a>` : '';
         return `<tr>
             <td>${t.date || ''}</td>
             <td>${t.pair}</td>
@@ -170,6 +172,7 @@ function renderTable() {
             <td>${t.size || ''}</td>
             <td style="color:${t.pnl >= 0 ? 'var(--green)' : 'var(--red)'}">$${t.pnl.toFixed(2)}</td>
             <td style="color:${resultClass}">${result}</td>
+            <td>${chartCell}</td>
             <td><button class="delete-btn" onclick="deleteTrade('${t.id}')">X</button></td>
         </tr>`;
     }).join('');
@@ -215,7 +218,6 @@ function drawEquityCurve() {
     }
     ctx.stroke();
 
-    // draw baseline
     const zeroY = H - 20 - ((0 - minY) / range) * (H - 40);
     ctx.beginPath();
     ctx.strokeStyle = '#64748b';
@@ -228,7 +230,7 @@ function drawEquityCurve() {
 function toggleForm(cancel = false) {
     const form = document.getElementById('tradeForm');
     form.classList.toggle('open');
-    if (cancel || form.classList.contains('open')) {
+    if (cancel || !form.classList.contains('open')) {
         document.getElementById('editingId').value = '';
         document.getElementById('pairSelect').value = '';
         document.getElementById('tradeDate').value = new Date().toISOString().slice(0,10);
@@ -239,14 +241,15 @@ function toggleForm(cancel = false) {
         document.getElementById('takeProfit').value = '';
         document.getElementById('posSize').value = '';
         document.getElementById('pnl').value = '';
+        document.getElementById('chartLink').value = '';
         document.getElementById('notes').value = '';
     }
 }
 
 async function saveTrade() {
     const id = document.getElementById('editingId').value || db.ref('trades').push().key;
-    const pair = document.getElementById('pairSelect').value;
-    if (!pair) return alert('Please select a pair');
+    const pair = document.getElementById('pairSelect').value.trim();
+    if (!pair) return alert('Please select or type a pair');
     const date = document.getElementById('tradeDate').value;
     const direction = document.getElementById('direction').value;
     const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
@@ -257,7 +260,13 @@ async function saveTrade() {
         pnl = direction === 'Long' ? (exit - entry) * size : (entry - exit) * size;
     }
     pnl = pnl || 0;
-    const trade = { pair, date, direction, entry, exit, size, pnl, stopLoss: parseFloat(document.getElementById('stopLoss').value)||0, takeProfit: parseFloat(document.getElementById('takeProfit').value)||0, notes: document.getElementById('notes').value };
+    const trade = {
+        pair, date, direction, entry, exit, size, pnl,
+        stopLoss: parseFloat(document.getElementById('stopLoss').value)||0,
+        takeProfit: parseFloat(document.getElementById('takeProfit').value)||0,
+        chartLink: document.getElementById('chartLink').value.trim(),
+        notes: document.getElementById('notes').value
+    };
     await db.ref(`trades/${id}`).set(trade);
     toggleForm(true);
 }
