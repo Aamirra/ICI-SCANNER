@@ -140,12 +140,12 @@
             <span style="font-size:14px;">▼</span>
         </div>
         <div class="ai-body" id="aiBody">
-            <div class="error-list-embedded" id="errorListEmbedded">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
-                    <span style="font-weight:600;color:var(--muted)">⚠️ Errors</span>
-                    <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
-                </div>
+            <!-- ✅ Clear button always visible -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
+                <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
+                <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
             </div>
+            <div class="error-list-embedded" id="errorListEmbedded"></div>
             <div class="chat-section">
                 <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
                 <div class="chat-input-embedded">
@@ -255,7 +255,7 @@ function updateErrorListEmbedded() {
     listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
 }
 
-// ✅ Clear Errors function
+// ✅ Clear Errors function (always visible button)
 function clearErrors() {
     if (confirm('Sare errors delete kar dein?')) {
         db.ref('errorLog').remove()
