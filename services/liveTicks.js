@@ -43,7 +43,7 @@ const CRYPTO_PAIRS = [
     'JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD','LQTYUSD','MASKUSD'
 ];
 
-// ── Helper functions (candles, signals) unchanged ──
+// ── Candle helpers (unchanged) ──
 function initFromScanner() {
     for (const pair in RAW_1H) {
         if (RAW_1H[pair] && RAW_1H[pair].closes) liveCloses1H[pair] = [...RAW_1H[pair].closes];
@@ -130,12 +130,15 @@ function computeLiveSignals(pair) {
     return signals;
 }
 
-// ── Fetch crypto prices via REST (guaranteed) ──
+// ── Fetch crypto prices via REST (safe) ──
 async function fetchCryptoPrices() {
     try {
         const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/price');
         const allTickers = await res.json();
-        // allTickers is array of { symbol, price }
+        if (!Array.isArray(allTickers)) {
+            console.error('[LiveTicks] REST response is not an array:', typeof allTickers, JSON.stringify(allTickers).slice(0,200));
+            return;
+        }
         for (const ticker of allTickers) {
             const symbol = ticker.symbol.replace('USDT', 'USD').toUpperCase();
             if (CRYPTO_PAIRS.includes(symbol)) {
@@ -169,7 +172,7 @@ async function pushLivePrices() {
     }
 }
 
-// ── Finnhub WebSocket for Forex/Indices (unchanged) ──
+// ── Finnhub WebSocket (Forex/Indices) unchanged ──
 function connectFinnhub() {
     const ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
     ws.on('open', () => {
@@ -222,7 +225,6 @@ async function pushSignalsAndAlerts() {
         const sigs = computeLiveSignals(pair);
         if (Object.keys(sigs).length) allSignals[pair] = sigs;
     }
-    // Update signals in liveMarketData
     const updates = {};
     for (const [pair, sigs] of Object.entries(allSignals)) {
         updates[`liveMarketData/${pair}`] = { ...sigs, updatedAt: Date.now() };
@@ -253,20 +255,16 @@ async function pushSignalsAndAlerts() {
     }
 }
 
-// ── Start everything ──
+// ── Start ──
 function start() {
     console.log('[LiveTicks] Starting hybrid live feed (REST crypto + WS forex)...');
     connectFinnhub();
-    // Fetch crypto prices via REST immediately and then every 5 seconds
     fetchCryptoPrices();
     setInterval(fetchCryptoPrices, 5000);
-    // Push prices every 5 seconds (after REST data is in currentPrices)
     setInterval(pushLivePrices, 5000);
 
-    // Initialize candles from scanner, then run signal computation every 60 seconds
     setTimeout(() => { initFromScanner(); }, 20000);
     setInterval(async () => {
-        // Finalize candles if necessary
         const now = new Date();
         const minute = now.getUTCMinutes();
         if (minute === 0) {
