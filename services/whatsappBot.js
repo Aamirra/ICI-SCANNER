@@ -24,12 +24,11 @@ const TARGET_JID = buildJID(RAW_TARGET);
 let sock = null;
 let isConnected = false;
 
-// Buffer Handling Helpers (Firebase me safe object format convert karne ke liye)
+// Firebase Object Serialization Helpers
 const toFirebaseObject = (data) => {
+    if (!data) return null;
     return JSON.parse(JSON.stringify(data, (k, v) => {
-        if (Buffer.isBuffer(v) || v instanceof Uint8Array) {
-            return { type: 'Buffer', data: Array.from(v) };
-        }
+        if (Buffer.isBuffer(v) || v instanceof Uint8Array) return { type: 'Buffer', data: Array.from(v) };
         return v;
     }));
 };
@@ -37,48 +36,23 @@ const toFirebaseObject = (data) => {
 const fromFirebaseObject = (obj) => {
     if (!obj) return null;
     return JSON.parse(JSON.stringify(obj), (k, v) => {
-        if (v && v.type === 'Buffer' && Array.isArray(v.data)) {
-            return Buffer.from(v.data);
-        }
+        if (v && v.type === 'Buffer' && Array.isArray(v.data)) return Buffer.from(v.data);
         return v;
     });
 };
 
 async function useFirebaseAuthState() {
     const db = admin.database();
-    
-    // Fixed: Firebase accepts pure objects, not raw JSON string
-    const write  = async (p, d) => { 
-        try { 
-            await db.ref(`${DB_PATH}/${p}`).set(toFirebaseObject(d)); 
-        } catch (e) { 
-            console.log(`❌ Firebase write [${p}]:`, e.message); 
-        } 
-    };
-    
-    const read   = async (p) => { 
-        try { 
-            const s = await db.ref(`${DB_PATH}/${p}`).once('value'); 
-            return s.exists() ? fromFirebaseObject(s.val()) : null; 
-        } catch (e) { 
-            return null; 
-        } 
-    };
-    
-    const remove = async (p) => { 
-        try { 
-            await db.ref(`${DB_PATH}/${p}`).remove(); 
-        } catch (e) { 
-            console.log(`❌ Firebase remove:`, e.message); 
-        } 
-    };
+    const write  = async (p, d) => { try { await db.ref(`${DB_PATH}/${p}`).set(toFirebaseObject(d)); } catch (e) { console.log(`❌ Firebase write [${p}]:`, e.message); } };
+    const read   = async (p)    => { try { const s = await db.ref(`${DB_PATH}/${p}`).once('value'); return s.exists() ? fromFirebaseObject(s.val()) : null; } catch (e) { return null; } };
+    const remove = async (p)    => { try { await db.ref(`${DB_PATH}/${p}`).remove(); } catch (e) { console.log(`❌ Firebase remove:`, e.message); } };
 
     let creds = await read('creds');
     if (!creds) {
         creds = initAuthCreds();
-        console.log('🆕 Fresh credentials — QR scan karna hoga.');
+        console.log('🆕 Fresh credentials created.');
     } else {
-        console.log('✅ Firebase se auth load — QR scan nahi karna!');
+        console.log('✅ Firebase se auth state loaded.');
     }
 
     return {
@@ -109,36 +83,20 @@ async function useFirebaseAuthState() {
                 }
             }
         },
-        // Fixed: Naye updates me partial creds ko merge karna zaroori hai
-        saveCreds: async () => { 
-            await write('creds', creds); 
-        }
+        saveCreds: async () => { await write('creds', creds); }
     };
 }
 
 async function handleSessionCleanup() {
     console.log("⚠️ Session Error (405/loggedOut). Cleanup...");
-    try {
-        await admin.database().ref(DB_PATH).remove();
-        console.log("🗑️ Firebase auth state saaf.");
-    } catch (e) {
-        console.log("❌ Firebase cleanup error:", e.message);
-    }
+    try { await admin.database().ref(DB_PATH).remove(); } catch (e) {}
     sock = null;
     isConnected = false;
-    console.log("⏳ 5 sec me fresh attempt...");
     setTimeout(() => connectToWhatsApp(), 5000);
 }
 
 async function sendWhatsAppAlert(messageContent) {
-    if (!sock || !isConnected) {
-        console.log("❌ WhatsApp socket tayar nahi.");
-        return;
-    }
-    if (!TARGET_JID) {
-        console.log("❌ MY_WHATSAPP_NUMBER env var set nahi.");
-        return;
-    }
+    if (!sock || !isConnected) return;
     try {
         await sock.sendMessage(TARGET_JID, { text: messageContent });
         console.log('✅ Alert WhatsApp par bhej diya.');
@@ -150,48 +108,58 @@ async function sendWhatsAppAlert(messageContent) {
 async function connectToWhatsApp() {
     try {
         const { state, saveCreds } = await useFirebaseAuthState();
-        const { version, isLatest } = await fetchLatestBaileysVersion();
-        console.log(`📦 WA v${version.join('.')}, isLatest: ${isLatest}`);
-        console.log(`📋 Target JID: ${TARGET_JID || 'SET NAHI — env var check karein'}`);
+        const { version } = await fetchLatestBaileysVersion();
 
         sock = makeWASocket({
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            browser: Browsers.macOS('Chrome'),
+            // ✅ Fix: Custom browser array taaki WhatsApp device ko anti-bot me block na kare
+            browser: ['Ubuntu', 'Chrome', '20.0.04'],
             syncFullHistory: false,
             markOnlineOnConnect: true,
         });
+
+        // 🔥 Naya Pairing Code Logic
+        if (!sock.authState.creds.registered) {
+            const phoneNumber = RAW_TARGET.replace(/[^0-9]/g, ''); // Numbers saaf karne ke liye
+            if (phoneNumber) {
+                console.log(`⏳ Phone number ${phoneNumber} ke liye Pairing Code (Passkey) request ho raha hai...`);
+                setTimeout(async () => {
+                    try {
+                        const code = await sock.requestPairingCode(phoneNumber);
+                        console.log(`\n======================================`);
+                        console.log(`🔑 APKA WHATSAPP PAIRING CODE: ${code}`);
+                        console.log(`======================================\n`);
+                    } catch (err) {
+                        console.log("❌ Pairing code nahi ban saka:", err.message);
+                    }
+                }, 6000);
+            }
+        }
 
         sock.ev.on('connection.update', async (update) => {
             try {
                 const { connection, lastDisconnect, qr } = update;
 
-                if (qr) {
-                    const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
-                    console.log(`\n📱 BROWSER ME YEH URL KHOLO:\n👉 ${url}\n`);
-                    console.log("── Terminal QR ──");
+                if (qr && !sock.authState.creds.registered) {
+                    console.log("── Terminal QR (Backup) ──");
                     qrcode.generate(qr, { small: true });
-                    console.log("─────────────────\n");
                 }
 
                 if (connection === 'close') {
                     const reason = lastDisconnect?.error?.output?.statusCode;
-                    console.log(`Connection closed. Reason: ${reason}`);
                     isConnected = false;
                     sock = null;
-
                     if (reason === 405 || reason === DisconnectReason.loggedOut) {
                         await handleSessionCleanup();
                     } else {
-                        console.log("🔄 Network drop. 5s me reconnect...");
                         setTimeout(() => connectToWhatsApp(), 5000);
                     }
                 } else if (connection === 'open') {
                     isConnected = true;
                     console.log(`\n========= CONNECTED =========`);
                     console.log(`✅ WhatsApp Bot LIVE!`);
-                    console.log(`📋 Target: ${TARGET_JID}`);
                     console.log(`=============================\n`);
                 }
             } catch (err) {
@@ -199,7 +167,6 @@ async function connectToWhatsApp() {
             }
         });
 
-        // Fixed: Event se milne wale partial updates ko state.creds me merge karein
         sock.ev.on('creds.update', async (update) => {
             Object.assign(state.creds, update);
             await saveCreds();
@@ -207,15 +174,9 @@ async function connectToWhatsApp() {
 
         return sock;
     } catch (error) {
-        console.log("❌ connectToWhatsApp() error, 8s me retry:", error.message);
         setTimeout(() => connectToWhatsApp(), 8000);
     }
 }
 
-process.on('unhandledRejection', (reason) => {
-    console.log('⚠️ Unhandled rejection:', reason?.message || reason);
-});
-
 connectToWhatsApp();
-
 module.exports = { sendWhatsAppAlert };
