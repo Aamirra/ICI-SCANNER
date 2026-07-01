@@ -40,7 +40,8 @@
         .item-row { border-bottom:1px solid var(--border); }
         .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
         .item-main:hover { background:var(--pill-bg); }
-        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
+        /* ✅ Fixed: prevent long pair name + price from overlapping timeframes */
+        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
         .trend-dot.g { background:var(--green); } .trend-dot.r { background:var(--red); }
@@ -502,6 +503,7 @@ async function openNewsModal() {
             const url = item.url || '#';
             const source = item.source || 'Unknown';
             const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+            // Use onclick on div to ensure link opens in new tab
             html += `<div class="news-item" onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
                 <div style="color:var(--acc);font-weight:600;text-decoration:none;pointer-events:none;">${title}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
