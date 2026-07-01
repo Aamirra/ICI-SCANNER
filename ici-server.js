@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 const config = require('./config');
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
-let scannerModule;   // will hold the scanner object { masterScan, RAW_1H, RAW_4H, RAW_DAILY }
+let scannerModule;
 
 if (!admin.apps.length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -173,7 +173,6 @@ Always put the action block FIRST, then your reply.`;
                         }
                     }
                 } else if (action === 'run_scan') {
-                    // ✅ Correct call: scannerModule.masterScan()
                     if (scannerModule && typeof scannerModule.masterScan === 'function') {
                         const scanFn = scannerModule.masterScan;
                         if (scanFn.isBusy && scanFn.isBusy()) {
@@ -374,6 +373,15 @@ Always put the action block FIRST, then your reply.`;
         });
         return;
     }
+    // ✅ Journal route
+    if (safePath === '/journal' || safePath === '/journal.html') {
+        const filePath = path.join(__dirname, 'journal.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) { res.writeHead(404); res.end('Journal page not found'); return; }
+            res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(data);
+        });
+        return;
+    }
     const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const filePath = path.join(__dirname, relativePath);
     if (!filePath.startsWith(path.join(__dirname))) { res.writeHead(403); res.end('Forbidden'); return; }
@@ -389,15 +397,14 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// ── Scanner initialization (FIXED) ──
+// ── Scanner initialization ──
 scannerModule = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 (async () => {
     await restoreState(firebaseGet);
-    // Auto-start scanner on boot
     if (scannerModule && typeof scannerModule.masterScan === 'function') {
-        scannerModule.masterScan();   // <-- uncomment if you want auto scan
+        scannerModule.masterScan();
         console.log('✅ Scanner started');
     } else {
         console.log('⚠️ Scanner function not found – manual scan only');
