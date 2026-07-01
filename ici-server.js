@@ -395,7 +395,7 @@ const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 (async () => {
     await restoreState(firebaseGet);
-    // Auto-start scanner on boot
+     Auto-start scanner on boot
     if (scannerModule && typeof scannerModule.masterScan === 'function') {
       //  scannerModule.masterScan();
         console.log('✅ Scanner started');
