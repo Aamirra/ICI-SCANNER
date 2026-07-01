@@ -121,9 +121,9 @@ async function connectToWhatsApp() {
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
+            // ✅ Use a common desktop browser identity – removes mobile API error
             browser: Browsers.ubuntu('Chrome'),
-            // ✅ Force mobile mode – triggers passkey prompt on phone
-            mobile: true
+            // Do NOT use mobile: true
         });
 
         sock.ev.on('connection.update', async (update) => {
@@ -174,7 +174,6 @@ process.on('unhandledRejection', (reason) => {
     console.log('⚠️ Unhandled rejection:', reason?.message || reason);
 });
 
-// Boot par khud start
 connectToWhatsApp();
 
 module.exports = { sendWhatsAppAlert };
