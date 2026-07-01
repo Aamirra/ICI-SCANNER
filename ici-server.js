@@ -389,15 +389,15 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
- ── Scanner initialization (FIXED) ──
+// ── Scanner initialization (FIXED) ──
 scannerModule = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 (async () => {
     await restoreState(firebaseGet);
-     Auto-start scanner on boot
+    // Auto-start scanner on boot
     if (scannerModule && typeof scannerModule.masterScan === 'function') {
-      //  scannerModule.masterScan();
+        scannerModule.masterScan();   // <-- uncomment if you want auto scan
         console.log('✅ Scanner started');
     } else {
         console.log('⚠️ Scanner function not found – manual scan only');
