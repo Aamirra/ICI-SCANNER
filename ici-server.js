@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 const config = require('./config');
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
 
-let masterScan;
+let scannerModule;   // will hold the scanner object { masterScan, RAW_1H, RAW_4H, RAW_DAILY }
 
 if (!admin.apps.length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -173,19 +173,17 @@ Always put the action block FIRST, then your reply.`;
                         }
                     }
                 } else if (action === 'run_scan') {
-                    // ✅ Safe scanner call
-                    if (masterScan) {
-                        if (typeof masterScan === 'function') {
-                            masterScan();
-                            result = { success: true, message: 'Scan started!' };
-                        } else if (typeof masterScan.scan === 'function') {
-                            masterScan.scan();
-                            result = { success: true, message: 'Scan started!' };
+                    // ✅ Correct call: scannerModule.masterScan()
+                    if (scannerModule && typeof scannerModule.masterScan === 'function') {
+                        const scanFn = scannerModule.masterScan;
+                        if (scanFn.isBusy && scanFn.isBusy()) {
+                            result = { success: false, message: 'Scan already running — please wait!' };
                         } else {
-                            result = { success: false, message: 'Scanner function not available.' };
+                            scanFn();
+                            result = { success: true, message: 'Scan started!' };
                         }
                     } else {
-                        result = { success: false, message: 'Scanner not loaded.' };
+                        result = { success: false, message: 'Scanner function not available.' };
                     }
                 } else if (action === 'toggle_alert') {
                     const alertType = params?.type;
@@ -279,11 +277,34 @@ Always put the action block FIRST, then your reply.`;
                 const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
                 const symbol = urlParams.get('symbol') || 'BTCUSD';
 
-                // Mapping ...
                 const symbolToCoinName = {
                     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
-                    // ... (keep full mapping as before, abbreviated for brevity)
-                    'MASKUSD': 'mask network'
+                    'XRPUSD': 'xrp', 'ADAUSD': 'cardano', 'DOTUSD': 'polkadot', 'LINKUSD': 'chainlink',
+                    'UNIUSD': 'uniswap', 'SOLUSD': 'solana', 'MATICUSD': 'polygon', 'AVAXUSD': 'avalanche',
+                    'ATOMUSD': 'cosmos', 'FILUSD': 'filecoin', 'VETUSD': 'vechain', 'ETCUSD': 'ethereum classic',
+                    'TRXUSD': 'tron', 'XLMUSD': 'stellar', 'ICPUSD': 'internet computer', 'THETAUSD': 'theta',
+                    'XTZUSD': 'tezos', 'EOSUSD': 'eos', 'SANDUSD': 'the sandbox', 'MANAUSD': 'decentraland',
+                    'DOGEUSD': 'dogecoin', 'SHIBUSD': 'shiba inu', 'PEPEUSD': 'pepe', 'BONKUSD': 'bonk',
+                    'FLOKIUSD': 'floki', 'WIFUSD': 'dogwifhat', 'GRTUSD': 'the graph', 'ENJUSD': 'enjin coin',
+                    'CHZUSD': 'chiliz', 'BATUSD': 'basic attention token', 'ZRXUSD': '0x', 'OMGUSD': 'omg network',
+                    'DASHUSD': 'dash', 'ZECUSD': 'zcash', 'BTGUSD': 'bitcoin gold', 'DCRUSD': 'decred',
+                    'XVGUSD': 'verge', 'SCUSD': 'siacoin', 'SNXUSD': 'synthetix', 'COMPUSD': 'compound',
+                    'MKRUSD': 'maker', 'AAVEUSD': 'aave', 'YFIUSD': 'yearn finance', 'SUSHIUSD': 'sushiswap',
+                    'CRVUSD': 'curve dao', 'RENUSD': 'ren', 'KNCUSD': 'kyber network', 'BANDUSD': 'band protocol',
+                    'NMRUSD': 'numeraire', 'OCEANUSD': 'ocean protocol', 'FETUSD': 'fetch.ai', 'AGIXUSD': 'singularitynet',
+                    'BNBUSD': 'bnb', 'CAKEUSD': 'pancakeswap', 'RUNEUSD': 'thorchain', 'ALGOUSD': 'algorand',
+                    'NEARUSD': 'near protocol', 'FLOWUSD': 'flow', 'APTUSD': 'aptos', 'OPUSD': 'optimism',
+                    'ARBUSD': 'arbitrum', 'SUIUSD': 'sui', 'INJUSD': 'injective', 'TIAUSD': 'celestia',
+                    'SEIUSD': 'sei', 'BLURUSD': 'blur', 'PYTHUSD': 'pyth network', 'JTOUSD': 'jito',
+                    'ORDIUSD': 'ordinals', '1000SATSUSD': 'sats', 'BEAMUSD': 'beam', 'RNDRUSD': 'render token',
+                    'IMXUSD': 'immutable', 'MINAUSD': 'mina', 'GALAUSD': 'gala', 'AXSUSD': 'axie infinity',
+                    'APEUSD': 'apecoin', 'ENSUSD': 'ethereum name service', 'LDOUSD': 'lido dao',
+                    'STXUSD': 'stacks', 'CFXUSD': 'conflux', 'KLAYUSD': 'klaytn', 'FTMUSD': 'fantom',
+                    'HBARUSD': 'hedera', 'EGLDUSD': 'elrond', 'QNTUSD': 'quant', 'ARUSD': 'arweave',
+                    'ZILUSD': 'zilliqa', 'KSMUSD': 'kusama', 'ANTUSD': 'aragon', 'IOTXUSD': 'iotex',
+                    'CELOUSD': 'celo', 'ANKRUSD': 'ankr', 'SKLUSD': 'skale', 'SPELLUSD': 'spell token',
+                    'JOEUSD': 'joe', 'GMXUSD': 'gmx', 'PENDLEUSD': 'pendle', 'SSVUSD': 'ssv network',
+                    'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
                 };
 
                 const coinName = symbolToCoinName[symbol];
@@ -293,9 +314,8 @@ Always put the action block FIRST, then your reply.`;
                     return;
                 }
 
-                // Fetch CoinDesk RSS
-                const rssRes = await fetch('https://www.coindesk.com/arc/outboundfeeds/rss/');
-                const xml = await rssRes.text();
+                const newsRes = await fetch('https://www.coindesk.com/arc/outboundfeeds/rss/');
+                const xml = await newsRes.text();
                 const items = [];
                 const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
                 let match;
@@ -307,7 +327,6 @@ Always put the action block FIRST, then your reply.`;
                     const description = (itemXml.match(/<description>(.*?)<\/description>/i) || [])[1] || '';
                     items.push({ title, url: link, source: 'CoinDesk', created_at: pubDate, description });
                 }
-
                 const filtered = items.filter(item => {
                     const txt = (item.title + item.description).toLowerCase();
                     return txt.includes(coinName);
@@ -326,17 +345,16 @@ Always put the action block FIRST, then your reply.`;
     // ── Scan & static files ──
     if (safePath === '/scan') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        // ✅ Safe busy check
-        const isBusy = masterScan && typeof masterScan.isBusy === 'function' ? masterScan.isBusy() : false;
-        if (isBusy) {
-            res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
-        } else {
-            res.end(JSON.stringify({ status: 'Scan started!' }));
-            if (typeof masterScan === 'function') {
-                masterScan();
-            } else if (masterScan && typeof masterScan.scan === 'function') {
-                masterScan.scan();
+        if (scannerModule && typeof scannerModule.masterScan === 'function') {
+            const scanFn = scannerModule.masterScan;
+            if (scanFn.isBusy && scanFn.isBusy()) {
+                res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
+            } else {
+                res.end(JSON.stringify({ status: 'Scan started!' }));
+                scanFn();
             }
+        } else {
+            res.end(JSON.stringify({ status: 'Scanner not available' }));
         }
         return;
     }
@@ -371,20 +389,17 @@ Always put the action block FIRST, then your reply.`;
     console.log(`🚀 Server ready on port ${PORT}`);
 });
 
-// ── Scanner initialization (safe) ──
-masterScan = require('./core/scanner');
+// ── Scanner initialization (FIXED) ──
+scannerModule = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 (async () => {
     await restoreState(firebaseGet);
-    // Auto-scan if possible
-    if (typeof masterScan === 'function') {
-        masterScan();
-        console.log('✅ Scanner started');
-    } else if (masterScan && typeof masterScan.scan === 'function') {
-        masterScan.scan();
+    // Auto-start scanner on boot
+    if (scannerModule && typeof scannerModule.masterScan === 'function') {
+        scannerModule.masterScan();
         console.log('✅ Scanner started');
     } else {
-        console.log('⚠️ Scanner function not found, scan will be available via UI button if defined');
+        console.log('⚠️ Scanner function not found – manual scan only');
     }
 })();
