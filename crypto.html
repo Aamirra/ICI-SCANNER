@@ -265,7 +265,20 @@ function isInWatchlist(p) { return watchlistSet.has(p); }
 function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
 // ── Live Market Data ──
-db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    // 🔔 Check alerts when live prices update
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({
+            name,
+            currentPrice: data.price,
+            ema20: null,
+            sentiment: data.sentiment,
+        }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
 // ── Error Log ──
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
@@ -426,9 +439,10 @@ function render() {
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
         const signals = ['1h','4h','1day','1week'].map(tf=>{
+            if (m[tf]) return m[tf];
             const liveM = liveMarketData && liveMarketData[p.n];
-            if(liveM && liveM[tf]) return liveM[tf];
-            return m[tf] || '';
+            if (liveM && liveM[tf]) return liveM[tf];
+            return '';
         });
         const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
@@ -503,7 +517,6 @@ async function openNewsModal() {
             const url = item.url || '#';
             const source = item.source || 'Unknown';
             const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-            // Use onclick on div to ensure link opens in new tab
             html += `<div class="news-item" onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
                 <div style="color:var(--acc);font-weight:600;text-decoration:none;pointer-events:none;">${title}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
@@ -523,7 +536,20 @@ function closeNewsModal() {
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
-db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
+db.ref('marketData').on('value', snap => {
+    MARKET_DATA = snap.val() || {};
+    // 🔔 Check alerts on scanner data update
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
+            name,
+            currentPrice: data.currentPrice || data.price,
+            ema20: data.ema20,
+            sentiment: data.sentiment,
+        }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
 (function(){
     const saved=localStorage.getItem('ici-crypto-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
