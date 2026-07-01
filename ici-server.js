@@ -397,7 +397,7 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
     await restoreState(firebaseGet);
     // Auto-start scanner on boot
     if (scannerModule && typeof scannerModule.masterScan === 'function') {
-        scannerModule.masterScan();
+      //  scannerModule.masterScan();
         console.log('✅ Scanner started');
     } else {
         console.log('⚠️ Scanner function not found – manual scan only');
