@@ -156,7 +156,6 @@ function computeLiveSignals(pair) {
     return signals;
 }
 
-// ── Push prices to Firebase every 5 seconds ──
 async function pushLivePrices() {
     const updates = {};
     for (const [pair, price] of Object.entries(currentPrices)) {
@@ -172,7 +171,6 @@ async function pushLivePrices() {
     }
 }
 
-// ── Fetch indices via Yahoo REST ──
 async function fetchIndicesPrices() {
     try {
         for (const [pair, symbol] of Object.entries(INDICES_MAP)) {
@@ -196,7 +194,6 @@ async function fetchIndicesPrices() {
     }
 }
 
-// ── Connect to Binance Futures WebSocket (single stream) ──
 function connectBinance() {
     const streams = Object.keys(BINANCE_TICKER_MAP).map(s => `${s.toLowerCase()}@trade`).join('/');
     const wsUrl = `wss://fstream.binance.com/stream?streams=${streams}`;
@@ -212,7 +209,7 @@ function connectBinance() {
             if (msg.data && msg.data.e === 'trade') {
                 const trade = msg.data;
                 const price = parseFloat(trade.p);
-                const symbol = trade.s; // e.g., BTCUSDT
+                const symbol = trade.s;
                 const pair = BINANCE_TICKER_MAP[symbol];
                 if (pair) {
                     currentPrices[pair] = price;
@@ -233,7 +230,6 @@ function connectBinance() {
     });
 }
 
-// ── Finnhub WebSocket for Forex only ──
 function connectFinnhub() {
     const ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
     ws.on('open', () => {
@@ -272,7 +268,6 @@ function connectFinnhub() {
     ws.on('close', () => { console.log('[LiveTicks] Finnhub WS disconnected – reconnecting in 5s'); setTimeout(connectFinnhub, 5000); });
 }
 
-// ── Signal & custom alerts (every 60s) ──
 async function pushSignalsAndAlerts() {
     const allSignals = {};
     for (const pair of Object.keys(currentPrices)) {
@@ -308,12 +303,11 @@ async function pushSignalsAndAlerts() {
     }
 }
 
-// ── Start ──
 function start() {
     console.log('[LiveTicks] Starting live feed (WS crypto + WS forex + REST indices)...');
     connectFinnhub();
-    connectBinance();           // single WebSocket for all crypto
-    fetchIndicesPrices();      // initial fetch
+    connectBinance();
+    fetchIndicesPrices();
     setInterval(fetchIndicesPrices, 5000);
     setInterval(pushLivePrices, 5000);
 
