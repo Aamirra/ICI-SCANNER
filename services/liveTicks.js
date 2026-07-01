@@ -29,19 +29,115 @@ const fourHourMinuteAcc = {};
 const liveCloses1H = {};
 const liveCloses4H = {};
 
-const CRYPTO_PAIRS = [
-    'BTCUSD','ETHUSD','LTCUSD','BCHUSD','XRPUSD','ADAUSD','DOTUSD','LINKUSD','UNIUSD','SOLUSD',
-    'MATICUSD','AVAXUSD','ATOMUSD','FILUSD','VETUSD','ETCUSD','TRXUSD','XLMUSD','ICPUSD','THETAUSD',
-    'XTZUSD','EOSUSD','SANDUSD','MANAUSD','DOGEUSD','SHIBUSD','PEPEUSD','BONKUSD','FLOKIUSD','WIFUSD',
-    'GRTUSD','ENJUSD','CHZUSD','BATUSD','ZRXUSD','OMGUSD','DASHUSD','ZECUSD','BTGUSD','DCRUSD',
-    'XVGUSD','SCUSD','SNXUSD','COMPUSD','MKRUSD','AAVEUSD','YFIUSD','SUSHIUSD','CRVUSD','RENUSD',
-    'KNCUSD','BANDUSD','NMRUSD','OCEANUSD','FETUSD','AGIXUSD','BNBUSD','CAKEUSD','RUNEUSD','ALGOUSD',
-    'NEARUSD','FLOWUSD','APTUSD','OPUSD','ARBUSD','SUIUSD','INJUSD','TIAUSD','SEIUSD','BLURUSD',
-    'PYTHUSD','JTOUSD','ORDIUSD','1000SATSUSD','BEAMUSD','RNDRUSD','IMXUSD','MINAUSD','GALAUSD',
-    'AXSUSD','APEUSD','ENSUSD','LDOUSD','STXUSD','CFXUSD','KLAYUSD','FTMUSD','HBARUSD','EGLDUSD',
-    'QNTUSD','ARUSD','ZILUSD','KSMUSD','ANTUSD','IOTXUSD','CELOUSD','ANKRUSD','SKLUSD','SPELLUSD',
-    'JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD','LQTYUSD','MASKUSD'
-];
+// ✅ Full mapping from Binance ticker (without USDT) -> our pair name (BTCUSD, etc.)
+const BINANCE_TICKER_MAP = {
+    'BTCUSDT': 'BTCUSD',
+    'ETHUSDT': 'ETHUSD',
+    'LTCUSDT': 'LTCUSD',
+    'BCHUSDT': 'BCHUSD',
+    'XRPUSDT': 'XRPUSD',
+    'ADAUSDT': 'ADAUSD',
+    'DOTUSDT': 'DOTUSD',
+    'LINKUSDT': 'LINKUSD',
+    'UNIUSDT': 'UNIUSD',
+    'SOLUSDT': 'SOLUSD',
+    'MATICUSDT': 'MATICUSD',
+    'AVAXUSDT': 'AVAXUSD',
+    'ATOMUSDT': 'ATOMUSD',
+    'FILUSDT': 'FILUSD',
+    'VETUSDT': 'VETUSD',
+    'ETCUSDT': 'ETCUSD',
+    'TRXUSDT': 'TRXUSD',
+    'XLMUSDT': 'XLMUSD',
+    'ICPUSDT': 'ICPUSD',
+    'THETAUSDT': 'THETAUSD',
+    'XTZUSDT': 'XTZUSD',
+    'EOSUSDT': 'EOSUSD',
+    'SANDUSDT': 'SANDUSD',
+    'MANAUSDT': 'MANAUSD',
+    'DOGEUSDT': 'DOGEUSD',
+    'SHIBUSDT': 'SHIBUSD',
+    'PEPEUSDT': 'PEPEUSD',
+    'BONKUSDT': 'BONKUSD',
+    'FLOKIUSDT': 'FLOKIUSD',
+    'WIFUSDT': 'WIFUSD',
+    'GRTUSDT': 'GRTUSD',
+    'ENJUSDT': 'ENJUSD',
+    'CHZUSDT': 'CHZUSD',
+    'BATUSDT': 'BATUSD',
+    'ZRXUSDT': 'ZRXUSD',
+    'OMGUSDT': 'OMGUSD',
+    'DASHUSDT': 'DASHUSD',
+    'ZECUSDT': 'ZECUSD',
+    'BTGUSDT': 'BTGUSD',
+    'DCRUSDT': 'DCRUSD',
+    'XVGUSDT': 'XVGUSD',
+    'SCUSDT': 'SCUSD',
+    'SNXUSDT': 'SNXUSD',
+    'COMPUSDT': 'COMPUSD',
+    'MKRUSDT': 'MKRUSD',
+    'AAVEUSDT': 'AAVEUSD',
+    'YFIUSDT': 'YFIUSD',
+    'SUSHIUSDT': 'SUSHIUSD',
+    'CRVUSDT': 'CRVUSD',
+    'RENUSDT': 'RENUSD',
+    'KNCUSDT': 'KNCUSD',
+    'BANDUSDT': 'BANDUSD',
+    'NMRUSDT': 'NMRUSD',
+    'OCEANUSDT': 'OCEANUSD',
+    'FETUSDT': 'FETUSD',
+    'AGIXUSDT': 'AGIXUSD',
+    'BNBUSDT': 'BNBUSD',
+    'CAKEUSDT': 'CAKEUSD',
+    'RUNEUSDT': 'RUNEUSD',
+    'ALGOUSDT': 'ALGOUSD',
+    'NEARUSDT': 'NEARUSD',
+    'FLOWUSDT': 'FLOWUSD',
+    'APTUSDT': 'APTUSD',
+    'OPUSDT': 'OPUSD',
+    'ARBUSDT': 'ARBUSD',
+    'SUIUSDT': 'SUIUSD',
+    'INJUSDT': 'INJUSD',
+    'TIAUSDT': 'TIAUSD',
+    'SEIUSDT': 'SEIUSD',
+    'BLURUSDT': 'BLURUSD',
+    'PYTHUSDT': 'PYTHUSD',
+    'JTOUSDT': 'JTOUSD',
+    'ORDIUSDT': 'ORDIUSD',
+    '1000SATSUSDT': '1000SATSUSD',
+    'BEAMUSDT': 'BEAMUSD',
+    'RNDRUSDT': 'RNDRUSD',
+    'IMXUSDT': 'IMXUSD',
+    'MINAUSDT': 'MINAUSD',
+    'GALAUSDT': 'GALAUSD',
+    'AXSUSDT': 'AXSUSD',
+    'APEUSDT': 'APEUSD',
+    'ENSUSDT': 'ENSUSD',
+    'LDOUSDT': 'LDOUSD',
+    'STXUSDT': 'STXUSD',
+    'CFXUSDT': 'CFXUSD',
+    'KLAYUSDT': 'KLAYUSD',
+    'FTMUSDT': 'FTMUSD',
+    'HBARUSDT': 'HBARUSD',
+    'EGLDUSDT': 'EGLDUSD',
+    'QNTUSDT': 'QNTUSD',
+    'ARUSDT': 'ARUSD',
+    'ZILUSDT': 'ZILUSD',
+    'KSMUSDT': 'KSMUSD',
+    'ANTUSDT': 'ANTUSD',
+    'IOTXUSDT': 'IOTXUSD',
+    'CELOUSDT': 'CELOUSD',
+    'ANKRUSDT': 'ANKRUSD',
+    'SKLUSDT': 'SKLUSD',
+    'SPELLUSDT': 'SPELLUSD',
+    'JOEUSDT': 'JOEUSD',
+    'GMXUSDT': 'GMXUSD',
+    'PENDLEUSDT': 'PENDLEUSD',
+    'SSVUSDT': 'SSVUSD',
+    'FXSUSDT': 'FXSUSD',
+    'LQTYUSDT': 'LQTYUSD',
+    'MASKUSDT': 'MASKUSD'
+};
 
 // ── Candle helpers (unchanged) ──
 function initFromScanner() {
@@ -130,7 +226,7 @@ function computeLiveSignals(pair) {
     return signals;
 }
 
-// ── Fetch crypto prices via REST (safe) ──
+// ── Fetch crypto prices via REST (with direct mapping) ──
 async function fetchCryptoPrices() {
     try {
         const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/price');
@@ -139,15 +235,18 @@ async function fetchCryptoPrices() {
             console.error('[LiveTicks] REST response is not an array:', typeof allTickers, JSON.stringify(allTickers).slice(0,200));
             return;
         }
+        let updated = 0;
         for (const ticker of allTickers) {
-            const symbol = ticker.symbol.replace('USDT', 'USD').toUpperCase();
-            if (CRYPTO_PAIRS.includes(symbol)) {
-                currentPrices[symbol] = parseFloat(ticker.price);
-                updateMinuteCandle(symbol, parseFloat(ticker.price));
-                updateFourHourBuffer(symbol, parseFloat(ticker.price));
+            // Look up in our mapping
+            const pair = BINANCE_TICKER_MAP[ticker.symbol];
+            if (pair) {
+                currentPrices[pair] = parseFloat(ticker.price);
+                updateMinuteCandle(pair, parseFloat(ticker.price));
+                updateFourHourBuffer(pair, parseFloat(ticker.price));
+                updated++;
             }
         }
-        console.log('[LiveTicks] REST: Crypto prices updated');
+        console.log(`[LiveTicks] REST: Updated ${updated} crypto prices`);
     } catch (e) {
         console.error('[LiveTicks] REST crypto fetch error:', e.message);
     }
@@ -257,7 +356,7 @@ async function pushSignalsAndAlerts() {
 
 // ── Start ──
 function start() {
-    console.log('[LiveTicks] Starting hybrid live feed (REST crypto + WS forex)...');
+    console.log('[LiveTicks] Starting hybrid live feed (REST crypto with map + WS forex)...');
     connectFinnhub();
     fetchCryptoPrices();
     setInterval(fetchCryptoPrices, 5000);
