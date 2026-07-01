@@ -24,20 +24,54 @@ const TARGET_JID = buildJID(RAW_TARGET);
 let sock = null;
 let isConnected = false;
 
-const toJSON = (data) => JSON.stringify(data, (k, v) => {
-    if (Buffer.isBuffer(v) || v instanceof Uint8Array) return { type: 'Buffer', data: Array.from(v) };
-    return v;
-});
-const fromJSON = (str) => JSON.parse(str, (k, v) => {
-    if (v && v.type === 'Buffer' && Array.isArray(v.data)) return Buffer.from(v.data);
-    return v;
-});
+// Buffer Handling Helpers (Firebase me safe object format convert karne ke liye)
+const toFirebaseObject = (data) => {
+    return JSON.parse(JSON.stringify(data, (k, v) => {
+        if (Buffer.isBuffer(v) || v instanceof Uint8Array) {
+            return { type: 'Buffer', data: Array.from(v) };
+        }
+        return v;
+    }));
+};
+
+const fromFirebaseObject = (obj) => {
+    if (!obj) return null;
+    return JSON.parse(JSON.stringify(obj), (k, v) => {
+        if (v && v.type === 'Buffer' && Array.isArray(v.data)) {
+            return Buffer.from(v.data);
+        }
+        return v;
+    });
+};
 
 async function useFirebaseAuthState() {
     const db = admin.database();
-    const write  = async (p, d) => { try { await db.ref(`${DB_PATH}/${p}`).set(toJSON(d)); } catch (e) { console.log(`❌ Firebase write [${p}]:`, e.message); } };
-    const read   = async (p)    => { try { const s = await db.ref(`${DB_PATH}/${p}`).once('value'); const v = s.val(); return v ? fromJSON(v) : null; } catch (e) { return null; } };
-    const remove = async (p)    => { try { await db.ref(`${DB_PATH}/${p}`).remove(); } catch (e) { console.log(`❌ Firebase remove:`, e.message); } };
+    
+    // Fixed: Firebase accepts pure objects, not raw JSON string
+    const write  = async (p, d) => { 
+        try { 
+            await db.ref(`${DB_PATH}/${p}`).set(toFirebaseObject(d)); 
+        } catch (e) { 
+            console.log(`❌ Firebase write [${p}]:`, e.message); 
+        } 
+    };
+    
+    const read   = async (p) => { 
+        try { 
+            const s = await db.ref(`${DB_PATH}/${p}`).once('value'); 
+            return s.exists() ? fromFirebaseObject(s.val()) : null; 
+        } catch (e) { 
+            return null; 
+        } 
+    };
+    
+    const remove = async (p) => { 
+        try { 
+            await db.ref(`${DB_PATH}/${p}`).remove(); 
+        } catch (e) { 
+            console.log(`❌ Firebase remove:`, e.message); 
+        } 
+    };
 
     let creds = await read('creds');
     if (!creds) {
@@ -75,7 +109,10 @@ async function useFirebaseAuthState() {
                 }
             }
         },
-        saveCreds: async () => { await write('creds', creds); }
+        // Fixed: Naye updates me partial creds ko merge karna zaroori hai
+        saveCreds: async () => { 
+            await write('creds', creds); 
+        }
     };
 }
 
@@ -121,9 +158,7 @@ async function connectToWhatsApp() {
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            // ✅ Latest working browser identity (macOS + Chrome)
             browser: Browsers.macOS('Chrome'),
-            // Force multi‑device pairing
             syncFullHistory: false,
             markOnlineOnConnect: true,
         });
@@ -164,7 +199,12 @@ async function connectToWhatsApp() {
             }
         });
 
-        sock.ev.on('creds.update', saveCreds);
+        // Fixed: Event se milne wale partial updates ko state.creds me merge karein
+        sock.ev.on('creds.update', async (update) => {
+            Object.assign(state.creds, update);
+            await saveCreds();
+        });
+
         return sock;
     } catch (error) {
         console.log("❌ connectToWhatsApp() error, 8s me retry:", error.message);
