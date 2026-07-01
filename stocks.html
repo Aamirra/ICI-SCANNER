@@ -206,6 +206,7 @@
 </div>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
+<script src="Alerts.js"></script>
 <script>
 // ── Firebase Init ──
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
@@ -225,6 +226,7 @@ let watchlistSet = new Set();
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
 let liveMarketData = {};   // ✅ Added for live price fallback
+let techMetrics = {};      // for alerts compatibility
 
 // ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
@@ -359,12 +361,52 @@ function attachListeners() {
     db.ref('stockMarketData').off(); db.ref('stockMarketDataPbState').off();
     db.ref('psxStockMarketData').off(); db.ref('psxStockMarketDataPbState').off();
     if (currentMarket === 'exness') {
-        db.ref('stockMarketData').on('value', snap => { stockData = snap.val() || {}; render(); updateCounts(); });
+        db.ref('stockMarketData').on('value', snap => {
+            stockData = snap.val() || {};
+            // 🔔 Check alerts when stock data updates
+            if (typeof checkAllAlerts === 'function') {
+                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
+                    name,
+                    currentPrice: data.currentPrice || data.price,
+                    ema20: data.ema20 || null,
+                    sentiment: data.sentiment || null,
+                }));
+                checkAllAlerts(pairsArray);
+            }
+            render(); updateCounts();
+        });
         db.ref('stockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
     } else {
-        db.ref('psxStockMarketData').on('value', snap => { stockData = snap.val() || {}; render(); updateCounts(); });
+        db.ref('psxStockMarketData').on('value', snap => {
+            stockData = snap.val() || {};
+            if (typeof checkAllAlerts === 'function') {
+                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
+                    name,
+                    currentPrice: data.currentPrice || data.price,
+                    ema20: data.ema20 || null,
+                    sentiment: data.sentiment || null,
+                }));
+                checkAllAlerts(pairsArray);
+            }
+            render(); updateCounts();
+        });
         db.ref('psxStockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
     }
+    // Also listen to technicalMetrics for alerts that need tech metrics
+    db.ref('technicalMetrics').on('value', snap => {
+        techMetrics = snap.val() || {};
+        // Re-check alerts if needed (tech metrics changed)
+        const dataSrc = currentMarket === 'exness' ? stockData : stockData;
+        if (typeof checkAllAlerts === 'function') {
+            const pairsArray = Object.entries(dataSrc).map(([name, data]) => ({
+                name,
+                currentPrice: data.currentPrice || data.price,
+                ema20: data.ema20 || null,
+                sentiment: data.sentiment || null,
+            }));
+            checkAllAlerts(pairsArray);
+        }
+    });
 }
 
 function isStrongTrend(symbol, data, direction) {
@@ -425,7 +467,7 @@ function render() {
         const signals = [data.signal1h, data.signal4h, data.signal1d, data.signal1w];
         const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const watchlistStar = `<span class="watchlist-star ${isInWatchlist(sym)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${sym}')">${isInWatchlist(sym)?'⭐':'☆'}</span>`;
-        const bellHtml = `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${sym}')">🔕</span>`;
+        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(sym) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${sym}')">🔕</span>`;
         return `<div class="item-row">
             <div class="item-main" onclick="openStockChartFromTable('${sym}')">
                 <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${sym}${priceHTML}</div>
