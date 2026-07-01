@@ -43,7 +43,7 @@ const CRYPTO_PAIRS = [
     'JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD','LQTYUSD','MASKUSD'
 ];
 
-// ── Candle helpers (unchanged) ──
+// ── Helper functions (candles, signals) unchanged ──
 function initFromScanner() {
     for (const pair in RAW_1H) {
         if (RAW_1H[pair] && RAW_1H[pair].closes) liveCloses1H[pair] = [...RAW_1H[pair].closes];
@@ -130,7 +130,27 @@ function computeLiveSignals(pair) {
     return signals;
 }
 
-// ── Push prices every 5 seconds (guaranteed) ──
+// ── Fetch crypto prices via REST (guaranteed) ──
+async function fetchCryptoPrices() {
+    try {
+        const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/price');
+        const allTickers = await res.json();
+        // allTickers is array of { symbol, price }
+        for (const ticker of allTickers) {
+            const symbol = ticker.symbol.replace('USDT', 'USD').toUpperCase();
+            if (CRYPTO_PAIRS.includes(symbol)) {
+                currentPrices[symbol] = parseFloat(ticker.price);
+                updateMinuteCandle(symbol, parseFloat(ticker.price));
+                updateFourHourBuffer(symbol, parseFloat(ticker.price));
+            }
+        }
+        console.log('[LiveTicks] REST: Crypto prices updated');
+    } catch (e) {
+        console.error('[LiveTicks] REST crypto fetch error:', e.message);
+    }
+}
+
+// ── Push prices to Firebase every 5 seconds ──
 async function pushLivePrices() {
     const updates = {};
     for (const [pair, price] of Object.entries(currentPrices)) {
@@ -149,43 +169,7 @@ async function pushLivePrices() {
     }
 }
 
-// Optionally keep signal update (runs every 60 seconds, separate from price push)
-async function pushLiveSignals() {
-    const updates = {};
-    for (const pair of Object.keys(currentPrices)) {
-        const sigs = computeLiveSignals(pair);
-        if (Object.keys(sigs).length > 0) {
-            updates[`liveMarketData/${pair}`] = { ...sigs, updatedAt: Date.now() };
-        }
-    }
-    if (Object.keys(updates).length > 0) {
-        await admin.database().ref().update(updates).catch(e => console.error('[LiveTicks] Firebase signal update error:', e.message));
-    }
-}
-
-async function checkCustomAlerts(signals) {
-    const db = admin.database();
-    const rulesSnap = await db.ref('customAlertRules').once('value');
-    const rules = rulesSnap.val() || {};
-    for (const [id, rule] of Object.entries(rules)) {
-        if (!rule.active) continue;
-        const pairSignals = signals[rule.pair];
-        if (pairSignals && pairSignals[rule.timeframe] === rule.signal) {
-            const msg = `🚨 Custom Alert: ${rule.pair} ${rule.timeframe} turned ${rule.signal}!`;
-            console.log('[LiveTicks] Custom alert triggered:', msg);
-            const settingsSnap = await db.ref('alertSettings').once('value');
-            const settings = settingsSnap.val() || {};
-            if (settings.whatsapp) {
-                try { await require('./whatsappBot').sendWhatsAppAlert(msg); } catch(e) { console.error('WhatsApp alert failed:', e); }
-            }
-            if (settings.telegram) {
-                try { await require('./telegram').sendTG(msg); } catch(e) { console.error('Telegram alert failed:', e); }
-            }
-        }
-    }
-}
-
-// ── Finnhub WebSocket (Forex/Indices) ──
+// ── Finnhub WebSocket for Forex/Indices (unchanged) ──
 function connectFinnhub() {
     const ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
     ws.on('open', () => {
@@ -231,43 +215,58 @@ function connectFinnhub() {
     ws.on('close', () => { console.log('[LiveTicks] Finnhub WS disconnected – reconnecting in 5s'); setTimeout(connectFinnhub, 5000); });
 }
 
-// ── Binance Futures WebSocket (Crypto) ──
-function connectBinance() {
-    const streams = CRYPTO_PAIRS.map(p => `${p.toLowerCase().replace('usd','usdt')}@trade`).join('/');
-    const ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${streams}`);
-    ws.on('open', () => console.log('[LiveTicks] Binance Futures WebSocket connected for all crypto'));
-    ws.on('message', (data) => {
-        try {
-            const msg = JSON.parse(data);
-            if (msg.data && msg.data.e === 'trade') {
-                const trade = msg.data;
-                const price = parseFloat(trade.p);
-                const symbol = trade.s.replace('USDT','USD').toUpperCase();
-                if (CRYPTO_PAIRS.includes(symbol)) {
-                    currentPrices[symbol] = price;
-                    updateMinuteCandle(symbol, price);
-                    updateFourHourBuffer(symbol, price);
-                }
+// ── Signal & custom alerts (unchanged, runs every 60s) ──
+async function pushSignalsAndAlerts() {
+    const allSignals = {};
+    for (const pair of Object.keys(currentPrices)) {
+        const sigs = computeLiveSignals(pair);
+        if (Object.keys(sigs).length) allSignals[pair] = sigs;
+    }
+    // Update signals in liveMarketData
+    const updates = {};
+    for (const [pair, sigs] of Object.entries(allSignals)) {
+        updates[`liveMarketData/${pair}`] = { ...sigs, updatedAt: Date.now() };
+    }
+    if (Object.keys(updates).length > 0) {
+        await admin.database().ref().update(updates).catch(e => console.error('[LiveTicks] Signal update error:', e.message));
+    }
+
+    // Custom alerts
+    const db = admin.database();
+    const rulesSnap = await db.ref('customAlertRules').once('value');
+    const rules = rulesSnap.val() || {};
+    for (const [id, rule] of Object.entries(rules)) {
+        if (!rule.active) continue;
+        const pairSignals = allSignals[rule.pair];
+        if (pairSignals && pairSignals[rule.timeframe] === rule.signal) {
+            const msg = `🚨 Custom Alert: ${rule.pair} ${rule.timeframe} turned ${rule.signal}!`;
+            console.log('[LiveTicks] Custom alert triggered:', msg);
+            const settingsSnap = await db.ref('alertSettings').once('value');
+            const settings = settingsSnap.val() || {};
+            if (settings.whatsapp) {
+                try { await require('./whatsappBot').sendWhatsAppAlert(msg); } catch(e) {}
             }
-        } catch (e) {}
-    });
-    ws.on('error', (err) => console.error('[LiveTicks] Binance Futures WS error:', err.message));
-    ws.on('close', () => { console.log('[LiveTicks] Binance Futures WS disconnected – reconnecting in 5s'); setTimeout(connectBinance, 5000); });
+            if (settings.telegram) {
+                try { await require('./telegram').sendTG(msg); } catch(e) {}
+            }
+        }
+    }
 }
 
-// ── Start ──
+// ── Start everything ──
 function start() {
-    console.log('[LiveTicks] Starting live price feed (Forex + Crypto)...');
+    console.log('[LiveTicks] Starting hybrid live feed (REST crypto + WS forex)...');
     connectFinnhub();
-    connectBinance();
-
-    // Push prices every 5 seconds
+    // Fetch crypto prices via REST immediately and then every 5 seconds
+    fetchCryptoPrices();
+    setInterval(fetchCryptoPrices, 5000);
+    // Push prices every 5 seconds (after REST data is in currentPrices)
     setInterval(pushLivePrices, 5000);
 
-    // Signal computation and custom alerts run every 60 seconds (uses candle data)
+    // Initialize candles from scanner, then run signal computation every 60 seconds
     setTimeout(() => { initFromScanner(); }, 20000);
     setInterval(async () => {
-        // Finalize candles if needed (same logic as before)
+        // Finalize candles if necessary
         const now = new Date();
         const minute = now.getUTCMinutes();
         if (minute === 0) {
@@ -303,13 +302,7 @@ function start() {
                 }
             }
         }
-        const allSignals = {};
-        for (const pair of Object.keys(currentPrices)) {
-            const sigs = computeLiveSignals(pair);
-            if (Object.keys(sigs).length) allSignals[pair] = sigs;
-        }
-        await pushLiveSignals();
-        await checkCustomAlerts(allSignals);
+        await pushSignalsAndAlerts();
     }, 60000);
 }
 
