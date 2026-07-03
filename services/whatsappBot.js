@@ -129,6 +129,11 @@ async function connectToWhatsApp() {
             browser: Browsers.ubuntu('Chrome'),
             syncFullHistory: false,
             markOnlineOnConnect: true,
+            // Render jaisi cloud hosting pe default query timeout kabhi kabhi pairing
+            // handshake ke beech connection kaat deta hai — isko relax kar diya.
+            defaultQueryTimeoutMs: undefined,
+            connectTimeoutMs: 60_000,
+            keepAliveIntervalMs: 30_000,
         });
 
         if (!sock.authState.creds.registered && !BOT_PHONE) {
