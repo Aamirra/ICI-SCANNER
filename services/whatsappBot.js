@@ -16,6 +16,12 @@ const RAW_TARGET = (process.env.MY_WHATSAPP_NUMBER || '').trim();
 // 2. Bot ka apna phone number jisse login karna hai (Pairing Code ke liye)
 const BOT_PHONE = (process.env.BOT_PHONE_NUMBER || '').trim().replace(/[^0-9]/g, '');
 
+// Sanity check: Baileys ko number bilkul E.164 format mein chahiye — country code se start,
+// leading 0 nahi, koi +/space/dash nahi. Pakistan ke liye: 92 + 10 digit number (e.g. 923001234567).
+if (BOT_PHONE && (BOT_PHONE.startsWith('0') || BOT_PHONE.length < 11)) {
+    console.log(`⚠️ BOT_PHONE_NUMBER "${BOT_PHONE}" sahi format mein nahi lagta. 92xxxxxxxxxx jaisa hona chahiye (leading 0 hata kar, koi + nahi).`);
+}
+
 function buildJID(t) {
     if (!t) return null;
     if (t.includes('@')) return t;
@@ -27,6 +33,7 @@ const TARGET_JID = buildJID(RAW_TARGET);
 
 let sock = null;
 let isConnected = false;
+let pairingCodeRequested = false; // ek socket attempt mein sirf ek baar pairing code maango
 
 const toFirebaseObject = (data) => {
     if (!data) return null;
@@ -113,37 +120,45 @@ async function connectToWhatsApp() {
         const { state, saveCreds } = await useFirebaseAuthState();
         const { version } = await fetchLatestBaileysVersion();
 
+        pairingCodeRequested = false; // fresh socket = fresh chance to request a code
+
         sock = makeWASocket({
             version,
             auth: state,
             logger: require('pino')({ level: 'silent' }),
-            browser: ['Ubuntu', 'Chrome', '20.0.04'],
+            browser: Browsers.ubuntu('Chrome'),
             syncFullHistory: false,
             markOnlineOnConnect: true,
         });
 
-        // 🔥 Pairing Code Configuration
-        if (!sock.authState.creds.registered) {
-            if (BOT_PHONE) {
-                console.log(`⏳ Phone number ${BOT_PHONE} ke liye Pairing Code request ho raha hai...`);
-                setTimeout(async () => {
-                    try {
-                        const code = await sock.requestPairingCode(BOT_PHONE);
-                        console.log(`\n======================================`);
-                        console.log(`🔑 APKA WHATSAPP PAIRING CODE: ${code}`);
-                        console.log(`======================================\n`);
-                    } catch (err) {
-                        console.log("❌ Pairing code nahi ban saka. QR scan try karein:", err.message);
-                    }
-                }, 6000);
-            } else {
-                console.log("⚠️ BOT_PHONE_NUMBER env var nahi mila. Sirf QR code generate hoga.");
-            }
+        if (!sock.authState.creds.registered && !BOT_PHONE) {
+            console.log("⚠️ BOT_PHONE_NUMBER env var nahi mila. Sirf QR code generate hoga.");
         }
 
         sock.ev.on('connection.update', async (update) => {
             try {
                 const { connection, lastDisconnect, qr } = update;
+
+                // 🔥 Pairing Code ab yahan request hota hai — jaise hi socket "connecting" state mein
+                // aata hai ya qr milta hai (Baileys ka official recommended tareeqa). Pehle fixed
+                // 6-second setTimeout tha jo socket ke actual ready hone ka wait nahi karta tha —
+                // isi wajah se kabhi "Connection Closed" error aata tha, aur agar isi dauran
+                // koi disconnect ho jaye to naya socket bante hi ek aur code generate ho jata tha,
+                // jisse purana code (jo aap type kar rahi hoti) invalid ho jata tha.
+                if ((connection === 'connecting' || qr) && !sock.authState.creds.registered && BOT_PHONE && !pairingCodeRequested) {
+                    pairingCodeRequested = true;
+                    try {
+                        const code = await sock.requestPairingCode(BOT_PHONE);
+                        console.log(`\n======================================`);
+                        console.log(`🔑 APKA WHATSAPP PAIRING CODE: ${code}`);
+                        console.log(`📱 Number: ${BOT_PHONE}`);
+                        console.log(`⏱️ Turant WhatsApp > Linked Devices > Link with phone number mein daal dein — ~60 sec mein expire hota hai.`);
+                        console.log(`======================================\n`);
+                    } catch (err) {
+                        pairingCodeRequested = false; // retry allowed
+                        console.log("❌ Pairing code nahi ban saka:", err.message);
+                    }
+                }
 
                 if (qr && !sock.authState.creds.registered && !BOT_PHONE) {
                     const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
@@ -153,10 +168,17 @@ async function connectToWhatsApp() {
 
                 if (connection === 'close') {
                     const reason = lastDisconnect?.error?.output?.statusCode;
+                    const wasRegistered = sock?.authState?.creds?.registered;
                     isConnected = false;
                     sock = null;
                     if (reason === 405 || reason === DisconnectReason.loggedOut) {
                         await handleSessionCleanup();
+                    } else if (!wasRegistered) {
+                        // Pairing complete hone se pehle hi disconnect ho gaya — jaldi retry karne
+                        // se purana pairing code invalid ho kar naya ban jata tha isse pehle ke
+                        // wo phone mein daala ja sakta. Ab thoda zyada wait karte hain.
+                        console.log(`⏳ Pairing complete hone se pehle disconnect hua (code: ${reason}). 25 sec baad naya pairing code milega.`);
+                        setTimeout(() => connectToWhatsApp(), 25000);
                     } else {
                         setTimeout(() => connectToWhatsApp(), 5000);
                     }
