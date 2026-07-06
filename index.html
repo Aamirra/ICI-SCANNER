@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
+        /* --- Same CSS as before (unchanged) --- */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -40,7 +41,6 @@
         .item-row { border-bottom:1px solid var(--border); }
         .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
         .item-main:hover { background:var(--pill-bg); }
-        /* ✅ Fixed: prevent long pair name + price from overlapping timeframes */
         .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
@@ -71,7 +71,6 @@
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
-        /* ── AI Assistant Panel ── */
         .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
         .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
         .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
@@ -97,7 +96,6 @@
         .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
         .btn-approve { background: var(--green); }
         .btn-reject { background: var(--red); }
-        /* ── Approval Overlay ── */
         .approval-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; }
         .approval-overlay.open { display:flex; }
         .approval-box { background:var(--surface); border-radius:16px; padding:20px; max-width:360px; width:90%; color:var(--txt); }
@@ -133,14 +131,13 @@
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
-    <!-- ✅ AI Assistant Panel -->
+    <!-- AI Assistant Panel -->
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()">
             <span>🤖 AI Assistant</span>
             <span style="font-size:14px;">▼</span>
         </div>
         <div class="ai-body" id="aiBody">
-            <!-- ✅ Clear button always visible -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
                 <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
                 <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
@@ -227,6 +224,7 @@ let watchlistSet = new Set();
 let liveMarketData = {};
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
+let currentChartInterval = "60"; // ✅ Remember the selected chart interval
 
 // ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
@@ -513,7 +511,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart (with SMA instead of EMA) ──
+// ── Chart ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -525,13 +523,20 @@ function openChart(idx) {
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
     const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
+        interval: currentChartInterval,   // ✅ Use remembered interval
+        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:"tv_chart_container",
         studies: [
-            {id:"MASimple@tv-basicstudies", inputs:{length:10}},  // 10 SMA (was EMA)
-            {id:"MASimple@tv-basicstudies", inputs:{length:20}},  // 20 SMA (was EMA)
+            {id:"MASimple@tv-basicstudies", inputs:{length:10}},
+            {id:"MASimple@tv-basicstudies", inputs:{length:20}},
             {id:"MASimple@tv-basicstudies", inputs:{length:50}},
             {id:"WilliamFractal@tv-basicstudies"}
-        ]
+        ],
+        // ✅ Update the global variable when user changes interval in the chart
+        onIntervalChange: function(newInterval) {
+            currentChartInterval = newInterval;
+        }
     });
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
