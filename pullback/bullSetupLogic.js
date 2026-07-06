@@ -1,4 +1,4 @@
-const calcEMA = require('../utils/emaCalc');
+const calcEMA = require('../utils/emaCalc'); // ✅ Fixed: 'Const' ko 'const' kiya
 const calcSMA = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 const {
@@ -318,4 +318,5 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     await syncFilteredTargets(firebasePut);
 }
 
-module.exports = { bullMonitor };
+// ✅ Fixed: Object export ki jagah seedha function export kiya taake 'setupScanner.js' ise direct call kar sakay
+module.exports = bullMonitor;
