@@ -1,6 +1,5 @@
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
-const saveTargetList = require('./targetList');
 const {
     PB_STATE,
     LAST_ALERT_TIME,
@@ -13,7 +12,7 @@ const { sendWhatsAppAlert } = require('../services/whatsapp');
 function defaultBullState() {
     return {
         dir: 'bull',
-        phase: null,
+        phase: null,               // null | below_20 | above_20 | wait_1h_fractal | alerted
         runningHigh: null,
         lowestLow: null,
         firedAt: 0,
@@ -24,36 +23,6 @@ function defaultBullState() {
         lastDailyHigh: null,
         initialized: false
     };
-}
-
-// ----- Target List Sync (Sorted: wait_1h_fractal > above_20 > below_20 > alerted, null excluded) -----
-async function syncFilteredTargets(firebasePut) {
-    const phaseOrder = {
-        'wait_1h_fractal':  4,
-        'above_20':         3,
-        'below_20':         2,
-        'alerted':          1
-    };
-
-    const entries = [];
-
-    for (const key in PB_STATE) {
-        const state = PB_STATE[key];
-        if (state && state.phase !== null && state.phase in phaseOrder) {
-            entries.push([key, state]);
-        }
-    }
-
-    entries.sort(([, a], [, b]) => {
-        return (phaseOrder[b.phase] ?? 0) - (phaseOrder[a.phase] ?? 0);
-    });
-
-    const sortedState = {};
-    for (const [key, value] of entries) {
-        sortedState[key] = value;
-    }
-
-    await saveTargetList(sortedState, firebasePut);
 }
 
 // ----- Helper: Up Fractal on 5 candles -----
@@ -130,7 +99,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     const lastWeeklyClose = weeklyCloses[weeklyCloses.length - 1];
     if (!weeklySMA50 || lastWeeklyClose <= weeklySMA50) {
         PB_STATE[stateKey] = defaultBullState();
-        await syncFilteredTargets(firebasePut);
+        // No sync call here – done externally
         return;
     }
 
@@ -142,7 +111,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             return;
         }
         PB_STATE[stateKey] = s;
-        await syncFilteredTargets(firebasePut);
     }
 
     s.touched50 = s.touched50 || false;
@@ -157,7 +125,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     const ema20_daily = calcEMA(dCloses, 20);
     if (!sma20_daily || !ema20_daily) return;
 
-    // Daily Phase Updates
+    // ----- Daily Phase Updates -----
     if (s.phase === null) {
         if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
@@ -165,7 +133,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.lastDailyHigh = lastDailyHigh;
         }
         PB_STATE[stateKey] = s;
-        await syncFilteredTargets(firebasePut);
     }
     else if (s.phase === 'below_20') {
         if (s.lowestLow === null || lastDailyLow < s.lowestLow) s.lowestLow = lastDailyLow;
@@ -175,7 +142,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.lastDailyHigh = lastDailyHigh;
         }
         PB_STATE[stateKey] = s;
-        await syncFilteredTargets(firebasePut);
     }
     else if (s.phase === 'above_20') {
         if (s.runningHigh === null || lastDailyHigh > s.runningHigh) s.runningHigh = lastDailyHigh;
@@ -184,16 +150,17 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.touched50 = true;
         }
 
+        // Reset if daily close < 20 SMA
         if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
             s.lowestLow = lastDailyLow;
             s.touched50 = false;
             s.lastDailyHigh = lastDailyHigh;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
 
+        // No‑break candle
         if (s.touched50 && s.lastDailyHigh !== null && lastDailyHigh <= s.lastDailyHigh) {
             s.phase = 'wait_1h_fractal';
             s.lastDailyHigh = lastDailyHigh;
@@ -201,29 +168,27 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.lastDailyHigh = lastDailyHigh;
         }
         PB_STATE[stateKey] = s;
-        await syncFilteredTargets(firebasePut);
     }
     else if (s.phase === 'wait_1h_fractal') {
+        // daily invalidation: close < 20 SMA
         if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
             s.lowestLow = lastDailyLow;
             s.touched50 = false;
             s.lastDailyHigh = lastDailyHigh;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
+        // daily breaks previous high -> back to above_20
         if (s.lastDailyHigh !== null && lastDailyHigh > s.lastDailyHigh) {
             s.phase = 'above_20';
             s.touched50 = true;
             s.lastDailyHigh = lastDailyHigh;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
         s.lastDailyHigh = lastDailyHigh;
         PB_STATE[stateKey] = s;
-        await syncFilteredTargets(firebasePut);
     }
     else if (s.phase === 'alerted') {
         if (s.lowestLow !== null && lastDailyClose < s.lowestLow) {
@@ -234,12 +199,10 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
         if (s.runningHigh !== null && lastDailyClose > s.runningHigh) {
             PB_STATE[stateKey] = defaultBullState();
-            await syncFilteredTargets(firebasePut);
             return;
         }
         if (lastDailyClose < ema20_daily) {
@@ -250,17 +213,17 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
     }
 
-    // 1H Monitoring
+    // ----- 1H Monitoring (only when wait_1h_fractal) -----
     if (s.phase === 'wait_1h_fractal' && hHighs.length >= 5) {
         const sma20_1h = calcSMA(hCloses, 20);
         const sma50_1h = calcSMA(hCloses, 50);
         if (!sma20_1h || !sma50_1h) return;
 
+        // Option A: 1H candle close < 20 SMA -> reset current pattern only
         const last1hClose = hCloses[hCloses.length - 1];
         if (last1hClose < sma20_1h) {
             delete s.__earlyAlertSent;
@@ -268,6 +231,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             return;
         }
 
+        // Final fractal (all 5 candles complete)
         const finalFractal = checkUpFractal(hHighs.slice(-5), sma20_1h);
         const finalTouch50 = check50Touch(hHighs.slice(-5), hCloses.slice(-5), sma50_1h);
         if (finalFractal && finalTouch50) {
@@ -286,10 +250,10 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalWait = false;
             delete s.__earlyAlertSent;
             PB_STATE[stateKey] = s;
-            await syncFilteredTargets(firebasePut);
             return;
         }
 
+        // Early Alert
         if (hHighs.length >= 5) {
             const fourCandlesHigh = hHighs.slice(-5, -1);
             const fourCandlesClose = hCloses.slice(-5, -1);
@@ -315,7 +279,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     }
 
     PB_STATE[stateKey] = s;
-    await syncFilteredTargets(firebasePut);
+    // No sync call – handled by setupScanner.syncAllTargets()
 }
 
 module.exports = { bullMonitor };
