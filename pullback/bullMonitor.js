@@ -1,4 +1,4 @@
-const calcEMA = require('../utils/emaCalc'); // ✅ Fixed: 'Const' ko 'const' kiya
+const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
 const saveTargetList = require('./targetList');
 const {
@@ -71,7 +71,7 @@ function check50Touch(highs, closes, sma50) {
     return false;
 }
 
-// ----- Bootstrapping -----
+// ----- Bootstrapping: history scan on first call -----
 function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows, weeklyCloses, weeklySMA50) {
     const sma20 = calcSMA(dailyCloses, 20);
     if (!sma20) return null;
@@ -318,5 +318,4 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     await syncFilteredTargets(firebasePut);
 }
 
-// ✅ Fixed: Object export ki jagah seedha function export kiya taake 'setupScanner.js' ise direct call kar sakay
-module.exports = bullMonitor;
+module.exports = { bullMonitor };
