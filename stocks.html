@@ -404,7 +404,6 @@ function attachListeners() {
     }
     db.ref('technicalMetrics').on('value', snap => {
         techMetrics = snap.val() || {};
-        // re-check alerts if needed
         const dataSrc = currentMarket === 'exness' ? stockData : stockData;
         if (typeof checkAllAlerts === 'function') {
             const pairsArray = Object.entries(dataSrc).map(([name, data]) => ({
@@ -454,7 +453,6 @@ function render() {
         const data = stockData[sym];
         if (!data) return '';
 
-        // live price
         const liveM = liveMarketData && liveMarketData[sym];
         const mktPrice = data.currentPrice || data.price;
         const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
@@ -503,7 +501,14 @@ function openStockChart(idx) {
     document.getElementById('chartOverlay').style.display = 'flex';
     document.getElementById('tv_chart_container').innerHTML = '';
     const isPSX = currentMarket === 'psx';
-    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+sym:sym, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+sym:sym, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
+        studies: [
+            {id:"MASimple@tv-basicstudies", inputs:{length:10}},   // ✅ 10 SMA
+            {id:"MASimple@tv-basicstudies", inputs:{length:20}},   // ✅ 20 SMA
+            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
 }
 function moveStockPair(step) { const newIdx = stockCIdx + step; if (newIdx >=0 && newIdx < stockChartPairs.length) { selectedStockSymbol = stockChartPairs[newIdx]; openStockChart(newIdx); } }
 function closeStockChart() { if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none'; }
