@@ -27,14 +27,12 @@
         .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); text-decoration:none; display:inline-block; }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
-        .pill.market-btn { background:var(--pill-bg); color:var(--txt); }
-        .pill.market-btn.active-market { background:var(--acc); color:#fff; border-color:var(--acc); }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
         .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; }
-        .counters-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-        .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; text-align:center; cursor:pointer; }
-        .count-card .num { font-size:22px; font-weight:700; margin-bottom:2px; color:var(--txt); }
-        .count-card .label { font-size:12px; color:var(--muted); font-weight:500; }
+        .counters-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:16px; }
+        .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 4px; text-align:center; cursor:pointer; }
+        .count-card .num { font-size:18px; font-weight:700; margin-bottom:2px; color:var(--txt); }
+        .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
@@ -106,6 +104,27 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
+        /* ── Chart interval buttons ── */
+        .chart-interval-selector {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .chart-interval-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--pill-bg);
+            color: var(--txt);
+            cursor: pointer;
+        }
+        .chart-interval-btn.active {
+            background: var(--acc);
+            color: #fff;
+            border-color: var(--acc);
+        }
     </style>
 </head>
 <body>
@@ -124,26 +143,20 @@
     </div>
 
     <div class="pills-row">
-        <button class="pill market-btn active-market" id="exnessBtn" onclick="setMarket('exness')">💹 Exness</button>
-        <button class="pill market-btn" id="psxBtn" onclick="setMarket('psx')">🇵🇰 PSX</button>
-        <button class="pill scan-btn" onclick="manualScan()">🔍 Scan</button>
-        <a href="/" class="pill" style="text-decoration:none">🔙 Main</a>
+        <a href="/" class="pill" style="text-decoration:none">💱 Forex</a>
+        <button class="pill active-blue" onclick="setFilter('all')">📈 Stocks</button>
         <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
-        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
+        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
+        <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
 
-    <!-- ✅ AI Assistant Panel -->
+    <!-- AI Assistant Panel -->
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()">
             <span>🤖 AI Assistant</span>
             <span style="font-size:14px;">▼</span>
         </div>
         <div class="ai-body" id="aiBody">
-            <!-- Clear button always visible -->
-            <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
-                <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
-                <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
-            </div>
             <div class="error-list-embedded" id="errorListEmbedded"></div>
             <div class="chat-section">
                 <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
@@ -169,29 +182,32 @@
     <div class="counters-grid">
         <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
         <div class="count-card" onclick="setFilter('bear')"><div class="num" style="color:var(--red)" id="rc">0</div><div class="label">Bearish</div></div>
-        <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All pairs</div></div>
+        <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
+        <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount2">0</div><div class="label">Target</div></div>
+        <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
 
-    <div class="search-container"><input type="text" class="search-bar" placeholder="Search stocks..." oninput="filterStocks(this.value)"></div>
-
+    <div class="search-container"><input type="text" class="search-bar" placeholder="Search stocks..." oninput="filterPairs(this.value)"></div>
     <div class="table-header">
-        <div class="row-pair">Symbol</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
+        <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
     </div>
     <div id="pairsContainer"></div>
-</div>
-
-<!-- Target List Modal -->
-<div class="modal" id="targetModal" onclick="this.classList.remove('open')">
-    <div class="modal-content" onclick="event.stopPropagation()" id="targetContent"></div>
 </div>
 
 <!-- Chart Overlay -->
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
-        <button onclick="moveStockPair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
-        <button onclick="moveStockPair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
-        <button id="chartCloseBtn" onclick="closeStockChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
+    </div>
+    <!-- ✅ Interval selector buttons -->
+    <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
+        <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
+        <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
+        <button class="chart-interval-btn" data-interval="D" onclick="changeChartInterval('D', this)">1D</button>
+        <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
     </div>
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
@@ -208,29 +224,34 @@
     </div>
 </div>
 
+<!-- Target List Modal (Stocks) -->
+<div class="modal" id="targetModal" onclick="this.classList.remove('open')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:12px;color:var(--gold)">🎯 Stocks Target List</h3>
+        <div id="targetContent"></div>
+    </div>
+</div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-// ── Global State ──
-let currentMarket = 'exness';
-let stockData = {};
-let stockPbState = {};
-let currentFilter = 'all';
-let stockChartPairs = [];
-let stockCIdx = 0;
-let selectedStockSymbol = null;
-let filteredSymbols = [];
-let show4H = true;
+// ⚠️ Aap apni stocks pairs yahan daal dein (filhal crypto list copy ki hai)
+const PAIRS = [
+    {n:'AAPLUSD'},{n:'MSFTUSD'},{n:'GOOGLUSD'},{n:'AMZNUSD'},{n:'TSLAUSD'}
+    // yahan apni poori stock list daal dein
+];
+
+let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
+let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let watchlistSet = new Set();
+let liveMarketData = {};
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
-let liveMarketData = {};
-let techMetrics = {};
+let currentChartInterval = "60";
 
-// ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
@@ -239,15 +260,24 @@ function updateToggleButtons() {
 }
 function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
-// ── Watchlist ──
-db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); render(); });
+db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
-function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } render(); }
+function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
-// ── Live Market Data Listener ──
-db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({
+            name,
+            currentPrice: data.price,
+            ema20: null,
+            sentiment: data.sentiment,
+        }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
-// ── Error Log ──
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
 function updateErrorListEmbedded() {
     const listDiv = document.getElementById('errorListEmbedded');
@@ -256,18 +286,8 @@ function updateErrorListEmbedded() {
     listDiv.classList.add('has-errors');
     listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
 }
-
-function clearErrors() {
-    if (confirm('Sare errors delete kar dein?')) {
-        db.ref('errorLog').remove()
-            .then(() => console.log('Error log cleared'))
-            .catch(e => console.error(e));
-    }
-}
-
 function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
 
-// ── Pending Code Changes ──
 db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
     const requests = snap.val() || {};
     const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
@@ -296,7 +316,6 @@ async function approveCodeChange(id) {
 }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat ──
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
@@ -334,6 +353,7 @@ async function sendOpenRouterChat() {
         messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
     }
 }
+
 async function approveAction() {
     const action = window.__pendingAction; if (!action) return;
     document.getElementById('approvalOverlay').classList.remove('open');
@@ -341,194 +361,24 @@ async function approveAction() {
         const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
         const result = await res.json();
         const messagesDiv = document.getElementById('chatMessagesEmbedded');
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${result.success?'✅':'❌'} ${escapeHtml(result.message)}</span></div>`;
+        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch(e) { console.error(e); }
     window.__pendingAction = null;
 }
 function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ── 4H Toggle ──
-function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); render(); }
-function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
-(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
-
-function togglePairAlert(pair) { console.log('Alert toggle',pair); }
-
-// Market toggle
-function setMarket(market) {
-    currentMarket = market;
-    document.getElementById('exnessBtn').classList.toggle('active-market', market === 'exness');
-    document.getElementById('psxBtn').classList.toggle('active-market', market === 'psx');
-    currentFilter = 'all';
-    stockChartPairs = [];
-    stockPbState = {};
-    selectedStockSymbol = null;
-    filteredSymbols = [];
-    attachListeners();
-}
-
-function attachListeners() {
-    db.ref('stockMarketData').off(); db.ref('stockMarketDataPbState').off();
-    db.ref('psxStockMarketData').off(); db.ref('psxStockMarketDataPbState').off();
-    if (currentMarket === 'exness') {
-        db.ref('stockMarketData').on('value', snap => {
-            stockData = snap.val() || {};
-            if (typeof checkAllAlerts === 'function') {
-                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
-                    name,
-                    currentPrice: data.currentPrice || data.price,
-                    ema20: data.ema20 || null,
-                    sentiment: data.sentiment || null,
-                }));
-                checkAllAlerts(pairsArray);
-            }
-            render(); updateCounts();
-        });
-        db.ref('stockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
-    } else {
-        db.ref('psxStockMarketData').on('value', snap => {
-            stockData = snap.val() || {};
-            if (typeof checkAllAlerts === 'function') {
-                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
-                    name,
-                    currentPrice: data.currentPrice || data.price,
-                    ema20: data.ema20 || null,
-                    sentiment: data.sentiment || null,
-                }));
-                checkAllAlerts(pairsArray);
-            }
-            render(); updateCounts();
-        });
-        db.ref('psxStockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
-    }
-    db.ref('technicalMetrics').on('value', snap => {
-        techMetrics = snap.val() || {};
-        const dataSrc = currentMarket === 'exness' ? stockData : stockData;
-        if (typeof checkAllAlerts === 'function') {
-            const pairsArray = Object.entries(dataSrc).map(([name, data]) => ({
-                name,
-                currentPrice: data.currentPrice || data.price,
-                ema20: data.ema20 || null,
-                sentiment: data.sentiment || null,
-            }));
-            checkAllAlerts(pairsArray);
-        }
-    });
-}
-
-function isStrongTrend(symbol, data, direction) {
-    if (!data) return false;
-    return data.signal4h === direction && data.signal1d === direction && data.signal1w === direction;
-}
-
-function filterStocks(searchText) {
-    filteredSymbols = searchText ? Object.keys(stockData).filter(s => s.toLowerCase().includes(searchText.toLowerCase())).sort() : Object.keys(stockData).sort();
-    render();
-}
-
-function updateCounts() {
-    let b=0, r=0;
-    for (const [sym, data] of Object.entries(stockData)) {
-        if (isStrongTrend(sym, data, 'bull')) b++;
-        if (isStrongTrend(sym, data, 'bear')) r++;
-    }
-    document.getElementById('bc').textContent = b;
-    document.getElementById('rc').textContent = r;
-    document.getElementById('allCount').textContent = Object.keys(stockData).length;
-    const count = Object.values(stockPbState).filter(s => s && s.phase && s.phase!=='watching').length;
-    document.getElementById('targetCount').textContent = count;
-}
-
-function render() {
-    const symbols = filteredSymbols.length ? filteredSymbols : Object.keys(stockData).sort();
-    const filtered = currentFilter === 'all' ? symbols : symbols.filter(sym => {
-        const data = stockData[sym];
-        if (currentFilter === 'bull') return isStrongTrend(sym, data, 'bull');
-        if (currentFilter === 'bear') return isStrongTrend(sym, data, 'bear');
-        return true;
-    });
-    const tbody = document.getElementById('pairsContainer');
-    tbody.innerHTML = filtered.map(sym => {
-        const data = stockData[sym];
-        if (!data) return '';
-
-        const liveM = liveMarketData && liveMarketData[sym];
-        const mktPrice = data.currentPrice || data.price;
-        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
-            (liveM.price || liveM.currentPrice).toFixed(4) : 
-            (mktPrice ? mktPrice.toFixed(4) : '—');
-        const priceHTML = livePrice !== '—' ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
-
-        const longTerm = data.longTermTrend != null ? (data.longTermTrend>0?'+':'') + data.longTermTrend.toFixed(2)+'%' : '—';
-        const longClass = data.longTermTrend>=0 ? 'up' : 'down';
-        const shortTerm = data.shortTermMomentum != null ? (data.shortTermMomentum>0?'+':'') + data.shortTermMomentum.toFixed(2)+'%' : '—';
-        const shortClass = data.shortTermMomentum>=0 ? 'up' : 'down';
-        const micro = data.microMomentum != null ? (data.microMomentum>0?'+':'') + data.microMomentum.toFixed(2)+'%' : '—';
-        const microClass = data.microMomentum>=0 ? 'up' : 'down';
-        const vol7d = data.volume7dAvg ? data.volume7dAvg.toLocaleString() : '—';
-        const dollarVol = data.dollarVolume1d && data.dollarVolume1d !== '0.00' ? data.dollarVolume1d : '—';
-        const isBull = isStrongTrend(sym, data, 'bull'), isBear = isStrongTrend(sym, data, 'bear');
-        const star = isBull ? '★' : isBear ? '★' : '★';
-        const starColor = isBull ? 'var(--green)' : isBear ? 'var(--red)' : '#cbd5e1';
-        const signals = [data.signal1h, data.signal4h, data.signal1d, data.signal1w];
-        const dots = signals.map(sig => `<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
-        const watchlistStar = `<span class="watchlist-star ${isInWatchlist(sym)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${sym}')">${isInWatchlist(sym)?'⭐':'☆'}</span>`;
-        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(sym) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${sym}')">🔕</span>`;
-        return `<div class="item-row">
-            <div class="item-main" onclick="openStockChartFromTable('${sym}')">
-                <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${sym}${priceHTML}</div>
-                <div class="row-timeframes dots-container">${dots}</div>
-                <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:50%">50%</div><div class="sent-green" style="width:50%">50%</div></div></div>
-                <div class="row-change change-val ${longClass}">${longTerm}</div>
-                <div class="row-alert">${bellHtml}</div>
-            </div>
-            <div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${shortClass}">${shortTerm}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${microClass}">${micro}</span></div>
-                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7d}</span></div>
-                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVol}</span></div>
-            </div>
-        </div>`;
-    }).join('');
-    updateCounts();
-}
-
-function openStockChartFromTable(sym) { selectedStockSymbol = sym; stockChartPairs = Object.keys(stockData).sort(); stockCIdx = stockChartPairs.indexOf(sym); if (stockCIdx === -1) stockCIdx = 0; openStockChart(stockCIdx); }
-function openStockChart(idx) {
-    stockCIdx = idx; const sym = stockChartPairs[idx]; if (!sym) return;
-    document.getElementById('chartPairName').textContent = sym;
-    document.getElementById('chartOverlay').style.display = 'flex';
-    document.getElementById('tv_chart_container').innerHTML = '';
-    const isPSX = currentMarket === 'psx';
-    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+sym:sym, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
-        studies: [
-            {id:"MASimple@tv-basicstudies", inputs:{length:10}},   // ✅ 10 SMA
-            {id:"MASimple@tv-basicstudies", inputs:{length:20}},   // ✅ 20 SMA
-            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
-            {id:"WilliamFractal@tv-basicstudies"}
-        ]
-    });
-}
-function moveStockPair(step) { const newIdx = stockCIdx + step; if (newIdx >=0 && newIdx < stockChartPairs.length) { selectedStockSymbol = stockChartPairs[newIdx]; openStockChart(newIdx); } }
-function closeStockChart() { if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none'; }
-
-function openTargetModal() {
-    const targets = Object.entries(stockPbState).filter(([k,v]) => v && v.phase && v.phase!=='watching');
-    const html = targets.length ? targets.map(([k,v]) => `<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;cursor:pointer" onclick="openStockChartFromTarget('${k}')"><span style="font-weight:700">${k}</span><span style="color:var(--muted)">${v.phase}</span><span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'}">${v.dir.toUpperCase()}</span></div>`).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
-    document.getElementById('targetContent').innerHTML = `<h3 style="margin-bottom:12px;color:var(--gold)">🎯 Target List</h3>${html}`;
-    document.getElementById('targetModal').classList.add('open');
-}
-function openStockChartFromTarget(sym) { document.getElementById('targetModal').classList.remove('open'); openStockChartFromTable(sym); setTimeout(() => openTargetModal(), 400); }
-
-function manualScan() {
+function actualScan() {
     const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
     .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
 
 function toggleTheme() {
-    const html = document.documentElement; const isDark = html.getAttribute('data-theme') === 'dark';
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
     document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-stocks-theme', html.getAttribute('data-theme'));
@@ -539,16 +389,175 @@ function toggleDesktopMode() {
     document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '💻';
     localStorage.setItem('stocks-desktop-mode', isDesktop ? 'desktop' : 'mobile');
 }
+function setFilter(f) { curF = f; render(); }
+function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
-(function() {
-    const savedTheme = localStorage.getItem('ici-stocks-theme');
-    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-    document.getElementById('themeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-    if (localStorage.getItem('stocks-desktop-mode') === 'desktop') { document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
-    const saved4H = localStorage.getItem('show4H'); show4H = (saved4H==='false')?false:true; update4hButton();
-    attachListeners();
-    updateToggleButtons();
+function updateCounts() {
+    let b=0, r=0;
+    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
+    document.getElementById('bc').textContent=b;
+    document.getElementById('rc').textContent=r;
+    document.getElementById('allCount').textContent=PAIRS.length;
+
+    const stocksNames = new Set(PAIRS.map(p=>p.n));
+    let tCount=0;
+    for(const [k,s] of Object.entries(PB_STATE)) {
+        if(!s||!s.phase) continue;
+        const pairName = k.split('_')[0];
+        if (stocksNames.has(pairName)) {
+            if (!show4H && k.includes('_4h_')) continue;
+            tCount++;
+        }
+    }
+    document.getElementById('targetCount2').textContent = tCount;
+    document.getElementById('targetCount').textContent = tCount;
+    document.getElementById('tradesCount').textContent = watchlistSet.size;
+}
+
+function openTargetModal() {
+    const stocksNames = new Set(PAIRS.map(p=>p.n));
+    const targets = Object.entries(PB_STATE).filter(([k,v]) => {
+        if(!v || !v.phase || v.phase==='watching') return false;
+        const pairName = k.split('_')[0];
+        return stocksNames.has(pairName);
+    });
+    const html = targets.length ? targets.map(([k,v]) => {
+        const pairName = k.split('_')[0];
+        return `<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;cursor:pointer" onclick="openChartForPair('${pairName}')">
+            <span style="font-weight:700">${pairName}</span>
+            <span style="color:var(--muted)">${v.phase||''}</span>
+            <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'}">${v.dir?.toUpperCase()||''}</span>
+        </div>`;
+    }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No active stock setups</div>';
+    document.getElementById('targetContent').innerHTML = html;
+    document.getElementById('targetModal').classList.add('open');
+}
+
+function isInTargetList(p) {
+    const keyBase = `${p}_`;
+    for(const k of Object.keys(PB_STATE)) {
+        if (k.startsWith(keyBase)) {
+            const s = PB_STATE[k];
+            if (s && s.phase && s.phase!=='watching') return true;
+        }
+    }
+    return false;
+}
+
+function render() {
+    const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
+    let filtered;
+    if(curF==='all') filtered = currentPairs;
+    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+    else if(curF==='target') filtered = currentPairs.filter(p=>isInTargetList(p.n));
+    else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
+    else filtered = currentPairs;
+    currentDisplayPairs = filtered.map(p=>p.n);
+
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
+        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
+        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
+        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
+        const changeClass=t.longTermTrend>=0?'up':'down';
+        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
+        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf=>{
+            if (m[tf]) return m[tf];
+            const liveM = liveMarketData && liveMarketData[p.n];
+            if (liveM && liveM[tf]) return liveM[tf];
+            return '';
+        });
+        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
+        const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
+        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
+        const mktData = MARKET_DATA[p.n] || {};
+        const livePriceFromMkt = (mktData.price || mktData.currentPrice)?.toFixed(4) || '';
+        const liveM = liveMarketData && liveMarketData[p.n];
+        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+        return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
+            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
+            <div class="row-timeframes dots-container">${dots}</div>
+            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert">${bellHtml}</div>
+        </div><div class="compact-details">
+            <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+            <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+            <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+            <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+        </div></div>`;
+    }).join('');
+    updateCounts();
+}
+
+function openChartForPair(pairName) {
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
+    openChart(chartIdx);
+}
+function changeChartInterval(interval, btn) {
+    currentChartInterval = interval;
+    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    openChart(chartIdx);
+}
+function openChart(idx) {
+    chartIdx=idx; const symbol=chartPairs[idx];
+    document.getElementById('chartPairName').textContent=symbol;
+    document.getElementById('chartOverlay').style.display='flex';
+    document.getElementById('tv_chart_container').innerHTML='';
+    // Stocks ke liye TV symbol (agar aap PSX use karte hain to yahan condition lagayein)
+    const isPSX = false; // ya condition lagayein
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
+        interval: currentChartInterval,
+        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:"tv_chart_container",
+        studies:[
+            {id:"MASimple@tv-basicstudies",inputs:{length:10}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
+}
+function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
+function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
+
+function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
+function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
+(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
+
+function togglePairAlert(pair) { console.log('Alert toggle',pair); }
+
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
+db.ref('marketData').on('value', snap => {
+    MARKET_DATA = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
+            name,
+            currentPrice: data.currentPrice || data.price,
+            ema20: data.ema20,
+            sentiment: data.sentiment,
+        }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
+
+(function(){
+    const saved=localStorage.getItem('ici-stocks-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+    if(localStorage.getItem('stocks-desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
+updateToggleButtons();
 </script>
 </body>
 </html>
