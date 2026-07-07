@@ -13,14 +13,14 @@ function defaultBearState() {
     return {
         dir: 'bear',
         phase: null,               // null | above_20 | below_20 | alerted
-        runningLow: null,          // lowest low during below_20
-        highestHigh: null,         // highest high during above_20
+        runningLow: null,
+        highestHigh: null,
         firedAt: 0,
         reminded: false,
         fractalCandles: 0,
         fractalWait: false,
-        touched50: false,          // 50 SMA touch from above (low <= SMA50 or close < SMA50)
-        lastDailyLow: null,        // previous candle's low for no‑break check
+        touched50: false,
+        lastDailyLow: null,
         initialized: false
     };
 }
@@ -38,7 +38,6 @@ function initializeBearStateFromHistory(stateKey, dailyCloses, dailyHighs, daily
     // Agar last candle already 20 SMA ke neeche hai aur weekly bearish hai → seedha below_20
     if (dailyCloses.length > 0 && dailyCloses[dailyCloses.length - 1] < sma20) {
         state.phase = 'below_20';
-        // check 50 SMA touch in whole history
         for (let i = 0; i < dailyCloses.length; i++) {
             const l = dailyLows[i];
             const c = dailyCloses[i];
@@ -50,7 +49,6 @@ function initializeBearStateFromHistory(stateKey, dailyCloses, dailyHighs, daily
         state.runningLow = Math.min(...dailyLows.slice(-50));
         state.lastDailyLow = dailyLows[dailyLows.length - 1];
     } else {
-        // Normal sequence scan
         for (let i = 0; i < dailyCloses.length; i++) {
             const c = dailyCloses[i];
             const h = dailyHighs[i];
@@ -102,16 +100,18 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     const lastWeeklyClose = weeklyCloses[weeklyCloses.length - 1];
     // Weekly condition: bearish = close < 50 SMA
     if (!weeklySMA50 || lastWeeklyClose >= weeklySMA50) {
-        PB_STATE[stateKey] = defaultBearState();
-        return;
+        const resetState = defaultBearState();
+        PB_STATE[stateKey] = resetState;
+        return resetState;
     }
 
     let s = PB_STATE[stateKey];
     if (!s || !s.initialized) {
         s = initializeBearStateFromHistory(stateKey, dCloses, dHighs, dLows, weeklyCloses, weeklySMA50);
         if (!s) {
-            PB_STATE[stateKey] = defaultBearState();
-            return;
+            const resetState = defaultBearState();
+            PB_STATE[stateKey] = resetState;
+            return resetState;
         }
         PB_STATE[stateKey] = s;
     }
@@ -146,14 +146,13 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     else if (s.phase === 'above_20') {
         if (s.highestHigh === null || lastDailyHigh > s.highestHigh) s.highestHigh = lastDailyHigh;
 
-        // Transition to breakdown
         if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
             s.runningLow = lastDailyLow;
             s.lastDailyLow = lastDailyLow;
             s.touched50 = false;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
         PB_STATE[stateKey] = s;
     }
@@ -172,7 +171,7 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.touched50 = false;
             s.lastDailyLow = lastDailyLow;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
 
         // No‑break candle: low >= previous candle's low (higher low)
@@ -181,26 +180,15 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.firedAt = Date.now();
             s.lastDailyLow = lastDailyLow;
 
-            // --- Alerts OFF (commented out) ---
-            // const candleTime = Date.now();
-            // const alertKey = `${stateKey}_bear_final_${candleTime}`;
-            // if (LAST_ALERT_TIME[stateKey] !== alertKey) {
-            //     LAST_ALERT_TIME[stateKey] = alertKey;
-            //     trimAlertCache();
-            //     const alertMsg = buildICIAlertMsg(pairName, false);
-            //     await sendTG(alertMsg);
-            //     try { await sendWhatsAppAlert(alertMsg); } catch (e) {}
-            // }
-
+            // Alerts OFF (commented)
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
 
         s.lastDailyLow = lastDailyLow;
         PB_STATE[stateKey] = s;
     }
     else if (s.phase === 'alerted') {
-        // Invalidation: close > highestHigh (rally high) → back to above_20
         if (s.highestHigh !== null && lastDailyClose > s.highestHigh) {
             s.phase = 'above_20';
             s.highestHigh = lastDailyHigh;
@@ -209,14 +197,13 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
-        // Invalidation: close < runningLow (strong breakdown) → reset to default
         if (s.runningLow !== null && lastDailyClose < s.runningLow) {
-            PB_STATE[stateKey] = defaultBearState();
-            return;
+            const resetState = defaultBearState();
+            PB_STATE[stateKey] = resetState;
+            return resetState;
         }
-        // Invalidation: close > ema20 → back to above_20 (rally)
         if (lastDailyClose > ema20_daily) {
             s.phase = 'above_20';
             s.highestHigh = lastDailyHigh;
@@ -225,12 +212,12 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
     }
 
     PB_STATE[stateKey] = s;
-    // No sync call – handled by setupScanner.syncAllTargets()
+    return s;   // <--- 👈 ye line add ki (fix)
 }
 
 module.exports = { bearMonitor };
