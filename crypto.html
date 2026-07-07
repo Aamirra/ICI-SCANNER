@@ -509,7 +509,7 @@ function openChart(idx) {
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
     const futuresSymbol = `BINANCE:${symbol.replace('USD', 'USDT')}.P`;
-    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MAExp@tv-basicstudies",inputs:{length:10}},{id:"MAExp@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
+    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MASimple@tv-basicstudies",inputs:{length:10}},{id:"MASimple@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
