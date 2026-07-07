@@ -12,7 +12,7 @@ const { sendWhatsAppAlert } = require('../services/whatsapp');
 function defaultBullState() {
     return {
         dir: 'bull',
-        phase: null,               // null | below_20 | above_20 | wait_1h_fractal | alerted
+        phase: null,               // null | below_20 | above_20 | alerted
         runningHigh: null,
         lowestLow: null,
         firedAt: 0,
@@ -25,21 +25,6 @@ function defaultBullState() {
     };
 }
 
-// ----- Helper: Up Fractal on 5 candles -----
-function checkUpFractal(highs, sma) {
-    if (!highs || highs.length < 5) return false;
-    const h = highs;
-    return h[2] > h[0] && h[2] > h[1] && h[2] > h[3] && h[2] > h[4] && h[2] > sma;
-}
-
-// ----- Helper: 50 SMA touch -----
-function check50Touch(highs, closes, sma50) {
-    for (let i = 0; i < highs.length; i++) {
-        if (highs[i] >= sma50 || closes[i] > sma50) return true;
-    }
-    return false;
-}
-
 // ----- Bootstrapping: history scan on first call -----
 function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows, weeklyCloses, weeklySMA50) {
     const sma20 = calcSMA(dailyCloses, 20);
@@ -50,39 +35,59 @@ function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows
     let touched50 = false;
     let lastHigh = null;
 
-    for (let i = 0; i < dailyCloses.length; i++) {
-        const c = dailyCloses[i];
-        const h = dailyHighs[i];
-        const l = dailyLows[i];
-
-        if (state.phase === null && c < sma20) {
-            state.phase = 'below_20';
-            state.lowestLow = l;
-            lastHigh = h;
-        } else if (state.phase === 'below_20' && c > sma20) {
-            state.phase = 'above_20';
-            state.runningHigh = h;
-            lastHigh = h;
-        } else if (state.phase === 'above_20') {
-            if (c < sma20) {
-                state.phase = 'below_20';
-                state.lowestLow = l;
-                touched50 = false;
-                lastHigh = h;
-                continue;
-            }
+    // Agar pehli hi candle 20 SMA ke upar hai to seedha above_20
+    // (weekly upar hona already confirmed caller side)
+    if (dailyCloses.length > 0 && dailyCloses[dailyCloses.length - 1] > sma20) {
+        // Seedha above_20 assume karo, but history mein 50 SMA touch check kar lo
+        state.phase = 'above_20';
+        for (let i = 0; i < dailyCloses.length; i++) {
+            const h = dailyHighs[i];
+            const c = dailyCloses[i];
             if (h >= weeklySMA50 || c > weeklySMA50) {
                 touched50 = true;
             }
-            if (touched50 && lastHigh !== null && h <= lastHigh) {
-                state.phase = 'wait_1h_fractal';
-                state.touched50 = true;
-                state.lastDailyHigh = h;
-                break;
+        }
+        state.touched50 = touched50;
+        state.runningHigh = Math.max(...dailyHighs.slice(-50)); // runningHigh set
+        state.lastDailyHigh = dailyHighs[dailyHighs.length - 1];
+    } else {
+        // Normal sequence scan
+        for (let i = 0; i < dailyCloses.length; i++) {
+            const c = dailyCloses[i];
+            const h = dailyHighs[i];
+            const l = dailyLows[i];
+
+            if (state.phase === null && c < sma20) {
+                state.phase = 'below_20';
+                state.lowestLow = l;
+                lastHigh = h;
+            } else if (state.phase === 'below_20' && c > sma20) {
+                state.phase = 'above_20';
+                state.runningHigh = h;
+                lastHigh = h;
+            } else if (state.phase === 'above_20') {
+                if (c < sma20) {
+                    state.phase = 'below_20';
+                    state.lowestLow = l;
+                    touched50 = false;
+                    lastHigh = h;
+                    continue;
+                }
+                if (h >= weeklySMA50 || c > weeklySMA50) {
+                    touched50 = true;
+                }
+                if (touched50 && lastHigh !== null && h <= lastHigh) {
+                    state.phase = 'alerted';
+                    state.touched50 = true;
+                    state.lastDailyHigh = h;
+                    state.firedAt = Date.now();
+                    break;
+                }
+                lastHigh = h;
             }
-            lastHigh = h;
         }
     }
+
     state.initialized = true;
     return state;
 }
@@ -90,16 +95,13 @@ function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows
 // ----- Main Monitor Function -----
 async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut) {
     const { closes: dCloses, highs: dHighs, lows: dLows, weeklyCloses } = dailyData;
-    const { closes: hCloses, highs: hHighs, lows: hLows } = hourlyData;
 
     if (!dCloses || dCloses.length < 50 || !weeklyCloses || weeklyCloses.length < 50) return;
-    if (!hCloses || hCloses.length < 10) return;
 
     const weeklySMA50 = calcSMA(weeklyCloses, 50);
     const lastWeeklyClose = weeklyCloses[weeklyCloses.length - 1];
     if (!weeklySMA50 || lastWeeklyClose <= weeklySMA50) {
         PB_STATE[stateKey] = defaultBullState();
-        // No sync call here – done externally
         return;
     }
 
@@ -127,7 +129,16 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
     // ----- Daily Phase Updates -----
     if (s.phase === null) {
-        if (lastDailyClose < sma20_daily) {
+        // ✅ NEW RULE: Agar price already 20 SMA ke upar hai, to seedha above_20
+        if (lastDailyClose > sma20_daily) {
+            s.phase = 'above_20';
+            s.runningHigh = lastDailyHigh;
+            s.lastDailyHigh = lastDailyHigh;
+            // Check if 50 SMA already touched in history (above_20 phase mein huwa hoga)
+            // We can check if any recent candle satisfied touch (optional, but safe)
+            // Simply set touched50 = false for now, will be caught in next above_20 block.
+            s.touched50 = false;
+        } else if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
             s.lowestLow = lastDailyLow;
             s.lastDailyHigh = lastDailyHigh;
@@ -160,33 +171,27 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             return;
         }
 
-        // No‑break candle
+        // No‑break candle → directly alerted
         if (s.touched50 && s.lastDailyHigh !== null && lastDailyHigh <= s.lastDailyHigh) {
-            s.phase = 'wait_1h_fractal';
+            s.phase = 'alerted';
+            s.firedAt = Date.now();
             s.lastDailyHigh = lastDailyHigh;
-        } else {
-            s.lastDailyHigh = lastDailyHigh;
-        }
-        PB_STATE[stateKey] = s;
-    }
-    else if (s.phase === 'wait_1h_fractal') {
-        // daily invalidation: close < 20 SMA
-        if (lastDailyClose < sma20_daily) {
-            s.phase = 'below_20';
-            s.lowestLow = lastDailyLow;
-            s.touched50 = false;
-            s.lastDailyHigh = lastDailyHigh;
+
+            // --- Alerts OFF (commented) ---
+            // const candleTime = Date.now();
+            // const alertKey = `${stateKey}_bull_final_${candleTime}`;
+            // if (LAST_ALERT_TIME[stateKey] !== alertKey) {
+            //     LAST_ALERT_TIME[stateKey] = alertKey;
+            //     trimAlertCache();
+            //     const alertMsg = buildICIAlertMsg(pairName, true);
+            //     await sendTG(alertMsg);
+            //     try { await sendWhatsAppAlert(alertMsg); } catch (e) {}
+            // }
+
             PB_STATE[stateKey] = s;
             return;
         }
-        // daily breaks previous high -> back to above_20
-        if (s.lastDailyHigh !== null && lastDailyHigh > s.lastDailyHigh) {
-            s.phase = 'above_20';
-            s.touched50 = true;
-            s.lastDailyHigh = lastDailyHigh;
-            PB_STATE[stateKey] = s;
-            return;
-        }
+
         s.lastDailyHigh = lastDailyHigh;
         PB_STATE[stateKey] = s;
     }
@@ -214,67 +219,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
             return;
-        }
-    }
-
-    // ----- 1H Monitoring (only when wait_1h_fractal) -----
-    if (s.phase === 'wait_1h_fractal' && hHighs.length >= 5) {
-        const sma20_1h = calcSMA(hCloses, 20);
-        const sma50_1h = calcSMA(hCloses, 50);
-        if (!sma20_1h || !sma50_1h) return;
-
-        // Option A: 1H candle close < 20 SMA -> reset current pattern only
-        const last1hClose = hCloses[hCloses.length - 1];
-        if (last1hClose < sma20_1h) {
-            delete s.__earlyAlertSent;
-            PB_STATE[stateKey] = s;
-            return;
-        }
-
-        // Final fractal (all 5 candles complete)
-        const finalFractal = checkUpFractal(hHighs.slice(-5), sma20_1h);
-        const finalTouch50 = check50Touch(hHighs.slice(-5), hCloses.slice(-5), sma50_1h);
-        if (finalFractal && finalTouch50) {
-            const candleTime = Date.now();
-            const alertKey = `${stateKey}_bull_final_${candleTime}`;
-            if (LAST_ALERT_TIME[stateKey] !== alertKey) {
-                LAST_ALERT_TIME[stateKey] = alertKey;
-                trimAlertCache();
-                const alertMsg = buildICIAlertMsg(pairName, true);
-                await sendTG(alertMsg);
-                try { await sendWhatsAppAlert(alertMsg); } catch (e) {}
-            }
-            s.phase = 'alerted';
-            s.firedAt = Date.now();
-            s.fractalCandles = 0;
-            s.fractalWait = false;
-            delete s.__earlyAlertSent;
-            PB_STATE[stateKey] = s;
-            return;
-        }
-
-        // Early Alert
-        if (hHighs.length >= 5) {
-            const fourCandlesHigh = hHighs.slice(-5, -1);
-            const fourCandlesClose = hCloses.slice(-5, -1);
-            const potentialMiddleIdx = hHighs.length - 3;
-            const midHigh = hHighs[potentialMiddleIdx];
-            const left2highs = hHighs.slice(potentialMiddleIdx - 2, potentialMiddleIdx);
-            const right2highs = hHighs.slice(potentialMiddleIdx + 1, potentialMiddleIdx + 3);
-
-            if (right2highs.length >= 2 && midHigh > sma20_1h) {
-                if (midHigh > left2highs[0] && midHigh > left2highs[1] &&
-                    midHigh > right2highs[0] && midHigh > right2highs[1]) {
-                    if (check50Touch(fourCandlesHigh, fourCandlesClose, sma50_1h)) {
-                        if (!s.__earlyAlertSent) {
-                            s.__earlyAlertSent = true;
-                            const earlyAlertMsg = buildICIAlertMsg(pairName, true) + ' (⚠️ Early Signal)';
-                            await sendTG(earlyAlertMsg);
-                            try { await sendWhatsAppAlert(earlyAlertMsg); } catch (e) {}
-                        }
-                    }
-                }
-            }
         }
     }
 
