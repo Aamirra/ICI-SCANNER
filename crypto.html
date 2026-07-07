@@ -24,7 +24,7 @@
         .alert-toggle.active { background:var(--green); color:#fff; border-color:var(--green); }
         .alert-toggle.inactive { background:var(--red); color:#fff; border-color:var(--red); }
         .pills-row { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
-        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .pill { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); cursor:pointer; color:var(--txt); text-decoration:none; display:inline-block; }
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
@@ -104,6 +104,27 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
+        /* ── Chart interval buttons ── */
+        .chart-interval-selector {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .chart-interval-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--pill-bg);
+            color: var(--txt);
+            cursor: pointer;
+        }
+        .chart-interval-btn.active {
+            background: var(--acc);
+            color: #fff;
+            border-color: var(--acc);
+        }
     </style>
 </head>
 <body>
@@ -182,6 +203,13 @@
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
+    <!-- ✅ Interval selector buttons (new) -->
+    <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
+        <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
+        <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
+        <button class="chart-interval-btn" data-interval="D" onclick="changeChartInterval('D', this)">1D</button>
+        <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
+    </div>
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
 
@@ -251,6 +279,7 @@ let watchlistSet = new Set();
 let liveMarketData = {};
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
+let currentChartInterval = "60"; // ✅ default 1H
 
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
@@ -399,12 +428,10 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
 
-    // ✅ Target count – only crypto pairs
     const cryptoNames = new Set(PAIRS.map(p=>p.n));
     let tCount=0;
     for(const [k,s] of Object.entries(PB_STATE)) {
         if(!s||!s.phase) continue;
-        // Extract pair name (handles keys like BTCUSD_1h_bull)
         const pairName = k.split('_')[0];
         if (cryptoNames.has(pairName)) {
             if (!show4H && k.includes('_4h_')) continue;
@@ -412,7 +439,7 @@ function updateCounts() {
         }
     }
     document.getElementById('targetCount2').textContent = tCount;
-    document.getElementById('targetCount').textContent = tCount; // sync-info span
+    document.getElementById('targetCount').textContent = tCount;
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
@@ -503,13 +530,28 @@ function openChartForPair(pairName) {
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
     openChart(chartIdx);
 }
+function changeChartInterval(interval, btn) {
+    currentChartInterval = interval;
+    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    openChart(chartIdx);
+}
 function openChart(idx) {
     chartIdx=idx; const symbol=chartPairs[idx];
     document.getElementById('chartPairName').textContent=symbol;
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
     const futuresSymbol = `BINANCE:${symbol.replace('USD', 'USDT')}.P`;
-    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:"60", theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container", studies:[{id:"MASimple@tv-basicstudies",inputs:{length:10}},{id:"MASimple@tv-basicstudies",inputs:{length:20}},{id:"MASimple@tv-basicstudies",inputs:{length:50}},{id:"WilliamFractal@tv-basicstudies"}] });
+    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:currentChartInterval,
+        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:"tv_chart_container",
+        studies:[
+            {id:"MASimple@tv-basicstudies",inputs:{length:10}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
+        ]
+    });
 }
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
