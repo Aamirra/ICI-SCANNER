@@ -36,9 +36,7 @@ function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows
     let lastHigh = null;
 
     // Agar pehli hi candle 20 SMA ke upar hai to seedha above_20
-    // (weekly upar hona already confirmed caller side)
     if (dailyCloses.length > 0 && dailyCloses[dailyCloses.length - 1] > sma20) {
-        // Seedha above_20 assume karo, but history mein 50 SMA touch check kar lo
         state.phase = 'above_20';
         for (let i = 0; i < dailyCloses.length; i++) {
             const h = dailyHighs[i];
@@ -48,10 +46,9 @@ function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows
             }
         }
         state.touched50 = touched50;
-        state.runningHigh = Math.max(...dailyHighs.slice(-50)); // runningHigh set
+        state.runningHigh = Math.max(...dailyHighs.slice(-50));
         state.lastDailyHigh = dailyHighs[dailyHighs.length - 1];
     } else {
-        // Normal sequence scan
         for (let i = 0; i < dailyCloses.length; i++) {
             const c = dailyCloses[i];
             const h = dailyHighs[i];
@@ -97,20 +94,23 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     const { closes: dCloses, highs: dHighs, lows: dLows, weeklyCloses } = dailyData;
 
     if (!dCloses || dCloses.length < 50 || !weeklyCloses || weeklyCloses.length < 50) return;
+    // Note: hourlyData is accepted but not used (1H monitoring removed)
 
     const weeklySMA50 = calcSMA(weeklyCloses, 50);
     const lastWeeklyClose = weeklyCloses[weeklyCloses.length - 1];
     if (!weeklySMA50 || lastWeeklyClose <= weeklySMA50) {
-        PB_STATE[stateKey] = defaultBullState();
-        return;
+        const resetState = defaultBullState();
+        PB_STATE[stateKey] = resetState;
+        return resetState;   // return state so caller can update target list
     }
 
     let s = PB_STATE[stateKey];
     if (!s || !s.initialized) {
         s = initializeStateFromHistory(stateKey, dCloses, dHighs, dLows, weeklyCloses, weeklySMA50);
         if (!s) {
-            PB_STATE[stateKey] = defaultBullState();
-            return;
+            const resetState = defaultBullState();
+            PB_STATE[stateKey] = resetState;
+            return resetState;
         }
         PB_STATE[stateKey] = s;
     }
@@ -129,14 +129,10 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
     // ----- Daily Phase Updates -----
     if (s.phase === null) {
-        // ✅ NEW RULE: Agar price already 20 SMA ke upar hai, to seedha above_20
         if (lastDailyClose > sma20_daily) {
             s.phase = 'above_20';
             s.runningHigh = lastDailyHigh;
             s.lastDailyHigh = lastDailyHigh;
-            // Check if 50 SMA already touched in history (above_20 phase mein huwa hoga)
-            // We can check if any recent candle satisfied touch (optional, but safe)
-            // Simply set touched50 = false for now, will be caught in next above_20 block.
             s.touched50 = false;
         } else if (lastDailyClose < sma20_daily) {
             s.phase = 'below_20';
@@ -168,7 +164,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.touched50 = false;
             s.lastDailyHigh = lastDailyHigh;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
 
         // No‑break candle → directly alerted
@@ -177,19 +173,9 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.firedAt = Date.now();
             s.lastDailyHigh = lastDailyHigh;
 
-            // --- Alerts OFF (commented) ---
-            // const candleTime = Date.now();
-            // const alertKey = `${stateKey}_bull_final_${candleTime}`;
-            // if (LAST_ALERT_TIME[stateKey] !== alertKey) {
-            //     LAST_ALERT_TIME[stateKey] = alertKey;
-            //     trimAlertCache();
-            //     const alertMsg = buildICIAlertMsg(pairName, true);
-            //     await sendTG(alertMsg);
-            //     try { await sendWhatsAppAlert(alertMsg); } catch (e) {}
-            // }
-
+            // Alerts OFF (commented)
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
 
         s.lastDailyHigh = lastDailyHigh;
@@ -204,11 +190,12 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
         if (s.runningHigh !== null && lastDailyClose > s.runningHigh) {
-            PB_STATE[stateKey] = defaultBullState();
-            return;
+            const resetState = defaultBullState();
+            PB_STATE[stateKey] = resetState;
+            return resetState;
         }
         if (lastDailyClose < ema20_daily) {
             s.phase = 'below_20';
@@ -218,12 +205,12 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.fractalCandles = 0;
             s.fractalWait = false;
             PB_STATE[stateKey] = s;
-            return;
+            return s;
         }
     }
 
     PB_STATE[stateKey] = s;
-    // No sync call – handled by setupScanner.syncAllTargets()
+    return s;   // <--- 👈 ye line add ki (fix)
 }
 
 module.exports = { bullMonitor };
