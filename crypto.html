@@ -104,7 +104,7 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
-        /* ── Chart interval buttons ── */
+        /* Chart interval buttons */
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
@@ -129,7 +129,6 @@
         <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
-    <!-- AI Assistant Panel -->
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()"><span>🤖 AI Assistant</span><span style="font-size:14px;">▼</span></div>
         <div class="ai-body" id="aiBody">
@@ -143,7 +142,6 @@
             </div>
         </div>
     </div>
-    <!-- Pending Code Changes -->
     <div class="pending-code-changes" id="pendingCodePanel">
         <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
@@ -164,7 +162,6 @@
     <div id="pairsContainer"></div>
 </div>
 
-<!-- Chart Overlay -->
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
@@ -181,7 +178,6 @@
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
 
-<!-- Approval Overlay -->
 <div class="approval-overlay" id="approvalOverlay">
     <div class="approval-box">
         <h3>⚠️ AI Action Approval</h3>
@@ -193,7 +189,6 @@
     </div>
 </div>
 
-<!-- ✅ Target List Modal (Simplified) -->
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:16px;color:var(--gold)">🎯 Crypto Target List</h3>
@@ -201,16 +196,13 @@
     </div>
 </div>
 
-<!-- News Modal -->
 <div class="modal" id="newsModal" onclick="closeNewsModal()">
     <div class="modal-content" onclick="event.stopPropagation()" style="max-height:85vh;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3 style="margin:0;color:var(--gold)">📰 Crypto News</h3>
             <button onclick="closeNewsModal()" style="background:none;border:none;font-size:18px;color:var(--red);cursor:pointer;">✕</button>
         </div>
-        <div id="newsContentModal" style="max-height:60vh;overflow-y:auto;">
-            <div style="color:var(--muted);">Loading news...</div>
-        </div>
+        <div id="newsContentModal" style="max-height:60vh;overflow-y:auto;"><div style="color:var(--muted);">Loading news...</div></div>
     </div>
 </div>
 
@@ -234,11 +226,11 @@ const PAIRS = [
     {n:'NEARUSD'},{n:'FLOWUSD'},{n:'APTUSD'},{n:'OPUSD'},{n:'ARBUSD'},{n:'SUIUSD'},
     {n:'INJUSD'},{n:'TIAUSD'},{n:'SEIUSD'},{n:'BLURUSD'},{n:'PYTHUSD'},{n:'JTOUSD'},
     {n:'ORDIUSD'},{n:'1000SATSUSD'},{n:'BEAMUSD'},{n:'RNDRUSD'},{n:'IMXUSD'},{n:'MINAUSD'},
-    {n:'GALAUSD'},{n:'AXSUSD'},{n:'SANDUSD'},{n:'MANAUSD'},{n:'APEUSD'},{n:'ENSUSD'},
-    {n:'LDOUSD'},{n:'STXUSD'},{n:'CFXUSD'},{n:'KLAYUSD'},{n:'FTMUSD'},{n:'HBARUSD'},
-    {n:'EGLDUSD'},{n:'QNTUSD'},{n:'ARUSD'},{n:'ZILUSD'},{n:'KSMUSD'},{n:'ANTUSD'},
-    {n:'IOTXUSD'},{n:'CELOUSD'},{n:'ANKRUSD'},{n:'SKLUSD'},{n:'SPELLUSD'},{n:'JOEUSD'},
-    {n:'GMXUSD'},{n:'PENDLEUSD'},{n:'SSVUSD'},{n:'FXSUSD'},{n:'LQTYUSD'},{n:'MASKUSD'}
+    {n:'GALAUSD'},{n:'AXSUSD'},{n:'APEUSD'},{n:'ENSUSD'},{n:'LDOUSD'},{n:'STXUSD'},
+    {n:'CFXUSD'},{n:'KLAYUSD'},{n:'FTMUSD'},{n:'HBARUSD'},{n:'EGLDUSD'},{n:'QNTUSD'},
+    {n:'ARUSD'},{n:'ZILUSD'},{n:'KSMUSD'},{n:'ANTUSD'},{n:'IOTXUSD'},{n:'CELOUSD'},
+    {n:'ANKRUSD'},{n:'SKLUSD'},{n:'SPELLUSD'},{n:'JOEUSD'},{n:'GMXUSD'},{n:'PENDLEUSD'},
+    {n:'SSVUSD'},{n:'FXSUSD'},{n:'LQTYUSD'},{n:'MASKUSD'}
 ];
 
 let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
@@ -293,11 +285,72 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
         <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
     </div>`).join('');
 });
-async function approveCodeChange(id) { /* ... same ... */ }
+async function approveCodeChange(id) {
+    const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
+    const changeReq = snap.val();
+    if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found'); return; }
+    const newContent = changeReq.newContent;
+    if (!newContent) { console.error('No newContent'); return; }
+    try {
+        const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
+        const result = await res.json();
+        if (res.ok) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); alert('Committed!'); }
+        else alert('Error: ' + (result.error || 'Failed'));
+    } catch(e) { console.error(e); }
+}
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-async function sendOpenRouterChat() { /* ... same ... */ }
-async function approveAction() { /* ... same ... */ }
+async function sendOpenRouterChat() {
+    const input = document.getElementById('chatInputEmbedded');
+    const messagesDiv = document.getElementById('chatMessagesEmbedded');
+    const userText = input.value.trim();
+    if (!userText) return;
+    messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
+    input.value = '';
+    messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    try {
+        const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userText }) });
+        const data = await response.json();
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
+        if (!response.ok) {
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(data.error||`HTTP ${response.status}`)}</span></div>`;
+        } else {
+            const rawResponse = data.response || 'Sorry, no response.';
+            const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
+            let displayText = rawResponse;
+            if (actionMatch) {
+                const actionType = actionMatch[1], paramsStr = actionMatch[2];
+                displayText = rawResponse.replace(actionMatch[0], '').trim();
+                try {
+                    const params = JSON.parse(paramsStr);
+                    document.getElementById('approvalMessage').textContent = `AI wants: "${actionType}" with ${paramsStr}. Allow?`;
+                    document.getElementById('approvalOverlay').classList.add('open');
+                    window.__pendingAction = { type: actionType, params };
+                } catch(e) { console.error('Action parse error', e); }
+            }
+            if (displayText) messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
+        }
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch (e) {
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
+    }
+}
+
+async function approveAction() {
+    const action = window.__pendingAction; if (!action) return;
+    document.getElementById('approvalOverlay').classList.remove('open');
+    try {
+        const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
+        const result = await res.json();
+        const messagesDiv = document.getElementById('chatMessagesEmbedded');
+        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } catch(e) { console.error(e); }
+    window.__pendingAction = null;
+}
 function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -329,23 +382,18 @@ function updateCounts() {
     document.getElementById('bc').textContent=b;
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
-
     const cryptoNames = new Set(PAIRS.map(p=>p.n));
     let tCount=0;
     for(const [k,s] of Object.entries(PB_STATE)) {
         if(!s||!s.phase) continue;
         const pairName = k.split('_')[0];
-        if (cryptoNames.has(pairName)) {
-            if (!show4H && k.includes('_4h_')) continue;
-            tCount++;
-        }
+        if (cryptoNames.has(pairName)) { if (!show4H && k.includes('_4h_')) continue; tCount++; }
     }
     document.getElementById('targetCount2').textContent = tCount;
     document.getElementById('targetCount').textContent = tCount;
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
-// ✅ Simplified Target Modal (No volume, clean layout)
 function openTargetModal() {
     const cryptoNames = new Set(PAIRS.map(p => p.n));
     const targets = Object.entries(PB_STATE).filter(([k, v]) => {
@@ -353,10 +401,8 @@ function openTargetModal() {
         const pairName = k.split('_')[0];
         return cryptoNames.has(pairName);
     });
-
     if (targets.length === 0) {
-        document.getElementById('targetContent').innerHTML = 
-            '<div style="color:var(--muted);padding:20px;text-align:center">No active crypto setups</div>';
+        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active crypto setups</div>';
     } else {
         let html = '';
         targets.forEach(([k, v]) => {
@@ -374,7 +420,11 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-function isInTargetList(p) { /* ... same ... */ return false; }
+function isInTargetList(p) {
+    const keyBase = `${p}_`;
+    for(const k of Object.keys(PB_STATE)) { if (k.startsWith(keyBase)) { const s = PB_STATE[k]; if (s && s.phase && s.phase!=='watching') return true; } }
+    return false;
+}
 
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
@@ -385,7 +435,6 @@ function render() {
     else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
-
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
         const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
@@ -394,12 +443,7 @@ function render() {
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf=>{
-            if (m[tf]) return m[tf];
-            const liveM = liveMarketData && liveMarketData[p.n];
-            if (liveM && liveM[tf]) return liveM[tf];
-            return '';
-        });
+        const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
         const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
         const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
@@ -465,7 +509,33 @@ function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if
 
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
-async function openNewsModal() { /* ... same ... */ }
+async function openNewsModal() {
+    document.getElementById('newsModal').classList.add('open');
+    const container = document.getElementById('newsContentModal');
+    container.innerHTML = '<div style="color:var(--muted);">Loading news...</div>';
+    try {
+        const res = await fetch('/api/crypto-news?symbol=BTCUSD');
+        const news = await res.json();
+        if (!Array.isArray(news) || news.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center;">No recent major news.</div>';
+            return;
+        }
+        let html = '';
+        news.forEach(item => {
+            const title = item.title || 'No title';
+            const url = item.url || '#';
+            const source = item.source || 'Unknown';
+            const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+            html += `<div onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
+                <div style="color:var(--acc);font-weight:600;">${title}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">Failed to load news</div>';
+    }
+}
 function closeNewsModal() { document.getElementById('newsModal').classList.remove('open'); }
 
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
