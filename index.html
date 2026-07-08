@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* ── All existing CSS unchanged ── */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -29,7 +28,7 @@
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
-        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; }
+        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; }
         .counters-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:16px; }
         .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 4px; text-align:center; cursor:pointer; }
         .count-card .num { font-size:18px; font-weight:700; margin-bottom:2px; color:var(--txt); }
@@ -71,6 +70,11 @@
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
         .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
+        .mmb-btn { cursor:pointer; font-size:12px; margin-left:4px; color:var(--acc); }
+        .mmb-dropdown { position:fixed; background:var(--surface); border:1px solid var(--border); border-radius:8px; z-index:999; box-shadow:0 4px 8px rgba(0,0,0,0.15); padding:4px 0; min-width:80px; }
+        .mmb-dropdown button { display:block; width:100%; padding:6px 12px; background:none; border:none; color:var(--txt); text-align:left; cursor:pointer; font-size:12px; font-weight:500; }
+        .mmb-dropdown button:hover { background:var(--pill-bg); }
+        .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
         .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
         .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
         .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
@@ -105,36 +109,15 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
-        /* ── Chart interval buttons ── */
-        .chart-interval-selector {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .chart-interval-btn {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            border: 1px solid var(--border);
-            background: var(--pill-bg);
-            color: var(--txt);
-            cursor: pointer;
-        }
-        .chart-interval-btn.active {
-            background: var(--acc);
-            color: #fff;
-            border-color: var(--acc);
-        }
+        .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
+        .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
+        .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
     </style>
 </head>
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
-        <div class="brand">
-            <div class="brand-icon">🎚️</div>
-            <div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div>
-        </div>
+        <div class="brand"><div class="brand-icon">🎚️</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
@@ -142,7 +125,6 @@
             <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
         </div>
     </div>
-
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
@@ -151,13 +133,8 @@
         <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
-
-    <!-- AI Assistant Panel -->
     <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()">
-            <span>🤖 AI Assistant</span>
-            <span style="font-size:14px;">▼</span>
-        </div>
+        <div class="ai-header" onclick="toggleAIAssistant()"><span>🤖 AI Assistant</span><span style="font-size:14px;">▼</span></div>
         <div class="ai-body" id="aiBody">
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
                 <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
@@ -173,34 +150,26 @@
             </div>
         </div>
     </div>
-
-    <!-- Pending Code Changes -->
     <div class="pending-code-changes" id="pendingCodePanel">
         <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
     </div>
-
-    <div class="sync-info">
-        ✔ Cloud synced
-        <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
+    <div class="sync-info" onclick="openTargetModal()">
+        ✔ Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ›</span>
+        <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
     </div>
-
     <div class="counters-grid">
         <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
         <div class="count-card" onclick="setFilter('bear')"><div class="num" style="color:var(--red)" id="rc">0</div><div class="label">Bearish</div></div>
         <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
-        <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount">0</div><div class="label">Target</div></div>
+        <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount2">0</div><div class="label">Target</div></div>
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
-
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header">
-        <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
-    </div>
+    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">⚙️</div></div>
     <div id="pairsContainer"></div>
 </div>
 
-<!-- Chart Overlay -->
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
@@ -208,7 +177,6 @@
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
-    <!-- ✅ Interval selector buttons -->
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
         <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
@@ -218,7 +186,6 @@
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
 
-<!-- Approval Overlay -->
 <div class="approval-overlay" id="approvalOverlay">
     <div class="approval-box">
         <h3>⚠️ AI Action Approval</h3>
@@ -230,10 +197,16 @@
     </div>
 </div>
 
+<div class="modal" id="targetModal" onclick="this.classList.remove('open')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:16px;color:var(--gold)">🎯 Forex Target List</h3>
+        <div id="targetContent"></div>
+    </div>
+</div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
-// ── Firebase Init ──
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
@@ -252,9 +225,8 @@ let watchlistSet = new Set();
 let liveMarketData = {};
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
-let currentChartInterval = "60"; // ✅ Default 1H
+let currentChartInterval = "60";
 
-// ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
@@ -263,15 +235,19 @@ function updateToggleButtons() {
 }
 function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
-// ── Watchlist ──
 db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
 function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
-// ── Live Market Data ──
-db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({ name, currentPrice: data.price, ema20: null, sentiment: data.sentiment }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
-// ── Error Log ──
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
 function updateErrorListEmbedded() {
     const listDiv = document.getElementById('errorListEmbedded');
@@ -280,18 +256,9 @@ function updateErrorListEmbedded() {
     listDiv.classList.add('has-errors');
     listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
 }
-
-function clearErrors() {
-    if (confirm('Sare errors delete kar dein?')) {
-        db.ref('errorLog').remove()
-            .then(() => console.log('Error log cleared'))
-            .catch(e => console.error(e));
-    }
-}
-
+function clearErrors() { if (confirm('Sare errors delete kar dein?')) { db.ref('errorLog').remove().then(() => console.log('Error log cleared')).catch(e => console.error(e)); } }
 function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
 
-// ── Pending Code Changes ──
 db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
     const requests = snap.val() || {};
     const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
@@ -305,141 +272,83 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
         <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
     </div>`).join('');
 });
-
 async function approveCodeChange(id) {
     const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
     const changeReq = snap.val();
-    if (!changeReq || changeReq.status !== 'pending_approval') {
-        console.error('Change request not found or already processed');
-        return;
-    }
+    if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found'); return; }
     const newContent = changeReq.newContent;
-    if (!newContent) {
-        console.error('No newContent in change request');
-        return;
-    }
+    if (!newContent) { console.error('No newContent'); return; }
     try {
-        const res = await fetch('/api/approve-code-change', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, newContent })
-        });
+        const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
         const result = await res.json();
-        if (res.ok) {
-            await db.ref(`codeChangeRequests/${id}/status`).set('approved');
-            alert('Code change committed! Render deploy hone ke baad AI update ho jayega.');
-        } else {
-            alert('Error: ' + (result.error || 'Failed'));
-        }
-    } catch(e) {
-        console.error(e);
-        alert('Network error');
-    }
+        if (res.ok) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); alert('Committed!'); }
+        else alert('Error: ' + (result.error || 'Failed'));
+    } catch(e) { console.error(e); }
 }
-
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
-// ── AI Chat via Server Proxy (with Action Parser) ──
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
     if (!userText) return;
-
     messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
-
     messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
     try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userText })
-        });
-
+        const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userText }) });
         const data = await response.json();
-
-        const loadingEl = document.getElementById('loadingMsg');
-        if (loadingEl) loadingEl.remove();
-
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
         if (!response.ok) {
-            const errMsg = data.error || `HTTP Error ${response.status}`;
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(errMsg)}</span></div>`;
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(data.error||`HTTP ${response.status}`)}</span></div>`;
         } else {
             const rawResponse = data.response || 'Sorry, no response.';
             const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
             let displayText = rawResponse;
-            let pendingAction = null;
-
             if (actionMatch) {
-                const actionType = actionMatch[1];
-                const paramsStr = actionMatch[2];
+                const actionType = actionMatch[1], paramsStr = actionMatch[2];
                 displayText = rawResponse.replace(actionMatch[0], '').trim();
                 try {
                     const params = JSON.parse(paramsStr);
-                    pendingAction = { type: actionType, params };
-                    document.getElementById('approvalMessage').textContent = `AI wants to perform action: "${actionType}" with details: ${paramsStr}. Allow?`;
+                    document.getElementById('approvalMessage').textContent = `AI wants: "${actionType}" with ${paramsStr}. Allow?`;
                     document.getElementById('approvalOverlay').classList.add('open');
                     window.__pendingAction = { type: actionType, params };
-                } catch(e) {
-                    console.error('Action parse error', e);
-                }
+                } catch(e) { console.error('Action parse error', e); }
             }
-
-            if (displayText) {
-                messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
-            }
+            if (displayText) messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
         }
-        
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (e) {
-        const loadingEl = document.getElementById('loadingMsg');
-        if (loadingEl) loadingEl.remove();
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error: ${escapeHtml(e.message)}</span></div>`;
+        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
     }
 }
 
 async function approveAction() {
-    const action = window.__pendingAction;
-    if (!action) return;
+    const action = window.__pendingAction; if (!action) return;
     document.getElementById('approvalOverlay').classList.remove('open');
     try {
-        const res = await fetch('/api/execute-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(action)
-        });
+        const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
         const result = await res.json();
         const messagesDiv = document.getElementById('chatMessagesEmbedded');
         const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
         messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    } catch(e) {
-        console.error(e);
-    }
+    } catch(e) { console.error(e); }
     window.__pendingAction = null;
 }
-
-function rejectAction() {
-    document.getElementById('approvalOverlay').classList.remove('open');
-    window.__pendingAction = null;
-}
-
+function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ── Scan ──
 function actualScan() {
     const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
     fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
     .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
 
-// ── Theme, Desktop, Filter ──
 function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.getAttribute('data-theme') === 'dark';
+    const html = document.documentElement; const isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
     document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-theme', html.getAttribute('data-theme'));
@@ -453,7 +362,7 @@ function toggleDesktopMode() {
 function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
-// ── Counts ──
+// ✅ UPDATED: filter only forex pairs
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
@@ -471,21 +380,76 @@ function updateCounts() {
             tCount++;
         }
     }
+    document.getElementById('targetCount2').textContent = tCount;
     document.getElementById('targetCount').textContent = tCount;
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
+
+// MMB Dropdown functions (same as crypto)
+function getPairKey(pairName) {
+    const base = pairName + '_';
+    for (const k of Object.keys(PB_STATE)) { if (k.startsWith(base) && PB_STATE[k] && PB_STATE[k].dir) return k; }
+    return null;
+}
+async function setPairPhase(pairName, newPhase) {
+    const key = getPairKey(pairName); if (!key) return;
+    await db.ref(`pb_state/${key}/phase`).set(newPhase);
+}
+function openMMBDropdown(event, pairName) {
+    event.stopPropagation();
+    const key = getPairKey(pairName); if (!key) return;
+    const existing = document.querySelector('.mmb-dropdown'); if (existing) existing.remove();
+    const dropdown = document.createElement('div'); dropdown.className = 'mmb-dropdown';
+    const rect = event.target.getBoundingClientRect();
+    dropdown.style.left = rect.left + 'px'; dropdown.style.top = (rect.bottom + 4) + 'px';
+    ['mmb1','mmb2','mmb3','mmb4'].forEach(phase => {
+        const btn = document.createElement('button'); btn.textContent = phase.toUpperCase();
+        btn.onclick = () => { setPairPhase(pairName, phase); dropdown.remove(); };
+        dropdown.appendChild(btn);
+    });
+    document.body.appendChild(dropdown);
+    setTimeout(() => {
+        const handler = (e) => { if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('click', handler); } };
+        document.addEventListener('click', handler);
+    }, 0);
+}
+function getPairPhaseInfo(pairName) {
+    const key = getPairKey(pairName); if (!key) return null;
+    const v = PB_STATE[key]; return { phase: v.phase, dir: v.dir };
+}
+
+function openTargetModal() {
+    const forexPairs = new Set(PAIRS.map(p => p.n));
+    const targets = Object.entries(PB_STATE).filter(([k, v]) => {
+        if (!v || v.phase === null || v.phase === 'null') return false;
+        const pairName = k.split('_')[0];
+        return forexPairs.has(pairName);
+    });
+    if (targets.length === 0) {
+        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
+    } else {
+        let html = '';
+        targets.forEach(([k, v]) => {
+            const pairName = k.split('_')[0];
+            const phaseDisplay = (v.phase || '?').replace(/_/g, ' ').toUpperCase();
+            const badgeBg = v.dir === 'bull' ? '#22c55e' : '#ef4444';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
+                <span style="font-weight:700;font-size:14px;flex:1;">${pairName}</span>
+                <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${pairName}')">${phaseDisplay}</span>
+                <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${(v.dir||'?').toUpperCase()}</span>
+            </div>`;
+        });
+        document.getElementById('targetContent').innerHTML = html;
+    }
+    document.getElementById('targetModal').classList.add('open');
+}
+
 function isInTargetList(p) {
     const keyBase = `${p}_`;
-    for(const k of Object.keys(PB_STATE)) {
-        if (k.startsWith(keyBase)) {
-            const s = PB_STATE[k];
-            if (s && s.phase && s.phase!=='watching') return true;
-        }
-    }
+    for(const k of Object.keys(PB_STATE)) { if (k.startsWith(keyBase)) { const s = PB_STATE[k]; if (s && s.phase && s.phase!=='watching') return true; } }
     return false;
 }
 
-// ── Render ──
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -495,6 +459,7 @@ function render() {
     else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
+    const isTargetView = (curF === 'target');
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
@@ -504,12 +469,7 @@ function render() {
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf=>{
-            if (m[tf]) return m[tf];
-            const liveM = liveMarketData && liveMarketData[p.n];
-            if (liveM && liveM[tf]) return liveM[tf];
-            return '';
-        });
+        const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
         const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
         const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
         const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
@@ -519,27 +479,46 @@ function render() {
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
         const liveM = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
-        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
-            (liveM.price || liveM.currentPrice).toFixed(4) : 
-            (mktPrice ? mktPrice.toFixed(4) : '');
+        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? (liveM.price || liveM.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
-        return `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
+
+        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
             <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
             <div class="row-timeframes dots-container">${dots}</div>
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
-            <div class="row-alert">${bellHtml}</div>
-        </div><div class="compact-details">
-            <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
-            <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
-            <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
-            <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
-        </div></div>`;
+            <div class="row-alert" style="display:flex;align-items:center;justify-content:center;gap:2px;">${bellHtml}
+                <span class="mmb-btn" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')" title="Set MMB phase">⚙️</span>
+            </div>
+        </div>`;
+
+        if (isTargetView) {
+            const info = getPairPhaseInfo(p.n);
+            if (info) {
+                const phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
+                const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
+                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
+                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
+                </div>`;
+            } else {
+                row += `<div class="phase-row" style="color:var(--muted);">Phase: —</div>`;
+            }
+            row += `</div>`; // close item-row
+        } else {
+            row += `<div class="compact-details">
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+            </div>`;
+            row += `</div>`; // close item-row
+        }
+
+        return row;
     }).join('');
     updateCounts();
 }
 
-// ── Chart ──
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -547,10 +526,8 @@ function openChartForPair(pairName) {
 }
 function changeChartInterval(interval, btn) {
     currentChartInterval = interval;
-    // Update active button
     document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Re-open current chart with new interval
     openChart(chartIdx);
 }
 function openChart(idx) {
@@ -560,7 +537,7 @@ function openChart(idx) {
     document.getElementById('tv_chart_container').innerHTML='';
     const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
     new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
-        interval: currentChartInterval,   // ✅ use the remembered interval
+        interval: currentChartInterval,
         theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id:"tv_chart_container",
         studies: [
@@ -574,26 +551,19 @@ function openChart(idx) {
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
 
-// ── 4H Toggle ──
 function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
-// ── Firebase Listeners ──
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({
-            name,
-            currentPrice: data.currentPrice,
-            ema20: data.ema20,
-            sentiment: data.sentiment,
-        }));
+        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({ name, currentPrice: data.currentPrice, ema20: data.ema20, sentiment: data.sentiment }));
         checkAllAlerts(pairsArray);
     }
     render();
@@ -602,12 +572,7 @@ db.ref('marketData').on('value', snap => {
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({
-            name,
-            currentPrice: data.price,
-            ema20: null,
-            sentiment: data.sentiment,
-        }));
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({ name, currentPrice: data.price, ema20: null, sentiment: data.sentiment }));
         checkAllAlerts(pairsArray);
     }
     render();
