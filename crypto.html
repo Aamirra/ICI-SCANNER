@@ -49,6 +49,11 @@
         .sent-red { background:var(--red); } .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
         .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
+        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
+        .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
+        .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
+        .compact-metric .val { font-weight:600; color:var(--txt); }
+        .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
@@ -99,7 +104,6 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
-        /* Chart interval buttons */
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
@@ -389,11 +393,12 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
-// ✅ Fixed target modal – phases as badges
+// ✅ Target modal – sirf naam, phase badge, direction (volume nahi)
 function openTargetModal() {
     const cryptoNames = new Set(PAIRS.map(p => p.n));
     const targets = Object.entries(PB_STATE).filter(([k, v]) => {
-        if (!v || !v.phase || v.phase === 'null') return false;
+        // phase null ya "null" string dono ko chhod do
+        if (!v || v.phase === null || v.phase === 'null') return false;
         const pairName = k.split('_')[0];
         return cryptoNames.has(pairName);
     });
@@ -403,13 +408,14 @@ function openTargetModal() {
         let html = '';
         targets.forEach(([k, v]) => {
             const pairName = k.split('_')[0];
-            const rawPhase = v.phase || 'no-phase';
-            const phaseDisplay = rawPhase.replace(/_/g, ' ');
-            const phaseColor = v.dir === 'bull' ? '#22c55e' : '#ef4444';
+            const phaseDisplay = (v.phase || '?').replace(/_/g, ' ').toUpperCase();
+            // badge ka solid color with white text (taake har theme mein dikhe)
+            const badgeBg = v.dir === 'bull' ? '#22c55e' : '#ef4444';
+            const badgeColor = '#ffffff';
             html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
                 <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pairName}</span>
-                <span style="background:${phaseColor}22;color:${phaseColor};padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:0.3px;">${phaseDisplay.toUpperCase()}</span>
-                <span style="color:${phaseColor};font-weight:700;font-size:11px;white-space:nowrap;">${(v.dir||'?').toUpperCase()}</span>
+                <span style="background:${badgeBg};color:${badgeColor};padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${phaseDisplay}</span>
+                <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;white-space:nowrap;">${(v.dir||'?').toUpperCase()}</span>
             </div>`;
         });
         document.getElementById('targetContent').innerHTML = html;
@@ -442,6 +448,10 @@ function render() {
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
         const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
         const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
         const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
         const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
         const mktData = MARKET_DATA[p.n] || {};
@@ -455,6 +465,11 @@ function render() {
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
             <div class="row-alert">${bellHtml}</div>
+        </div><div class="compact-details">
+            <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+            <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+            <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+            <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
         </div></div>`;
     }).join('');
     updateCounts();
