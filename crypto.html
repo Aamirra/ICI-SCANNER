@@ -107,6 +107,10 @@
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        /* MMB Dropdown */
+        .mmb-dropdown { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 4px 0; min-width: 100px; }
+        .mmb-dropdown button { display: block; width: 100%; padding: 8px 14px; background: none; border: none; color: var(--txt); text-align: left; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .mmb-dropdown button:hover { background: var(--pill-bg); }
     </style>
 </head>
 <body>
@@ -419,9 +423,10 @@ function openTargetModal() {
             const pairName = k.split('_')[0];
             const phaseDisplay = (v.phase || '?').replace(/_/g, ' ').toUpperCase();
             const badgeBg = v.dir === 'bull' ? '#22c55e' : '#ef4444';
-            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
-                <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pairName}</span>
-                <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${phaseDisplay}</span>
+            const clickable = v.phase?.startsWith('mmb') ? `onclick="openMMBDropdown(event, '${pairName}')" style="cursor:pointer;"` : '';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="openChartForPair('${pairName}')">${pairName}</span>
+                <span ${clickable} style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${phaseDisplay}</span>
                 <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;white-space:nowrap;">${(v.dir||'?').toUpperCase()}</span>
             </div>`;
         });
@@ -434,6 +439,60 @@ function isInTargetList(p) {
     const keyBase = `${p}_`;
     for(const k of Object.keys(PB_STATE)) { if (k.startsWith(keyBase)) { const s = PB_STATE[k]; if (s && s.phase && s.phase!=='watching') return true; } }
     return false;
+}
+
+// ── MMB Dropdown Functions ──
+function openMMBDropdown(event, pairName) {
+    event.stopPropagation();
+    const info = getPairPhaseInfo(pairName);
+    if (!info) return;
+    const currentPhase = info.phase;
+    let options = [];
+    if (currentPhase === 'mmb1') options = ['mmb2', 'mmb3', 'mmb4'];
+    else if (currentPhase === 'mmb2') options = ['mmb3', 'mmb4'];
+    else if (currentPhase === 'mmb3') options = ['mmb4'];
+    else return; // mmb4 or non‑mmb
+
+    // Remove any existing dropdown
+    const existing = document.querySelector('.mmb-dropdown');
+    if (existing) existing.remove();
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'mmb-dropdown';
+    const rect = event.target.getBoundingClientRect();
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt.toUpperCase();
+        btn.onclick = () => {
+            setPairPhase(pairName, opt);
+            dropdown.remove();
+        };
+        dropdown.appendChild(btn);
+    });
+    document.body.appendChild(dropdown);
+
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!dropdown.contains(e.target)) {
+                dropdown.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 0);
+}
+
+async function setPairPhase(pairName, newPhase) {
+    const base = pairName + '_';
+    for (const [key, state] of Object.entries(PB_STATE)) {
+        if (key.startsWith(base) && state && state.dir) {
+            await db.ref(`pb_state/${key}/phase`).set(newPhase);
+            break;
+        }
+    }
 }
 
 function render() {
@@ -465,7 +524,6 @@ function render() {
         const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        // Main row (always show change)
         let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
             <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
             <div class="row-timeframes dots-container">${dots}</div>
@@ -474,23 +532,21 @@ function render() {
             <div class="row-alert">${bellHtml}</div>
         </div>`;
 
-        // In target view, add phase row below main row
         if (isTargetView) {
             const info = getPairPhaseInfo(p.n);
             if (info) {
                 const phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
+                const clickable = info.phase.startsWith('mmb') ? `onclick="openMMBDropdown(event, '${p.n}')" style="cursor:pointer;"` : '';
                 row += `<div class="phase-row">
                     <span style="color:var(--muted);">Phase:</span>
-                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${phaseDisplay}</span>
+                    <span ${clickable} style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${phaseDisplay}</span>
                 </div>`;
             } else {
                 row += `<div class="phase-row" style="color:var(--muted);">Phase: —</div>`;
             }
-            // No volume row
-            row += `</div>`; // close item-row
+            row += `</div>`;
         } else {
-            // Normal view: volume details row
             const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
             const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
             const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
@@ -501,9 +557,8 @@ function render() {
                 <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
                 <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
             </div>`;
-            row += `</div>`; // close item-row
+            row += `</div>`;
         }
-
         return row;
     }).join('');
     updateCounts();
@@ -546,7 +601,33 @@ function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if
 
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
-async function openNewsModal() { /* unchanged */ }
+async function openNewsModal() {
+    document.getElementById('newsModal').classList.add('open');
+    const container = document.getElementById('newsContentModal');
+    container.innerHTML = '<div style="color:var(--muted);">Loading news...</div>';
+    try {
+        const res = await fetch('/api/crypto-news?symbol=BTCUSD');
+        const news = await res.json();
+        if (!Array.isArray(news) || news.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center;">No recent major news.</div>';
+            return;
+        }
+        let html = '';
+        news.forEach(item => {
+            const title = item.title || 'No title';
+            const url = item.url || '#';
+            const source = item.source || 'Unknown';
+            const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+            html += `<div onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
+                <div style="color:var(--acc);font-weight:600;">${title}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">Failed to load news</div>';
+    }
+}
 function closeNewsModal() { document.getElementById('newsModal').classList.remove('open'); }
 
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
