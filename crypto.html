@@ -389,10 +389,11 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
+// ✅ Fixed target modal – phases as badges
 function openTargetModal() {
     const cryptoNames = new Set(PAIRS.map(p => p.n));
     const targets = Object.entries(PB_STATE).filter(([k, v]) => {
-        if (!v || !v.phase) return false;
+        if (!v || !v.phase || v.phase === 'null') return false;
         const pairName = k.split('_')[0];
         return cryptoNames.has(pairName);
     });
@@ -402,12 +403,13 @@ function openTargetModal() {
         let html = '';
         targets.forEach(([k, v]) => {
             const pairName = k.split('_')[0];
-            const phaseColor = v.dir === 'bull' ? 'var(--green)' : 'var(--red)';
-            const phaseDisplay = (v.phase || '?').replace(/_/g, ' ');
-            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;" onclick="openChartForPair('${pairName}')">
-                <span style="font-weight:700;font-size:14px;flex:1;">${pairName}</span>
-                <span style="background:${phaseColor}20;color:${phaseColor};padding:3px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;">${phaseDisplay}</span>
-                <span style="color:${phaseColor};font-weight:700;font-size:12px;white-space:nowrap;">${v.dir?.toUpperCase()||''}</span>
+            const rawPhase = v.phase || 'no-phase';
+            const phaseDisplay = rawPhase.replace(/_/g, ' ');
+            const phaseColor = v.dir === 'bull' ? '#22c55e' : '#ef4444';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
+                <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pairName}</span>
+                <span style="background:${phaseColor}22;color:${phaseColor};padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:0.3px;">${phaseDisplay.toUpperCase()}</span>
+                <span style="color:${phaseColor};font-weight:700;font-size:11px;white-space:nowrap;">${(v.dir||'?').toUpperCase()}</span>
             </div>`;
         });
         document.getElementById('targetContent').innerHTML = html;
@@ -453,7 +455,7 @@ function render() {
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
             <div class="row-alert">${bellHtml}</div>
-        </div></div>`; /* ⬅️ compact-details row completely removed */
+        </div></div>`;
     }).join('');
     updateCounts();
 }
