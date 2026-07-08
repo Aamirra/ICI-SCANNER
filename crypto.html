@@ -53,6 +53,7 @@
         .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
         .compact-metric .val { font-weight:600; color:var(--txt); }
         .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
+        .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
@@ -144,7 +145,6 @@
         <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
     </div>
-    <!-- ✅ sync-info line hata di, sirf 4H toggle -->
     <div style="font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500;">
         ✔ Cloud synced
         <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
@@ -157,8 +157,7 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
-    <!-- Table header – ab dynamic hoga render() se -->
-    <div class="table-header" id="tableHeader">
+    <div class="table-header">
         <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div>
     </div>
     <div id="pairsContainer"></div>
@@ -395,7 +394,6 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
-// Helper: get phase & direction for a pair (first non-null in PB_STATE)
 function getPairPhaseInfo(pairName) {
     const base = pairName + '_';
     for (const [k, v] of Object.entries(PB_STATE)) {
@@ -449,17 +447,6 @@ function render() {
     currentDisplayPairs = filtered.map(p=>p.n);
     const isTargetView = (curF === 'target');
 
-    // Update table header
-    const headerEl = document.getElementById('tableHeader');
-    if (headerEl) {
-        headerEl.innerHTML = `
-            <div class="row-pair">Pair</div>
-            <div class="row-timeframes">1H · 4H · 1D · 1W</div>
-            <div class="row-sentiment">Sentiment</div>
-            <div class="row-change">${isTargetView ? 'PHASE' : '200C'}</div>
-            <div class="row-alert">🔔</div>`;
-    }
-
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
         const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
@@ -478,30 +465,32 @@ function render() {
         const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        // --- Build the row ---
+        // Main row (always show change)
         let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
             <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
             <div class="row-timeframes dots-container">${dots}</div>
-            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>`;
+            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert">${bellHtml}</div>
+        </div>`;
 
-        // In target view, show phase badge instead of change; otherwise show change value
+        // In target view, add phase row below main row
         if (isTargetView) {
             const info = getPairPhaseInfo(p.n);
             if (info) {
                 const phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="row-change" style="display:flex;justify-content:flex-end;align-items:center;"><span style="background:${badgeBg};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;">${phaseDisplay}</span></div>`;
+                row += `<div class="phase-row">
+                    <span style="color:var(--muted);">Phase:</span>
+                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${phaseDisplay}</span>
+                </div>`;
             } else {
-                row += `<div class="row-change" style="color:var(--muted);font-size:10px;">—</div>`;
+                row += `<div class="phase-row" style="color:var(--muted);">Phase: —</div>`;
             }
+            // No volume row
+            row += `</div>`; // close item-row
         } else {
-            row += `<div class="row-change change-val ${changeClass}">${change}</div>`;
-        }
-
-        row += `<div class="row-alert">${bellHtml}</div></div>`;
-
-        // Volume row only if not target view
-        if (!isTargetView) {
+            // Normal view: volume details row
             const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
             const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
             const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
@@ -512,8 +501,9 @@ function render() {
                 <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
                 <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
             </div>`;
+            row += `</div>`; // close item-row
         }
-        row += `</div>`;
+
         return row;
     }).join('');
     updateCounts();
