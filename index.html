@@ -120,14 +120,6 @@
         .dir-btn.bull { background:#22c55e; }
         .dir-btn.bear { background:#ef4444; }
         .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
-
-        /* Alert Modal */
-        .alert-form-group { margin-bottom:12px; }
-        .alert-form-group label { display:block; font-size:12px; font-weight:600; margin-bottom:4px; color:var(--muted); }
-        .alert-form-group select, .alert-form-group input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:var(--pill-bg); color:var(--txt); outline:none; }
-        .save-alert-btn { width:100%; padding:10px; background:var(--acc); color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; margin-top:8px; }
-        .alert-list-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid var(--border); font-size:13px; }
-        .alert-list-item .delete-btn { background:var(--red); color:#fff; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -147,7 +139,7 @@
         <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
         <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
         <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
-        <button class="pill" onclick="openAlertListModal()" style="background:var(--gold); color:#fff; border-color:var(--gold);">🔔 Alerts</button>
+        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">🔔 Alerts</button>
         <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
     <div class="ai-assistant-panel">
@@ -234,40 +226,8 @@
     </div>
 </div>
 
-<!-- Set Alert Modal -->
-<div class="dir-modal-overlay" id="alertModal">
-    <div class="dir-modal-box" style="max-width:320px;">
-        <h3>🔔 Set Alert</h3>
-        <p id="alertPairName" style="font-weight:600;font-size:14px;"></p>
-        <div class="alert-form-group">
-            <label>Alert Type</label>
-            <select id="alertType">
-                <option value="price_above">Price cross above</option>
-                <option value="price_below">Price cross below</option>
-                <option value="sma20_above">Price cross above 20 SMA</option>
-                <option value="sma20_below">Price cross below 20 SMA</option>
-                <option value="sma50_above">Price cross above 50 SMA</option>
-                <option value="sma50_below">Price cross below 50 SMA</option>
-            </select>
-        </div>
-        <div class="alert-form-group">
-            <label>Value</label>
-            <input type="number" id="alertValue" placeholder="e.g. 1.0850" step="any">
-        </div>
-        <button class="save-alert-btn" onclick="saveAlert()">Save Alert</button>
-        <button class="dir-btn cancel" onclick="closeAlertModal()" style="margin-top:4px;">Cancel</button>
-    </div>
-</div>
-
-<!-- Alerts List Modal -->
-<div class="modal" id="alertListModal" onclick="this.classList.remove('open')">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 style="margin-bottom:16px;color:var(--gold)">🔔 All Alerts</h3>
-        <div id="alertListContent"></div>
-    </div>
-</div>
-
 <script src="https://s3.tradingview.com/tv.js"></script>
+<script src="Alerts.js"></script>
 <script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
@@ -294,7 +254,6 @@ let pendingTargetPair = null;
 let pressTimer = null;
 let isLongPress = false;
 let touchStartX = 0, touchStartY = 0, touchMoved = false;
-let currentAlertPair = null;
 
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
@@ -308,7 +267,14 @@ db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.ke
 function isInWatchlist(p) { return watchlistSet.has(p); }
 function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
-db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({ name, currentPrice: data.price, ema20: null, sentiment: data.sentiment, sma20: data.sma20, sma50: data.sma50 }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
 function updateErrorListEmbedded() {
@@ -426,7 +392,7 @@ function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCas
 db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; updateCounts(); render(); });
 
 function handlePressStart(e, pairName) {
-    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star') || e.target.closest('.row-alert')) return;
+    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star') || e.target.closest('.bell-btn')) return;
     if (e.type === 'touchstart') {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
@@ -438,7 +404,7 @@ function handlePressStart(e, pairName) {
     pressTimer = setTimeout(() => { isLongPress = true; pressTimer = null; openDirModal(pairName); }, 600);
 }
 function handlePressEnd(e, pairName) {
-    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star') || e.target.closest('.row-alert')) return;
+    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star') || e.target.closest('.bell-btn')) return;
     if (e.type === 'touchend') {
         const touch = e.changedTouches[0];
         if (touch) {
@@ -541,55 +507,6 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-// ========== ALERT SYSTEM ==========
-function togglePairAlert(pairName) {
-    currentAlertPair = pairName;
-    document.getElementById('alertPairName').textContent = pairName;
-    document.getElementById('alertValue').value = '';
-    document.getElementById('alertModal').classList.add('open');
-}
-function closeAlertModal() {
-    document.getElementById('alertModal').classList.remove('open');
-    currentAlertPair = null;
-}
-async function saveAlert() {
-    if (!currentAlertPair) return;
-    const type = document.getElementById('alertType').value;
-    const value = parseFloat(document.getElementById('alertValue').value);
-    if (isNaN(value)) { alert('Please enter a valid number'); return; }
-    const alertData = {
-        pair: currentAlertPair,
-        type: type,
-        value: value,
-        created: Date.now()
-    };
-    await db.ref('manualAlerts').push().set(alertData);
-    closeAlertModal();
-    console.log('Alert saved:', alertData);
-}
-async function openAlertListModal() {
-    const snap = await db.ref('manualAlerts').once('value');
-    const alerts = snap.val() || {};
-    const entries = Object.entries(alerts);
-    if (entries.length === 0) {
-        document.getElementById('alertListContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No alerts set</div>';
-    } else {
-        let html = '';
-        entries.forEach(([id, alert]) => {
-            html += `<div class="alert-list-item">
-                <span><strong>${alert.pair}</strong> | ${alert.type.replace(/_/g, ' ')} | ${alert.value}</span>
-                <button class="delete-btn" onclick="deleteAlert('${id}')">✕</button>
-            </div>`;
-        });
-        document.getElementById('alertListContent').innerHTML = html;
-    }
-    document.getElementById('alertListModal').classList.add('open');
-}
-async function deleteAlert(alertId) {
-    await db.ref(`manualAlerts/${alertId}`).remove();
-    openAlertListModal();
-}
-
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -635,7 +552,7 @@ function render() {
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
             <div class="row-alert" style="text-align:center;">
-                <span onclick="event.stopPropagation(); togglePairAlert('${p.n}')" onmouseup="event.stopPropagation()" ontouchend="event.stopPropagation()" style="cursor:pointer; font-size:14px;" title="Set Alert">🔔</span>
+                ${getBellHtml(p.n)}
             </div>
         </div>`;
 
@@ -702,8 +619,23 @@ function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
 db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
-db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val() || {}; render(); });
-db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
+db.ref('marketData').on('value', snap => {
+    MARKET_DATA = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({ name, currentPrice: data.currentPrice, ema20: data.ema20, sentiment: data.sentiment, sma20: data.sma20, sma50: data.sma50 }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
+
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+    if (typeof checkAllAlerts === 'function') {
+        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({ name, currentPrice: data.price, ema20: null, sentiment: data.sentiment, sma20: data.sma20, sma50: data.sma50 }));
+        checkAllAlerts(pairsArray);
+    }
+    render();
+});
 
 (function(){
     const saved=localStorage.getItem('ici-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
