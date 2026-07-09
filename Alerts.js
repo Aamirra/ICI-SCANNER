@@ -1,7 +1,5 @@
 // ═══════════════════════════════════════════════════
-//  ICI SCREENER — ALERTS SYSTEM
-//  Ye file khud CSS + HTML inject karti hai
-//  Main HTML mein sirf: <script src="Alerts.js"></script>
+//  ICI SCREENER — ALERTS SYSTEM  (with Telegram/WhatsApp)
 // ═══════════════════════════════════════════════════
 
 // ── 1. CSS INJECT (unchanged) ──
@@ -62,7 +60,7 @@
     document.head.appendChild(style);
 })();
 
-// ── 2. HTML INJECT ──
+// ── 2. HTML INJECT (unchanged, includes SMA options) ──
 (function injectHTML() {
     const html = `
     <div class="al-toast-wrap" id="alToastWrap"></div>
@@ -89,13 +87,18 @@
                 <option value="PRICE_ABOVE_VAL">🔼 Price Crossing Above [X]</option>
                 <option value="PRICE_BELOW_VAL">🔽 Price Crossing Below [X]</option>
               </optgroup>
+              <optgroup label="── Price / SMA ──">
+                <option value="PRICE_ABOVE_SMA20">📈 Price Crossing Above 20 SMA</option>
+                <option value="PRICE_BELOW_SMA20">📉 Price Crossing Below 20 SMA</option>
+                <option value="PRICE_ABOVE_SMA50">📈 Price Crossing Above 50 SMA</option>
+                <option value="PRICE_BELOW_SMA50">📉 Price Crossing Below 50 SMA</option>
+              </optgroup>
               <optgroup label="── Sentiment ──">
                 <option value="SENT_ABOVE_60">📊 Sentiment Above 60%</option>
                 <option value="SENT_BELOW_60">📊 Sentiment Below 60%</option>
                 <option value="SENT_ABOVE_75">📊 Sentiment Above 75%</option>
                 <option value="SENT_BELOW_25">📊 Sentiment Below 25%</option>
               </optgroup>
-              <!-- ✅ NEW: Technical Metrics -->
               <optgroup label="── Technical Metrics ──">
                 <option value="TECH_200D_ABOVE">📈 200 Candle Change Above X%</option>
                 <option value="TECH_200D_BELOW">📉 200 Candle Change Below X%</option>
@@ -110,7 +113,6 @@
               <input type="number" id="fTargetPrice" placeholder=""
                 style="background:#131722;border:2px solid #f7931a;color:#f7931a;font-size:16px;font-weight:700;border-radius:7px;padding:10px 12px;outline:none">
             </div>
-            <!-- ✅ NEW: Threshold % for tech metrics -->
             <div id="alTechPercentWrap" style="display:none;margin-bottom:10px">
               <div class="al-lbl" style="color:#f7931a;font-weight:700">🎯 Threshold %</div>
               <input type="number" id="fTargetPercent" placeholder="e.g. 2.5" step="0.1"
@@ -211,6 +213,10 @@ const AL_COND_LABELS = {
     PRICE_BELOW_EMA20: "📉 Price Crossing Below 20 EMA",
     PRICE_ABOVE_VAL:   "🔼 Price Crossing Above",
     PRICE_BELOW_VAL:   "🔽 Price Crossing Below",
+    PRICE_ABOVE_SMA20: "📈 Price Crossing Above 20 SMA",
+    PRICE_BELOW_SMA20: "📉 Price Crossing Below 20 SMA",
+    PRICE_ABOVE_SMA50: "📈 Price Crossing Above 50 SMA",
+    PRICE_BELOW_SMA50: "📉 Price Crossing Below 50 SMA",
     SENT_ABOVE_60:     "📊 Sentiment Above 60%",
     SENT_BELOW_60:     "📊 Sentiment Below 60%",
     SENT_ABOVE_75:     "📊 Sentiment Above 75%",
@@ -225,11 +231,15 @@ const AL_COND_LABELS = {
 
 const AL_EMA_CONDS   = ['PRICE_ABOVE_EMA20','PRICE_BELOW_EMA20'];
 const AL_VALUE_CONDS = ['PRICE_ABOVE_VAL','PRICE_BELOW_VAL'];
-const TECH_CONDS = ['TECH_200D_ABOVE','TECH_200D_BELOW','TECH_10D_ABOVE','TECH_10D_BELOW','TECH_1H_ABOVE','TECH_1H_BELOW'];
+const AL_SMA_CONDS   = ['PRICE_ABOVE_SMA20','PRICE_BELOW_SMA20','PRICE_ABOVE_SMA50','PRICE_BELOW_SMA50'];
+const TECH_CONDS     = ['TECH_200D_ABOVE','TECH_200D_BELOW','TECH_10D_ABOVE','TECH_10D_BELOW','TECH_1H_ABOVE','TECH_1H_BELOW'];
 
 let _alCurrentPair = null, _alEditingId = null, _alSoundOn = true;
 
-// Storage
+// 🔧 CONFIG: Apna backend endpoint yahan daalna
+const ALERT_ENDPOINT = '/api/notify';  // POST { platform, message, pair, alertName }
+
+// Storage (unchanged)
 function alLoadAlerts() {
     try { if (window.Android) return JSON.parse(window.Android.getAlerts() || '[]'); } catch(e) {}
     try { return JSON.parse(localStorage.getItem('ici_alerts') || '[]'); } catch(e) { return []; }
@@ -243,16 +253,14 @@ function alSaveAlerts(arr) {
     } catch(e) {}
 }
 
-// Bell HTML — apni render() function mein call karo
 function getBellHtml(pairName) {
     const count = alLoadAlerts().filter(a => a.pair === pairName && a.active).length;
-    return `<button class="bell-btn" onclick="openAlertDialog('${pairName}')">
+    return `<button class="bell-btn" onclick="event.stopPropagation(); openAlertDialog('${pairName}')" onmouseup="event.stopPropagation()" ontouchend="event.stopPropagation()">
         ${count > 0 ? '🔔' : '🔕'}
         ${count > 0 ? `<span class="bell-count">${count}</span>` : ''}
     </button>`;
 }
 
-// Open dialog
 function openAlertDialog(pairName, alertToEdit = null) {
     _alCurrentPair = pairName;
     _alEditingId   = alertToEdit ? alertToEdit.id : null;
@@ -299,7 +307,7 @@ function alOnConditionChange() {
     const cond = document.getElementById('fCondition').value;
     document.getElementById('alPriceWrap').style.display = AL_VALUE_CONDS.includes(cond) ? 'block' : 'none';
     document.getElementById('alTechPercentWrap').style.display = TECH_CONDS.includes(cond) ? 'block' : 'none';
-    document.getElementById('alTfWrap').style.display    = AL_EMA_CONDS.includes(cond) ? 'block' : 'none';
+    document.getElementById('alTfWrap').style.display    = (AL_EMA_CONDS.includes(cond) || AL_SMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? 'block' : 'none';
     if (AL_VALUE_CONDS.includes(cond) && window.MARKET_DATA && _alCurrentPair) {
         const d = MARKET_DATA[_alCurrentPair] || {};
         if (d.currentPrice) document.getElementById('fTargetPrice').placeholder = String(d.currentPrice);
@@ -316,8 +324,8 @@ function alUpdatePreview() {
     if (TECH_CONDS.includes(cond) && percent) text += ` ${percent}%`;
     document.getElementById('alPrevCond').textContent    = text;
     const tfEl = document.getElementById('alPrevTf');
-    tfEl.textContent   = (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? `[${tf}]` : '';
-    tfEl.style.display = (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? 'inline' : 'none';
+    tfEl.textContent   = (AL_EMA_CONDS.includes(cond) || AL_SMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? `[${tf}]` : '';
+    tfEl.style.display = (AL_EMA_CONDS.includes(cond) || AL_SMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? 'inline' : 'none';
 }
 function alToggleSound() { _alSoundOn = !_alSoundOn; _alUpdateSoundUI(); }
 function _alUpdateSoundUI() {
@@ -339,7 +347,7 @@ function alSaveAlert() {
         id:          _alEditingId || Date.now(),
         pair:        _alCurrentPair,
         condition:   cond,
-        timeframe:   (AL_EMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? document.getElementById('fTimeframe').value : 'Any',
+        timeframe:   (AL_EMA_CONDS.includes(cond) || AL_SMA_CONDS.includes(cond) || TECH_CONDS.includes(cond)) ? document.getElementById('fTimeframe').value : 'Any',
         targetPrice: AL_VALUE_CONDS.includes(cond) ? parseFloat(document.getElementById('fTargetPrice').value) : null,
         targetPercent: TECH_CONDS.includes(cond) ? parseFloat(document.getElementById('fTargetPercent').value) : null,
         name:        document.getElementById('fName').value    || `${_alCurrentPair} Alert`,
@@ -365,11 +373,8 @@ function alSaveAlert() {
     alShowToast(_alEditingId ? `✅ Updated: ${alert.name}` : `🔔 Alert set: ${alert.name}`, 'success');
 }
 
-// Alerts List (unchanged except labels will now include tech metrics)
-function openAlertsList() {
-    _alRenderList();
-    document.getElementById('alListOverlay').classList.add('show');
-}
+// Alerts List (unchanged)
+function openAlertsList() { _alRenderList(); document.getElementById('alListOverlay').classList.add('show'); }
 function closeAlertsList() { document.getElementById('alListOverlay').classList.remove('show'); }
 function _alRenderList() {
     const alerts = alLoadAlerts();
@@ -387,7 +392,7 @@ function _alRenderList() {
                     ${AL_COND_LABELS[a.condition] || a.condition}
                     ${a.targetPrice ? `<strong style="color:#f7931a"> @ ${a.targetPrice}</strong>` : ''}
                     ${a.targetPercent ? `<strong style="color:#f7931a"> @ ${a.targetPercent}%</strong>` : ''}
-                    ${(AL_EMA_CONDS.includes(a.condition) || TECH_CONDS.includes(a.condition)) ? ` [${a.timeframe}]` : ''}
+                    ${(AL_EMA_CONDS.includes(a.condition) || AL_SMA_CONDS.includes(a.condition) || TECH_CONDS.includes(a.condition)) ? ` [${a.timeframe}]` : ''}
                 </div>
                 <div class="al-i-meta">${(a.notify || []).join(', ')} · ${a.frequency}</div>
             </div>
@@ -425,16 +430,13 @@ const AL_LAST_TRIGGER = {};
 function shouldFire(alert) {
     const freq = alert.frequency || 'Only Once';
     if (freq === 'Every Time') return true;
-
     const nowHour = Math.floor(Date.now() / 3600000);
     const dedupKey = alert.id + '_' + nowHour;
-
     if (freq === 'Only Once') {
         if (AL_LAST_TRIGGER[alert.id]) return false;
         AL_LAST_TRIGGER[alert.id] = true;
         return true;
     }
-
     if (freq === 'Once Per Bar' || freq === 'Once Per Bar Close') {
         if (AL_LAST_TRIGGER[dedupKey]) return false;
         AL_LAST_TRIGGER[dedupKey] = true;
@@ -462,19 +464,38 @@ function checkAllAlerts(pairsData) {
     });
 }
 
-// ✅ Updated condition check to include tech metrics
 function _alConditionMet(alert, pair) {
+    const getSMA = (type) => {
+        if (pair[type] !== undefined) return pair[type];
+        const md = window.MARKET_DATA?.[alert.pair];
+        return md ? md[type] : undefined;
+    };
+
     switch (alert.condition) {
         case 'PRICE_ABOVE_EMA20': return pair.currentPrice && pair.ema20 && pair.currentPrice > pair.ema20;
         case 'PRICE_BELOW_EMA20': return pair.currentPrice && pair.ema20 && pair.currentPrice < pair.ema20;
         case 'PRICE_ABOVE_VAL':   return pair.currentPrice && alert.targetPrice && pair.currentPrice >= alert.targetPrice;
         case 'PRICE_BELOW_VAL':   return pair.currentPrice && alert.targetPrice && pair.currentPrice <= alert.targetPrice;
+        case 'PRICE_ABOVE_SMA20': {
+            const sma20 = getSMA('sma20');
+            return sma20 !== undefined && pair.currentPrice && pair.currentPrice > sma20;
+        }
+        case 'PRICE_BELOW_SMA20': {
+            const sma20 = getSMA('sma20');
+            return sma20 !== undefined && pair.currentPrice && pair.currentPrice < sma20;
+        }
+        case 'PRICE_ABOVE_SMA50': {
+            const sma50 = getSMA('sma50');
+            return sma50 !== undefined && pair.currentPrice && pair.currentPrice > sma50;
+        }
+        case 'PRICE_BELOW_SMA50': {
+            const sma50 = getSMA('sma50');
+            return sma50 !== undefined && pair.currentPrice && pair.currentPrice < sma50;
+        }
         case 'SENT_ABOVE_60': return pair.sentiment > 60;
         case 'SENT_BELOW_60': return pair.sentiment < 60;
         case 'SENT_ABOVE_75': return pair.sentiment > 75;
         case 'SENT_BELOW_25': return pair.sentiment < 25;
-
-        // Technical Metrics (from window.techMetrics)
         case 'TECH_200D_ABOVE': {
             const t = window.techMetrics?.[alert.pair];
             return t?.longTermTrend > (alert.targetPercent || 0);
@@ -499,11 +520,11 @@ function _alConditionMet(alert, pair) {
             const t = window.techMetrics?.[alert.pair];
             return t?.microMomentum < (alert.targetPercent || 0);
         }
-
         default: return false;
     }
 }
 
+// ✅ UPDATED: _alFireAlert now sends Telegram/WhatsApp
 function _alFireAlert(alert, pair) {
     const time = new Date().toLocaleTimeString();
     const msg  = (alert.message || '{{ticker}} triggered!')
@@ -511,9 +532,39 @@ function _alFireAlert(alert, pair) {
         .replace('{{price}}',  pair.currentPrice || '')
         .replace('{{ema20}}',  pair.ema20 || '')
         .replace('{{time}}',   time);
+
+    // Local toast
     alShowToast(`🔔 ${pair.name}: ${msg}`, 'info');
+
+    // Android native notification
     try { if (window.Android) window.Android.showNotification(alert.name, msg, pair.name); } catch(e) {}
+    // Browser notification
     try { if (Notification?.permission === 'granted') new Notification(`🔔 ${alert.name}`, { body: msg }); } catch(e) {}
+
+    // Telegram/WhatsApp via backend
+    const settings = window.alertSettings;
+    if (!settings) return;
+
+    const formattedMsg = `[${pair.name}] ${msg}`;
+    if (settings.telegram) {
+        sendExternalAlert('telegram', formattedMsg, alert.name, pair.name);
+    }
+    if (settings.whatsapp) {
+        sendExternalAlert('whatsapp', formattedMsg, alert.name, pair.name);
+    }
+}
+
+function sendExternalAlert(platform, message, alertName, pairName) {
+    fetch(ALERT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            platform,
+            message,
+            alertName,
+            pair: pairName
+        })
+    }).catch(err => console.error(`Alert send fail (${platform}):`, err));
 }
 
 function alShowToast(msg, type = 'success') {
