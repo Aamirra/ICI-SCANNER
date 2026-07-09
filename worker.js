@@ -30,15 +30,15 @@ healthMonitor.start();
 selfHealer.start();
 console.log('✅ HealthMonitor & SelfHealer started');
 
-// ✅ Crypto Scanner (historical data) — every 15 minutes
+// ✅ Crypto Scanner (historical data) — now every 60 minutes (bandwidth saving)
 const { runCryptoScan } = require('./services/cryptoScanner');
 setTimeout(() => {
     runCryptoScan();
-    setInterval(runCryptoScan, 15 * 60 * 1000); // 15 minutes
+    setInterval(runCryptoScan, 60 * 60 * 1000); // changed from 15 to 60 minutes
 }, 30000);
-console.log('✅ Crypto Scanner scheduled every 15 minutes');
+console.log('✅ Crypto Scanner scheduled every 60 minutes');
 
-// ✅ Crypto News Alert — every 2 minutes
+// ✅ Crypto News Alert — every 2 minutes (unchanged, tiny data)
 const { fetchAndSendNews } = require('./services/cryptoNewsAlert');
 setTimeout(() => {
     fetchAndSendNews();
