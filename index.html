@@ -413,9 +413,12 @@ function openMMBDropdown(event, pairName) {
         document.addEventListener('click', handler);
     }, 0);
 }
+
+// ✅ FIX 1: h1Phase return karna
 function getPairPhaseInfo(pairName) {
     const key = getPairKey(pairName); if (!key) return null;
-    const v = PB_STATE[key]; return { phase: v.phase, dir: v.dir };
+    const v = PB_STATE[key]; 
+    return { phase: v.phase, dir: v.dir, h1Phase: v.h1Phase };
 }
 
 function openTargetModal() {
@@ -492,10 +495,17 @@ function render() {
             </div>
         </div>`;
 
+        // ✅ FIX 2: Phase display mein h1Phase add kiya
         if (isTargetView) {
             const info = getPairPhaseInfo(p.n);
             if (info) {
-                const phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
+                let phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
+                // h1Phase check kar ke saath append karo
+                if (info.h1Phase && info.h1Phase !== 'null' && info.h1Phase !== undefined) {
+                    phaseDisplay += ` (1H:${info.h1Phase})`;
+                } else {
+                    phaseDisplay += ` (1H:-)`;
+                }
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
                 row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
                     <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
