@@ -465,7 +465,7 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = tCount;
 }
 
-// ⚙️ ✅ FIXED DROPDOWN: Directly updates manualTargets
+// ⚙️ Open MMB Dropdown
 function openMMBDropdown(event, pairName) {
     event.stopPropagation();
     if (!manualTargets[pairName] || !manualTargets[pairName].dir) {
@@ -502,14 +502,10 @@ function openMMBDropdown(event, pairName) {
     }, 0);
 }
 
-// (Deprecated functions replaced - keeping here for safety)
 async function setPairPhase(pairName, newPhase) {
     if(manualTargets[pairName]) {
         await db.ref(`manualTargets/${pairName}/phase`).set(newPhase);
     }
-}
-function getPairKey(pairName) {
-    return null; // Ab zaroori nahi
 }
 
 function openTargetModal() {
@@ -584,7 +580,11 @@ function render() {
         </div>`;
 
         if (isTargetView) {
-            const phase = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).phase || 'mmb1';
+            // ✅ FIX: Pehle manualTargets se phase check karo, phir PB_STATE se
+            const manualPhase = manualTargets[p.n]?.phase;
+            const backendPhase = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).phase;
+            const phase = manualPhase || backendPhase || 'mmb1';
+
             const dirLabel = targetDir ? targetDir.toUpperCase() : '?';
             const badgeBg = targetDir === 'bull' ? '#22c55e' : '#ef4444';
             const h1PhaseText = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).h1Phase;
