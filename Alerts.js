@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════
-//  ICI SCREENER — ALERTS SYSTEM  (with Telegram/WhatsApp)
+//  ICI SCREENER — ALERTS SYSTEM  (with Telegram/WhatsApp fix)
 // ═══════════════════════════════════════════════════
 
 // ── 1. CSS INJECT (unchanged) ──
@@ -236,10 +236,7 @@ const TECH_CONDS     = ['TECH_200D_ABOVE','TECH_200D_BELOW','TECH_10D_ABOVE','TE
 
 let _alCurrentPair = null, _alEditingId = null, _alSoundOn = true;
 
-// 🔧 CONFIG: Apna backend endpoint yahan daalna
-const ALERT_ENDPOINT = '/api/notify';  // POST { platform, message, pair, alertName }
-
-// Storage (unchanged)
+// ── Storage ──
 function alLoadAlerts() {
     try { if (window.Android) return JSON.parse(window.Android.getAlerts() || '[]'); } catch(e) {}
     try { return JSON.parse(localStorage.getItem('ici_alerts') || '[]'); } catch(e) { return []; }
@@ -253,6 +250,7 @@ function alSaveAlerts(arr) {
     } catch(e) {}
 }
 
+// ── Bell HTML (used in index.html render) ──
 function getBellHtml(pairName) {
     const count = alLoadAlerts().filter(a => a.pair === pairName && a.active).length;
     return `<button class="bell-btn" onclick="event.stopPropagation(); openAlertDialog('${pairName}')" onmouseup="event.stopPropagation()" ontouchend="event.stopPropagation()">
@@ -261,6 +259,7 @@ function getBellHtml(pairName) {
     </button>`;
 }
 
+// ── Open Dialog ──
 function openAlertDialog(pairName, alertToEdit = null) {
     _alCurrentPair = pairName;
     _alEditingId   = alertToEdit ? alertToEdit.id : null;
@@ -373,7 +372,7 @@ function alSaveAlert() {
     alShowToast(_alEditingId ? `✅ Updated: ${alert.name}` : `🔔 Alert set: ${alert.name}`, 'success');
 }
 
-// Alerts List (unchanged)
+// ── Alerts List ──
 function openAlertsList() { _alRenderList(); document.getElementById('alListOverlay').classList.add('show'); }
 function closeAlertsList() { document.getElementById('alListOverlay').classList.remove('show'); }
 function _alRenderList() {
@@ -424,7 +423,7 @@ function alEditItem(id) {
     setTimeout(() => openAlertDialog(a.pair, a), 200);
 }
 
-// Frequency-aware deduplication (unchanged)
+// ── Frequency‑aware deduplication ──
 const AL_LAST_TRIGGER = {};
 
 function shouldFire(alert) {
@@ -524,7 +523,7 @@ function _alConditionMet(alert, pair) {
     }
 }
 
-// ✅ UPDATED: _alFireAlert now sends Telegram/WhatsApp
+// ✅ FIXED: Sends Telegram/WhatsApp via existing /api/execute-action
 function _alFireAlert(alert, pair) {
     const time = new Date().toLocaleTimeString();
     const msg  = (alert.message || '{{ticker}} triggered!')
@@ -541,29 +540,25 @@ function _alFireAlert(alert, pair) {
     // Browser notification
     try { if (Notification?.permission === 'granted') new Notification(`🔔 ${alert.name}`, { body: msg }); } catch(e) {}
 
-    // Telegram/WhatsApp via backend
+    // Telegram/WhatsApp via existing execute-action endpoint
     const settings = window.alertSettings;
-    if (!settings) return;
-
-    const formattedMsg = `[${pair.name}] ${msg}`;
-    if (settings.telegram) {
-        sendExternalAlert('telegram', formattedMsg, alert.name, pair.name);
-    }
-    if (settings.whatsapp) {
-        sendExternalAlert('whatsapp', formattedMsg, alert.name, pair.name);
+    if (settings) {
+        const formattedMsg = `[${pair.name}] ${msg}`;
+        if (settings.telegram) {
+            sendExternalAlert('telegram', formattedMsg, alert.name, pair.name);
+        }
+        if (settings.whatsapp) {
+            sendExternalAlert('whatsapp', formattedMsg, alert.name, pair.name);
+        }
     }
 }
 
 function sendExternalAlert(platform, message, alertName, pairName) {
-    fetch(ALERT_ENDPOINT, {
+    const action = platform === 'telegram' ? 'send_telegram' : 'send_whatsapp';
+    fetch('/api/execute-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            platform,
-            message,
-            alertName,
-            pair: pairName
-        })
+        body: JSON.stringify({ action, params: { text: message } })
     }).catch(err => console.error(`Alert send fail (${platform}):`, err));
 }
 
