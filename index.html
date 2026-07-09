@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ICI Scanner</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
@@ -63,11 +64,11 @@
         body.desktop-mode #tv_chart_container { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
         body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'Chart'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::before { content:'Chart'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
         body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
-        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
+        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; display:inline-flex; align-items:center; }
         .mmb-dropdown { position:fixed; background:var(--surface); border:1px solid var(--border); border-radius:8px; z-index:999; box-shadow:0 4px 8px rgba(0,0,0,0.15); padding:4px 0; min-width:80px; }
         .mmb-dropdown button { display:block; width:100%; padding:6px 12px; background:none; border:none; color:var(--txt); text-align:left; cursor:pointer; font-size:12px; font-weight:500; }
         .mmb-dropdown button:hover { background:var(--pill-bg); }
@@ -125,10 +126,10 @@
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
-        <div class="brand"><div class="brand-icon">S</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
+        <div class="brand"><div class="brand-icon"><i class="fas fa-chart-line"></i></div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
         <div class="header-actions">
-            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">*</button>
-            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">[]</button>
+            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
             <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
             <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
         </div>
@@ -143,7 +144,7 @@
         <div class="cloud-status" id="statusDot">Cloud active</div>
     </div>
     <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><span style="font-size:14px;">V</span></div>
+        <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><i class="fas fa-chevron-down" style="font-size:12px;"></i></div>
         <div class="ai-body" id="aiBody">
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
                 <span style="font-weight:600;color:var(--muted);font-size:11px;">Errors</span>
@@ -175,17 +176,17 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H / 4H / 1D / 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">(!)</div></div>
+    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H / 4H / 1D / 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert"><i class="fas fa-bell"></i></div></div>
     <div id="pairsContainer"></div>
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
-        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">&lt;</button>
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-left"></i></button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
-        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">&gt;</button>
-        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">(!)</button>
-        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">X</button>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
+        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
@@ -362,13 +363,33 @@ function actualScan() {
 function toggleTheme() {
     const h=document.documentElement, isDark=h.getAttribute('data-theme')==='dark';
     h.setAttribute('data-theme', isDark?'light':'dark');
+    
+    // Icon change on click
+    const themeIcon = document.querySelector('#themeBtn i');
+    if(isDark) {
+        themeIcon.className = 'fas fa-sun';
+    } else {
+        themeIcon.className = 'fas fa-moon';
+    }
+    
     localStorage.setItem('ici-theme', h.getAttribute('data-theme'));
 }
+
 function toggleDesktopMode() {
     const isDesktop=document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display=isDesktop?'flex':'none';
+    
+    // Icon change on click
+    const desktopIcon = document.querySelector('#desktopBtn i');
+    if(isDesktop) {
+        desktopIcon.className = 'fas fa-mobile-alt';
+    } else {
+        desktopIcon.className = 'fas fa-desktop';
+    }
+    
     localStorage.setItem('desktop-mode', isDesktop?'desktop':'mobile');
 }
+
 function setFilter(f) { curF=f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
@@ -523,7 +544,9 @@ function render() {
 
         const isTarget = isInTargetList(p.n);
         const targetDir = isTarget ? manualTargets[p.n].dir : null;
-        const starIcon = isTarget ? '[*]' : '[ ]';
+        
+        // Star Icon Fixes
+        const starIcon = isTarget ? '<i class="fas fa-star" style="color:var(--gold)"></i>' : '<i class="far fa-star"></i>';
 
         let row = '<div class="item-row"><div class="item-main" '+
             'onmousedown="handlePressStart(event,\''+p.n+'\')" onmouseup="handlePressEnd(event,\''+p.n+'\')" onmouseleave="handlePressEnd(event,\''+p.n+'\')" '+
@@ -620,8 +643,16 @@ db.ref('liveMarketData').on('value', snap => {
 
 (function(){
     const saved=localStorage.getItem('ici-theme');
-    if(saved) document.documentElement.setAttribute('data-theme',saved);
-    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('chartOverlay').style.display='flex'; }
+    if(saved) {
+        document.documentElement.setAttribute('data-theme',saved);
+        if(saved === 'dark') document.querySelector('#themeBtn i').className = 'fas fa-sun';
+    }
+    
+    if(localStorage.getItem('desktop-mode')==='desktop'){ 
+        document.body.classList.add('desktop-mode'); 
+        document.getElementById('chartOverlay').style.display='flex'; 
+        document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
+    }
 })();
 updateToggleButtons();
 </script>
