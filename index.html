@@ -446,10 +446,13 @@ function updateCounts() {
     document.getElementById('bc').textContent=b;
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
+
     const allTargets = Object.values(manualTargets);
-    const realTargets = allTargets.filter(t => t.source !== 'star');
+    // ONLY manual ones for Target count
+    const realTargets = allTargets.filter(t => t.source === 'manual');
     document.getElementById('targetCount2').textContent = realTargets.length;
     document.getElementById('targetCount').textContent = realTargets.length;
+    // Trades count = all (star + manual)
     document.getElementById('tradesCount').textContent = allTargets.length;
 }
 
@@ -487,8 +490,9 @@ function openMMBDropdown(event, pairName) {
 }
 
 function openTargetModal() {
+    // Target modal should also only show manual targets
     const targets = Object.entries(manualTargets)
-        .filter(([pairName, data]) => data.source !== 'star');
+        .filter(([pairName, data]) => data.source === 'manual');
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
@@ -516,10 +520,10 @@ function render() {
     } else if (curF === 'bull' || curF === 'bear') {
         filtered = currentPairs.filter(p => { const d = MARKET_DATA[p.n] || {}; return ['4h','1day','1week'].every(tf => d[tf] === curF); });
     } else if (curF === 'target') {
-        // sirf manual (long-press wale)
-        filtered = currentPairs.filter(p => manualTargets[p.n] && manualTargets[p.n].source !== 'star');
+        // ONLY manual (source === 'manual')
+        filtered = currentPairs.filter(p => manualTargets[p.n] && manualTargets[p.n].source === 'manual');
     } else if (curF === 'trades') {
-        // sab (star + manual)
+        // ALL (star + manual)
         filtered = currentPairs.filter(p => isInTargetList(p.n));
     } else {
         filtered = currentPairs;
@@ -529,7 +533,6 @@ function render() {
     const isTargetView = (curF === 'target' || curF === 'trades');
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        // ... (baaki render logic wahi hai, maine niche same copy kiya hai)
         const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {}, m = MARKET_DATA[p.n] || {};
         const isBull = ['4h','1day','1week'].every(tf => m[tf] === 'bull'), isBear = ['4h','1day','1week'].every(tf => m[tf] === 'bear');
         const star = isBull ? '★' : (isBear ? '★' : '★'), starColor = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : '#cbd5e1');
