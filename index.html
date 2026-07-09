@@ -38,7 +38,7 @@
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
         .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
         .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; -webkit-user-select:none; user-select:none; }
+        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; -webkit-user-select:none; user-select:none; touch-action: pan-y; }
         .item-main:active { background:var(--pill-bg); }
         .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
@@ -256,6 +256,9 @@ let pendingTargetPair = null;
 let pressTimer = null;
 let isLongPress = false;
 
+// Touch movement detection for scroll vs tap
+let touchStartX = 0, touchStartY = 0, touchMoved = false;
+
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
@@ -393,10 +396,20 @@ function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCas
 
 db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; updateCounts(); render(); });
 
+// ----- FIX 1: Star/Target separation -----
 function handlePressStart(e, pairName) {
-    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) {
-        return;
+    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) return;
+
+    // Touch start position
+    if (e.type === 'touchstart') {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchMoved = false;
+    } else {
+        touchMoved = false;
     }
+
     isLongPress = false;
     if (pressTimer) clearTimeout(pressTimer);
     pressTimer = setTimeout(() => {
@@ -405,18 +418,31 @@ function handlePressStart(e, pairName) {
         openDirModal(pairName);
     }, 600);
 }
+
 function handlePressEnd(e, pairName) {
-    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) {
-        return;
+    if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) return;
+
+    // Check if touch moved beyond threshold
+    if (e.type === 'touchend') {
+        const touch = e.changedTouches[0];
+        if (touch) {
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                touchMoved = true;
+            }
+        }
     }
+
     if (pressTimer) {
         clearTimeout(pressTimer);
         pressTimer = null;
-        if (!isLongPress) {
+        if (!isLongPress && !touchMoved) {
             openChartForPair(pairName);
         }
     }
     isLongPress = false;
+    touchMoved = false;
 }
 
 function openDirModal(pairName) {
@@ -427,7 +453,7 @@ function openDirModal(pairName) {
 function closeDirModal() { document.getElementById('dirModal').classList.remove('open'); pendingTargetPair = null; }
 async function confirmAddTarget(dir) {
     if (!pendingTargetPair) return;
-    await db.ref(`manualTargets/${pendingTargetPair}`).set({ dir: dir, phase: 'mmb1' });
+    await db.ref(`manualTargets/${pendingTargetPair}`).set({ dir: dir, phase: 'mmb1', source: 'manual' });
     closeDirModal();
 }
 function isInTargetList(p) { return !!manualTargets[p]; }
@@ -435,7 +461,7 @@ async function toggleStar(pairName) {
     if (isInTargetList(pairName)) {
         await db.ref(`manualTargets/${pairName}`).remove();
     } else {
-        await db.ref(`manualTargets/${pairName}`).set({ dir: 'bull', phase: 'mmb1' });
+        await db.ref(`manualTargets/${pairName}`).set({ dir: 'bull', phase: 'mmb1', source: 'star' });
     }
 }
 async function removeFromTarget(pairName) {
@@ -449,23 +475,14 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
 
-    const forexPairs = new Set(PAIRS.map(p=>p.n));
-    const seen = new Set(); 
-    for(const [k,s] of Object.entries(PB_STATE)) {
-        if(!s||!s.phase) continue;
-        const pairName = k.split('_')[0];
-        if (!forexPairs.has(pairName)) continue;
-        if (!show4H && k.includes('_4h_')) continue;
-        seen.add(pairName);
-    }
-
-    const tCount = Object.keys(manualTargets).length;
-    document.getElementById('targetCount2').textContent = tCount;
-    document.getElementById('targetCount').textContent = tCount;
-    document.getElementById('tradesCount').textContent = tCount;
+    // Count targets (only manual ones, exclude star-sourced)
+    const allTargets = Object.values(manualTargets);
+    const realTargets = allTargets.filter(t => t.source !== 'star');
+    document.getElementById('targetCount2').textContent = realTargets.length;
+    document.getElementById('targetCount').textContent = realTargets.length;
+    document.getElementById('tradesCount').textContent = allTargets.length; // trades includes all
 }
 
-// ⚙️ Open MMB Dropdown
 function openMMBDropdown(event, pairName) {
     event.stopPropagation();
     if (!manualTargets[pairName] || !manualTargets[pairName].dir) {
@@ -502,15 +519,10 @@ function openMMBDropdown(event, pairName) {
     }, 0);
 }
 
-async function setPairPhase(pairName, newPhase) {
-    if(manualTargets[pairName]) {
-        await db.ref(`manualTargets/${pairName}/phase`).set(newPhase);
-    }
-}
-
 function openTargetModal() {
-    const forexPairs = new Set(PAIRS.map(p => p.n));
-    const targets = Object.entries(manualTargets);
+    const targets = Object.entries(manualTargets)
+        .filter(([pairName, data]) => data.source !== 'star'); // exclude quick star entries
+
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
@@ -580,7 +592,6 @@ function render() {
         </div>`;
 
         if (isTargetView) {
-            // ✅ FIX: Pehle manualTargets se phase check karo, phir PB_STATE se
             const manualPhase = manualTargets[p.n]?.phase;
             const backendPhase = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).phase;
             const phase = manualPhase || backendPhase || 'mmb1';
