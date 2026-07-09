@@ -120,6 +120,8 @@
         .dir-btn.bull { background:#22c55e; }
         .dir-btn.bear { background:#ef4444; }
         .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
+        /* additional remove button */
+        .dir-btn.remove-btn { background:var(--red); color:#fff; margin-bottom:8px; }
     </style>
 </head>
 <body>
@@ -213,16 +215,18 @@
     </div>
 </div>
 
-<!-- Direction Selector Modal -->
+<!-- Direction Selector Modal (updated) -->
 <div class="dir-modal-overlay" id="dirModal">
     <div class="dir-modal-box">
-        <h3>Select Trade Direction</h3>
+        <h3 id="dirModalTitle">Select Trade Direction</h3>
         <p id="dirPairName" style="font-weight:600;font-size:14px;"></p>
-        <div class="dir-btns">
+        <!-- Remove button (hidden by default) -->
+        <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">❌ Remove from Target</button>
+        <div id="dirAddButtons">
             <button class="dir-btn bull" onclick="confirmAddTarget('bull')">📈 BULLISH</button>
             <button class="dir-btn bear" onclick="confirmAddTarget('bear')">📉 BEARISH</button>
-            <button class="dir-btn cancel" onclick="closeDirModal()">Cancel</button>
         </div>
+        <button class="dir-btn cancel" onclick="closeDirModal()">Cancel</button>
     </div>
 </div>
 
@@ -425,12 +429,29 @@ function handlePressEnd(e, pairName) {
 function openDirModal(pairName) {
     pendingTargetPair = pairName;
     document.getElementById('dirPairName').textContent = pairName;
+
+    if (isInTargetList(pairName)) {
+        // Already in target list — show remove option
+        document.getElementById('dirModalTitle').textContent = 'Manage Target';
+        document.getElementById('dirRemoveBtn').style.display = 'block';
+        document.getElementById('dirAddButtons').style.display = 'none';
+    } else {
+        // Not in target list — show add direction buttons
+        document.getElementById('dirModalTitle').textContent = 'Select Trade Direction';
+        document.getElementById('dirRemoveBtn').style.display = 'none';
+        document.getElementById('dirAddButtons').style.display = 'block';
+    }
     document.getElementById('dirModal').classList.add('open');
 }
 function closeDirModal() { document.getElementById('dirModal').classList.remove('open'); pendingTargetPair = null; }
 async function confirmAddTarget(dir) {
     if (!pendingTargetPair) return;
     await db.ref(`manualTargets/${pendingTargetPair}`).set({ dir: dir, phase: 'mmb1', source: 'manual' });
+    closeDirModal();
+}
+async function confirmRemoveTarget() {
+    if (!pendingTargetPair) return;
+    await db.ref(`manualTargets/${pendingTargetPair}`).remove();
     closeDirModal();
 }
 function isInTargetList(p) { return !!manualTargets[p]; }
@@ -446,13 +467,10 @@ function updateCounts() {
     document.getElementById('bc').textContent=b;
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
-
     const allTargets = Object.values(manualTargets);
-    // ONLY manual ones for Target count
     const realTargets = allTargets.filter(t => t.source === 'manual');
     document.getElementById('targetCount2').textContent = realTargets.length;
     document.getElementById('targetCount').textContent = realTargets.length;
-    // Trades count = all (star + manual)
     document.getElementById('tradesCount').textContent = allTargets.length;
 }
 
@@ -490,7 +508,6 @@ function openMMBDropdown(event, pairName) {
 }
 
 function openTargetModal() {
-    // Target modal should also only show manual targets
     const targets = Object.entries(manualTargets)
         .filter(([pairName, data]) => data.source === 'manual');
     if (targets.length === 0) {
@@ -514,43 +531,28 @@ function openTargetModal() {
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
-
-    if (curF === 'all') {
-        filtered = currentPairs;
-    } else if (curF === 'bull' || curF === 'bear') {
-        filtered = currentPairs.filter(p => { const d = MARKET_DATA[p.n] || {}; return ['4h','1day','1week'].every(tf => d[tf] === curF); });
-    } else if (curF === 'target') {
-        // ONLY manual (source === 'manual')
-        filtered = currentPairs.filter(p => manualTargets[p.n] && manualTargets[p.n].source === 'manual');
-    } else if (curF === 'trades') {
-        // ALL (star + manual)
-        filtered = currentPairs.filter(p => isInTargetList(p.n));
-    } else {
-        filtered = currentPairs;
-    }
-
-    currentDisplayPairs = filtered.map(p => p.n);
+    if(curF==='all') filtered = currentPairs;
+    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+    else if(curF==='target') filtered = currentPairs.filter(p=> manualTargets[p.n] && manualTargets[p.n].source === 'manual');
+    else if(curF==='trades') filtered = currentPairs.filter(p=>isInTargetList(p.n));
+    else filtered = currentPairs;
+    currentDisplayPairs = filtered.map(p=>p.n);
     const isTargetView = (curF === 'target' || curF === 'trades');
 
-    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {}, m = MARKET_DATA[p.n] || {};
-        const isBull = ['4h','1day','1week'].every(tf => m[tf] === 'bull'), isBear = ['4h','1day','1week'].every(tf => m[tf] === 'bear');
-        const star = isBull ? '★' : (isBear ? '★' : '★'), starColor = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : '#cbd5e1');
-        const change = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '—';
-        const changeClass = t.longTermTrend >= 0 ? 'up' : 'down';
-        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct / total) * 100), bullW = 100 - bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf => {
-            if (m[tf]) return m[tf];
-            const liveM = liveMarketData && liveMarketData[p.n];
-            if (liveM && liveM[tf]) return liveM[tf];
-            return '';
-        });
-        const dots = signals.map(sig => `<span class="trend-dot ${sig === 'bull' ? 'g' : 'r'}"></span>`).join('');
-        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum > 0 ? '+' : '') + t.shortTermMomentum.toFixed(2) + '%' : '—';
-        const microVal = t.microMomentum != null ? (t.microMomentum > 0 ? '+' : '') + t.microMomentum.toFixed(2) + '%' : '—';
-        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '—';
-        const dollarVolVal = t.dollarVolume1d || '—';
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
+        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
+        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
+        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
+        const changeClass=t.longTermTrend>=0?'up':'down';
+        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
+        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
+        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
         const liveM = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? (liveM.price || liveM.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
@@ -588,8 +590,8 @@ function render() {
             row += `</div>`; 
         } else {
             row += `<div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum >= 0 ? 'up' : 'down'}">${shortTermVal}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum >= 0 ? 'up' : 'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
                 <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
                 <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
             </div>`;
@@ -601,8 +603,8 @@ function render() {
 }
 
 function openChartForPair(pairName) {
-    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
-    chartIdx = chartPairs.indexOf(pairName); if (chartIdx === -1) chartIdx = 0;
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
     openChart(chartIdx);
 }
 function changeChartInterval(interval, btn) {
@@ -612,15 +614,15 @@ function changeChartInterval(interval, btn) {
     openChart(chartIdx);
 }
 function openChart(idx) {
-    chartIdx = idx; const symbol = chartPairs[idx];
-    document.getElementById('chartPairName').textContent = symbol;
-    document.getElementById('chartOverlay').style.display = 'flex';
-    document.getElementById('tv_chart_container').innerHTML = '';
-    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({ autosize:true, symbol:isPSX ? 'KSE:' + symbol : symbol,
+    chartIdx=idx; const symbol=chartPairs[idx];
+    document.getElementById('chartPairName').textContent=symbol;
+    document.getElementById('chartOverlay').style.display='flex';
+    document.getElementById('tv_chart_container').innerHTML='';
+    const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
         interval: currentChartInterval,
-        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-        container_id: "tv_chart_container",
+        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:"tv_chart_container",
         studies: [
             {id:"MASimple@tv-basicstudies", inputs:{length:10}},
             {id:"MASimple@tv-basicstudies", inputs:{length:20}},
@@ -629,16 +631,16 @@ function openChart(idx) {
         ]
     });
 }
-function movePair(step) { if (chartIdx + step >= 0 && chartIdx + step < chartPairs.length) openChart(chartIdx + step); }
-function closeChart() { if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none'; }
+function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
+function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
 
-function toggle4H() { show4H = !show4H; localStorage.setItem('show4H', show4H ? 'true' : 'false'); update4hButton(); render(); }
-function update4hButton() { const btn = document.getElementById('toggle4hBtn'); if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); } else { btn.textContent = '4H OFF'; btn.classList.remove('active'); } }
-(function () { const saved = localStorage.getItem('show4H'); show4H = (saved === 'false') ? false : true; update4hButton(); })();
+function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); render(); }
+function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
+(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; updateCounts(); render(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
@@ -657,10 +659,10 @@ db.ref('liveMarketData').on('value', snap => {
     render();
 });
 
-(function () {
-    const saved = localStorage.getItem('ici-theme'); if (saved) document.documentElement.setAttribute('data-theme', saved);
-    document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
-    if (localStorage.getItem('desktop-mode') === 'desktop') { document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent = '📱'; document.getElementById('chartOverlay').style.display = 'flex'; }
+(function(){
+    const saved=localStorage.getItem('ici-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
 updateToggleButtons();
 </script>
