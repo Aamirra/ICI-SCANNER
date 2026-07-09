@@ -63,7 +63,7 @@
         body.desktop-mode #tv_chart_container { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
         body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'\uD83D\uDCCA'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
         body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
@@ -125,28 +125,28 @@
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
-        <div class="brand"><div class="brand-icon">\uD83C\uDF9A</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
+        <div class="brand"><div class="brand-icon">🎚️</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
         <div class="header-actions">
-            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">\u263D</button>
-            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">\uD83D\uDDA5</button>
-            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">\uD83D\uDD14 TG</button>
-            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">\uD83D\uDCAC WA</button>
+            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
         </div>
     </div>
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
-        <a href="/stocks" class="pill" style="text-decoration:none">\uD83D\uDCC8 Stocks</a>
-        <a href="/crypto" class="pill" style="text-decoration:none">\u20BF Crypto</a>
-        <a href="/journal" class="pill" style="text-decoration:none">\uD83D\uDCD2 Journal</a>
-        <button class="pill scan-btn" onclick="actualScan()">\uD83D\uDD0D Scan</button>
-        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">\uD83D\uDD14 Alerts</button>
-        <div class="cloud-status" id="statusDot">\u25CF Cloud active</div>
+        <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
+        <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
+        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
+        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">🔔 Alerts</button>
+        <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
     <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()"><span>\uD83E\uDD16 AI Assistant</span><span style="font-size:14px;">\u25BC</span></div>
+        <div class="ai-header" onclick="toggleAIAssistant()"><span>🤖 AI Assistant</span><span style="font-size:14px;">▼</span></div>
         <div class="ai-body" id="aiBody">
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
-                <span style="font-weight:600;color:var(--muted);font-size:11px;">\u26A0 Errors</span>
+                <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
                 <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
             </div>
             <div class="error-list-embedded" id="errorListEmbedded"></div>
@@ -160,11 +160,11 @@
         </div>
     </div>
     <div class="pending-code-changes" id="pendingCodePanel">
-        <div class="pending-header">\uD83D\uDD27 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
+        <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
     </div>
     <div class="sync-info" onclick="openTargetModal()">
-        \u2714 Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> \u203A</span>
+        ✔ Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ›</span>
         <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
     </div>
     <div class="counters-grid">
@@ -175,17 +175,17 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H \u00B7 4H \u00B7 1D \u00B7 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">\uD83D\uDD14</div></div>
+    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div></div>
     <div id="pairsContainer"></div>
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
-        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">\u276E</button>
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
-        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">\u276F</button>
-        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">\uD83D\uDD14</button>
-        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">\u2715</button>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
+        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">🔔</button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
@@ -198,7 +198,7 @@
 
 <div class="approval-overlay" id="approvalOverlay">
     <div class="approval-box">
-        <h3>\u26A0 AI Action Approval</h3>
+        <h3>⚠️ AI Action Approval</h3>
         <p id="approvalMessage"></p>
         <div class="approval-btns">
             <button class="reject-btn" onclick="rejectAction()">Reject</button>
@@ -209,7 +209,7 @@
 
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 style="margin-bottom:16px;color:var(--gold)">\uD83C\uDFAF Forex Target List</h3>
+        <h3 style="margin-bottom:16px;color:var(--gold)">🎯 Forex Target List</h3>
         <div id="targetContent"></div>
     </div>
 </div>
@@ -218,10 +218,10 @@
     <div class="dir-modal-box">
         <h3 id="dirModalTitle">Select Trade Direction</h3>
         <p id="dirPairName" style="font-weight:600;font-size:14px;"></p>
-        <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">\u274C Remove from Target</button>
+        <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">❌ Remove from Target</button>
         <div id="dirAddButtons">
-            <button class="dir-btn bull" onclick="confirmAddTarget('bull')">\uD83D\uDCC8 BULLISH</button>
-            <button class="dir-btn bear" onclick="confirmAddTarget('bear')">\uD83D\uDCC9 BEARISH</button>
+            <button class="dir-btn bull" onclick="confirmAddTarget('bull')">📈 BULLISH</button>
+            <button class="dir-btn bear" onclick="confirmAddTarget('bear')">📉 BEARISH</button>
         </div>
         <button class="dir-btn cancel" onclick="closeDirModal()">Cancel</button>
     </div>
@@ -258,14 +258,14 @@ let touchStartX = 0, touchStartY = 0, touchMoved = false;
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if(tgBtn) { tgBtn.textContent = (alertSettings.telegram ? '\uD83D\uDD14 TG ON' : '\uD83D\uDD15 TG OFF'); tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
-    if(waBtn) { waBtn.textContent = (alertSettings.whatsapp ? '\uD83D\uDCAC WA ON' : '\uD83D\uDCAC WA OFF'); waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
+    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? '🔔 Telegram ON' : '🔕 Telegram OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
+    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? '💬 WhatsApp ON' : '🔕 WhatsApp OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
 }
-function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref('alertSettings/'+type).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
+function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
 db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
-function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref('manualWatchlist/'+p).remove(); } else { watchlistSet.add(p); db.ref('manualWatchlist/'+p).set(true); } updateCounts(); render(); }
+function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
@@ -321,7 +321,7 @@ async function sendOpenRouterChat() {
         const res = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:txt}) });
         const data = await res.json();
         const le = document.getElementById('loadingMsg'); if (le) le.remove();
-        if (!res.ok) md.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">\u274C '+escapeHtml(data.error||'')+'</span></div>';
+        if (!res.ok) md.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ '+escapeHtml(data.error||'')+'</span></div>';
         else {
             const r = data.response||'';
             const m = r.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
@@ -337,7 +337,7 @@ async function sendOpenRouterChat() {
             }
             if (dt) md.innerHTML += '<div class="chat-message-embedded assistant"><span>'+escapeHtml(dt)+'</span></div>';
         }
-    } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">\u274C Network error</span></div>'; }
+    } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>'; }
 }
 async function approveAction() {
     const act = window.__pendingAction; if(!act) return;
@@ -346,7 +346,7 @@ async function approveAction() {
         const res = await fetch('/api/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:act.type, params:act.params}) });
         const r = await res.json();
         const md = document.getElementById('chatMessagesEmbedded');
-        md.innerHTML += '<div class="chat-message-embedded assistant"><span>'+(r.success?'\u2705 ':'\u274C ')+escapeHtml(r.message)+'</span></div>';
+        md.innerHTML += '<div class="chat-message-embedded assistant"><span>'+(r.success?'✅ ':'❌ ')+escapeHtml(r.message)+'</span></div>';
     } catch(e) {}
     window.__pendingAction = null;
 }
@@ -354,21 +354,21 @@ function rejectAction() { document.getElementById('approvalOverlay').classList.r
 function escapeHtml(text) { return (text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function actualScan() {
-    const btn = document.querySelector('.scan-btn'); btn.innerHTML='\u23F3 Scanning...'; btn.disabled=true;
-    fetch('/scan').then(()=>{ btn.innerHTML='\u2705 Started!'; setTimeout(()=>{btn.innerHTML='\uD83D\uDD0D Scan';btn.disabled=false;},3000); })
-    .catch(()=>{ btn.innerHTML='\u274C Error'; setTimeout(()=>{btn.innerHTML='\uD83D\uDD0D Scan';btn.disabled=false;},3000); });
+    const btn = document.querySelector('.scan-btn'); btn.innerHTML='⏳ Scanning...'; btn.disabled=true;
+    fetch('/scan').then(()=>{ btn.innerHTML='✅ Started!'; setTimeout(()=>{btn.innerHTML='🔍 Scan';btn.disabled=false;},3000); })
+    .catch(()=>{ btn.innerHTML='❌ Error'; setTimeout(()=>{btn.innerHTML='🔍 Scan';btn.disabled=false;},3000); });
 }
 
 function toggleTheme() {
     const h=document.documentElement, isDark=h.getAttribute('data-theme')==='dark';
     h.setAttribute('data-theme', isDark?'light':'dark');
-    document.getElementById('themeBtn').innerHTML = isDark ? '\u2600' : '\u263D';
+    document.getElementById('themeBtn').innerHTML = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-theme', h.getAttribute('data-theme'));
 }
 function toggleDesktopMode() {
     const isDesktop=document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display=isDesktop?'flex':'none';
-    document.getElementById('desktopBtn').innerHTML = isDesktop ? '\uD83D\uDCF1' : '\uD83D\uDDA5';
+    document.getElementById('desktopBtn').innerHTML = isDesktop ? '📱' : '💻';
     localStorage.setItem('desktop-mode', isDesktop?'desktop':'mobile');
 }
 function setFilter(f) { curF=f; render(); }
@@ -507,17 +507,17 @@ function render() {
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
         const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
-        const star='\u2605', starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
-        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'--';
+        const star='★', starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
         const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const lm = liveMarketData && liveMarketData[p.n]; if (lm && lm[tf]) return lm[tf]; return ''; });
         const dots = signals.map(sig=>'<span class="trend-dot '+(sig==='bull'?'g':'r')+'"></span>').join('');
-        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'--';
-        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'--';
-        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'--';
-        const dollarVolVal=t.dollarVolume1d||'--';
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
         const lm = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
@@ -525,7 +525,7 @@ function render() {
 
         const isTarget = isInTargetList(p.n);
         const targetDir = isTarget ? manualTargets[p.n].dir : null;
-        const starIcon = isTarget ? '\u2B50' : '\u2606';
+        const starIcon = isTarget ? '⭐' : '☆';
 
         let row = '<div class="item-row"><div class="item-main" '+
             'onmousedown="handlePressStart(event,\''+p.n+'\')" onmouseup="handlePressEnd(event,\''+p.n+'\')" onmouseleave="handlePressEnd(event,\''+p.n+'\')" '+
@@ -623,8 +623,8 @@ db.ref('liveMarketData').on('value', snap => {
 (function(){
     const saved=localStorage.getItem('ici-theme');
     if(saved) document.documentElement.setAttribute('data-theme',saved);
-    document.getElementById('themeBtn').innerHTML = (saved==='dark')?'\u2600':'\u263D';
-    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').innerHTML='\uD83D\uDCF1'; document.getElementById('chartOverlay').style.display='flex'; }
+    document.getElementById('themeBtn').innerHTML = (saved==='dark')?'☀️':'🌙';
+    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').innerHTML='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
 updateToggleButtons();
 </script>
