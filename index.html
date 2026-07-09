@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* CSS same as provided earlier (600+ lines) to save space here, but I will include the full CSS at the end */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -394,10 +393,9 @@ function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCas
 
 db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; updateCounts(); render(); });
 
-// 🟢 FIXED Long Press Logic: Agar click target Star hai toh ignore karega
 function handlePressStart(e, pairName) {
     if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) {
-        return; // Ignore if clicking the star
+        return;
     }
     isLongPress = false;
     if (pressTimer) clearTimeout(pressTimer);
@@ -409,7 +407,7 @@ function handlePressStart(e, pairName) {
 }
 function handlePressEnd(e, pairName) {
     if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) {
-        return; // Ignore if clicking the star
+        return;
     }
     if (pressTimer) {
         clearTimeout(pressTimer);
@@ -467,36 +465,51 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = tCount;
 }
 
-function getPairKey(pairName) {
-    const base = pairName + '_';
-    for (const k of Object.keys(PB_STATE)) { if (k.startsWith(base) && PB_STATE[k] && PB_STATE[k].dir) return k; }
-    return null;
-}
-async function setPairPhase(pairName, newPhase) {
-    const key = getPairKey(pairName); if (!key) return;
-    await db.ref(`pb_state/${key}/phase`).set(newPhase);
-}
+// ⚙️ ✅ FIXED DROPDOWN: Directly updates manualTargets
 function openMMBDropdown(event, pairName) {
     event.stopPropagation();
-    const key = getPairKey(pairName); if (!key) return;
-    const existing = document.querySelector('.mmb-dropdown'); if (existing) existing.remove();
-    const dropdown = document.createElement('div'); dropdown.className = 'mmb-dropdown';
+    if (!manualTargets[pairName] || !manualTargets[pairName].dir) {
+        console.warn("Pair target list mein nahi hai ya direction undefined hai!");
+        return;
+    }
+    const existing = document.querySelector('.mmb-dropdown'); 
+    if (existing) existing.remove();
+    const dropdown = document.createElement('div'); 
+    dropdown.className = 'mmb-dropdown';
     const rect = event.target.getBoundingClientRect();
-    dropdown.style.left = rect.left + 'px'; dropdown.style.top = (rect.bottom + 4) + 'px';
+    dropdown.style.left = rect.left + 'px'; 
+    dropdown.style.top = (rect.bottom + 4) + 'px';
     ['mmb1','mmb2','mmb3','mmb4'].forEach(phase => {
-        const btn = document.createElement('button'); btn.textContent = phase.toUpperCase();
-        btn.onclick = () => { setPairPhase(pairName, phase); dropdown.remove(); };
+        const btn = document.createElement('button'); 
+        btn.textContent = phase.toUpperCase();
+        btn.onclick = () => { 
+            if(manualTargets[pairName]) {
+                db.ref(`manualTargets/${pairName}/phase`).set(phase);
+            }
+            dropdown.remove(); 
+        };
         dropdown.appendChild(btn);
     });
     document.body.appendChild(dropdown);
     setTimeout(() => {
-        const handler = (e) => { if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('click', handler); } };
+        const handler = (e) => { 
+            if (!dropdown.contains(e.target)) { 
+                dropdown.remove(); 
+                document.removeEventListener('click', handler); 
+            } 
+        };
         document.addEventListener('click', handler);
     }, 0);
 }
-function getPairPhaseInfo(pairName) {
-    const key = getPairKey(pairName); if (!key) return null;
-    const v = PB_STATE[key]; return { phase: v.phase, dir: v.dir, h1Phase: v.h1Phase };
+
+// (Deprecated functions replaced - keeping here for safety)
+async function setPairPhase(pairName, newPhase) {
+    if(manualTargets[pairName]) {
+        await db.ref(`manualTargets/${pairName}/phase`).set(newPhase);
+    }
+}
+function getPairKey(pairName) {
+    return null; // Ab zaroori nahi
 }
 
 function openTargetModal() {
@@ -554,7 +567,6 @@ function render() {
         const targetDir = isTarget ? manualTargets[p.n].dir : null;
         const starIcon = isTarget ? '⭐' : '☆';
 
-        // 🟢 onmousedown aur ontouchstart mein event pass kar diya hai
         let row = `<div class="item-row">
             <div class="item-main" 
                  onmousedown="handlePressStart(event, '${p.n}')" onmouseup="handlePressEnd(event, '${p.n}')" onmouseleave="handlePressEnd(event, '${p.n}')"
