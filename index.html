@@ -120,6 +120,7 @@
         .dir-btn.bull { background:#22c55e; }
         .dir-btn.bear { background:#ef4444; }
         .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
+        /* additional remove button */
         .dir-btn.remove-btn { background:var(--red); color:#fff; margin-bottom:8px; }
     </style>
 </head>
@@ -185,8 +186,6 @@
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
-        <!-- ✅ Alert button in chart -->
-        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">🔔</button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
@@ -216,11 +215,12 @@
     </div>
 </div>
 
-<!-- Direction Selector Modal -->
+<!-- Direction Selector Modal (updated) -->
 <div class="dir-modal-overlay" id="dirModal">
     <div class="dir-modal-box">
         <h3 id="dirModalTitle">Select Trade Direction</h3>
         <p id="dirPairName" style="font-weight:600;font-size:14px;"></p>
+        <!-- Remove button (hidden by default) -->
         <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">❌ Remove from Target</button>
         <div id="dirAddButtons">
             <button class="dir-btn bull" onclick="confirmAddTarget('bull')">📈 BULLISH</button>
@@ -429,11 +429,14 @@ function handlePressEnd(e, pairName) {
 function openDirModal(pairName) {
     pendingTargetPair = pairName;
     document.getElementById('dirPairName').textContent = pairName;
+
     if (isInTargetList(pairName)) {
+        // Already in target list — show remove option
         document.getElementById('dirModalTitle').textContent = 'Manage Target';
         document.getElementById('dirRemoveBtn').style.display = 'block';
         document.getElementById('dirAddButtons').style.display = 'none';
     } else {
+        // Not in target list — show add direction buttons
         document.getElementById('dirModalTitle').textContent = 'Select Trade Direction';
         document.getElementById('dirRemoveBtn').style.display = 'none';
         document.getElementById('dirAddButtons').style.display = 'block';
