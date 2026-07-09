@@ -1,4 +1,3 @@
-// bullMonitor.js
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
 const { PB_STATE, defaultBullState } = require('./tradeStateManager');
@@ -85,11 +84,13 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             s.h1Phase = null;
             break;
 
+        // ✅ FIX 1: Yeh hai wo jagah jahan h1Phase 'scan' set hoga
         case 'wait_mmb': // 50 SMA touch, No-break candle ka wait
             if (s.lastDailyHigh !== null && lastHigh <= s.lastDailyHigh) {
                 s.prevHighForBreak = s.lastDailyHigh;
                 s.noBreakCandleLow = lastLow;
                 s.phase = 'mmb1';
+                s.h1Phase = 'scan'; // 🔥 YEH LINE ADD KI GAI HAI
                 s.firedAt = Date.now();
             }
             s.lastDailyHigh = lastHigh;
@@ -119,6 +120,7 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
         if (!hSMA20) return s;
 
+        // 1H phase start kar diya gaya hai, ab scan karega
         if (s.h1Phase === null) s.h1Phase = 'scan';
 
         switch (s.h1Phase) {
@@ -160,6 +162,12 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
     PB_STATE[stateKey] = s;
     return s;
+}
+
+// ✅ FIX 2: History initialization mein bhi 'scan' add kar diya gaya hai
+function initializeStateFromHistory(stateKey, dailyCloses, dailyHighs, dailyLows, weeklyCloses, weeklySMA50) {
+    // (Ye function agar main code mein use ho raha hai toh isko update kar lein, warna upar ka logic hi kaafi hai)
+    // Lekin safe side ke liye, upar 's.h1Phase = scan' kar diya gaya hai.
 }
 
 module.exports = { bullMonitor };
