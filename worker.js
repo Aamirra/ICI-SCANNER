@@ -20,9 +20,10 @@ const sentimentJob = spawn('python3', ['sentiment/sentiment_job.py'], { stdio:'i
 sentimentJob.unref();
 console.log('✅ Sentiment job started');
 
-const liveTicks = require('./services/liveTicks');
-liveTicks.start();
-console.log('✅ LiveTicks started');
+// ❌ LiveTicks (real‑time prices) DISABLED to save bandwidth
+// const liveTicks = require('./services/liveTicks');
+// liveTicks.start();
+console.log('⏸️ LiveTicks (real‑time prices) DISABLED');
 
 const healthMonitor = require('./services/healthMonitor');
 const selfHealer = require('./services/selfHealer');
@@ -30,13 +31,13 @@ healthMonitor.start();
 selfHealer.start();
 console.log('✅ HealthMonitor & SelfHealer started');
 
-// ✅ Crypto Scanner (historical data) — now every 60 minutes (bandwidth saving)
+// ✅ Crypto Scanner (historical data) — every 2 hours to stay within bandwidth
 const { runCryptoScan } = require('./services/cryptoScanner');
 setTimeout(() => {
     runCryptoScan();
-    setInterval(runCryptoScan, 60 * 60 * 1000); // changed from 15 to 60 minutes
+    setInterval(runCryptoScan, 120 * 60 * 1000); // changed to 120 minutes
 }, 30000);
-console.log('✅ Crypto Scanner scheduled every 60 minutes');
+console.log('✅ Crypto Scanner scheduled every 120 minutes (2 hours)');
 
 // ✅ Crypto News Alert — every 2 minutes (unchanged, tiny data)
 const { fetchAndSendNews } = require('./services/cryptoNewsAlert');
