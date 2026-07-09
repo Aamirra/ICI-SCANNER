@@ -38,8 +38,8 @@
         .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
         .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
         .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
-        .item-main:hover { background:var(--pill-bg); }
+        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; -webkit-user-select:none; user-select:none; }
+        .item-main:active { background:var(--pill-bg); }
         .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
@@ -112,6 +112,18 @@
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+
+        /* 🟢 NEW STYLES FOR DIRECTION MODAL */
+        .dir-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; display:none; align-items:center; justify-content:center; }
+        .dir-modal-overlay.open { display:flex; }
+        .dir-modal-box { background:var(--surface); border-radius:16px; padding:24px; max-width:280px; width:90%; text-align:center; color:var(--txt); }
+        .dir-modal-box h3 { font-size:16px; margin-bottom:6px; }
+        .dir-modal-box p { font-size:13px; color:var(--muted); margin-bottom:12px; }
+        .dir-btns { display:flex; flex-direction:column; gap:10px; }
+        .dir-btn { padding:10px; border:none; border-radius:8px; font-weight:700; font-size:15px; cursor:pointer; color:#fff; width:100%; }
+        .dir-btn.bull { background:#22c55e; }
+        .dir-btn.bear { background:#ef4444; }
+        .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
     </style>
 </head>
 <body>
@@ -204,6 +216,19 @@
     </div>
 </div>
 
+<!-- 🟢 NEW: Direction Selector Modal for Long Press -->
+<div class="dir-modal-overlay" id="dirModal">
+    <div class="dir-modal-box">
+        <h3>Select Trade Direction</h3>
+        <p id="dirPairName" style="font-weight:600;font-size:14px;"></p>
+        <div class="dir-btns">
+            <button class="dir-btn bull" onclick="confirmAddTarget('bull')">📈 BULLISH</button>
+            <button class="dir-btn bear" onclick="confirmAddTarget('bear')">📉 BEARISH</button>
+            <button class="dir-btn cancel" onclick="closeDirModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
@@ -226,6 +251,12 @@ let liveMarketData = {};
 let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
+
+// 🟢 New manualTargets object
+let manualTargets = {};
+let pendingTargetPair = null;
+let pressTimer = null;
+let isLongPress = false;
 
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
@@ -362,7 +393,52 @@ function toggleDesktopMode() {
 function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
-// ✅ FIXED: target count ab unique forex pairs gin raha hai
+// 🟢 NEW: Firebase reference for manualTargets
+db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; updateCounts(); render(); });
+
+// 🟢 NEW: Long Press & Direction Selector Logic
+function handlePressStart(pairName) {
+    isLongPress = false;
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+        isLongPress = true;
+        pressTimer = null;
+        openDirModal(pairName);
+    }, 600); // 600ms hold
+}
+function handlePressEnd(pairName) {
+    if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+        if (!isLongPress) {
+            openChartForPair(pairName); // Normal click
+        }
+    }
+    isLongPress = false;
+}
+function openDirModal(pairName) {
+    pendingTargetPair = pairName;
+    document.getElementById('dirPairName').textContent = pairName;
+    document.getElementById('dirModal').classList.add('open');
+}
+function closeDirModal() { document.getElementById('dirModal').classList.remove('open'); pendingTargetPair = null; }
+async function confirmAddTarget(dir) {
+    if (!pendingTargetPair) return;
+    await db.ref(`manualTargets/${pendingTargetPair}`).set({ dir: dir, phase: 'mmb1' });
+    closeDirModal();
+}
+function isInTargetList(p) { return !!manualTargets[p]; }
+async function toggleStar(pairName) {
+    if (isInTargetList(pairName)) {
+        await db.ref(`manualTargets/${pairName}`).remove();
+    } else {
+        await db.ref(`manualTargets/${pairName}`).set({ dir: 'bull', phase: 'mmb1' });
+    }
+}
+async function removeFromTarget(pairName) {
+    await db.ref(`manualTargets/${pairName}`).remove();
+}
+
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
@@ -371,7 +447,7 @@ function updateCounts() {
     document.getElementById('allCount').textContent=PAIRS.length;
 
     const forexPairs = new Set(PAIRS.map(p=>p.n));
-    const seen = new Set();  // unique pair names
+    const seen = new Set(); 
     for(const [k,s] of Object.entries(PB_STATE)) {
         if(!s||!s.phase) continue;
         const pairName = k.split('_')[0];
@@ -379,13 +455,14 @@ function updateCounts() {
         if (!show4H && k.includes('_4h_')) continue;
         seen.add(pairName);
     }
-    const tCount = seen.size;
+
+    // 🟢 UPDATE: Target count from manualTargets
+    const tCount = Object.keys(manualTargets).length;
     document.getElementById('targetCount2').textContent = tCount;
     document.getElementById('targetCount').textContent = tCount;
-    document.getElementById('tradesCount').textContent = watchlistSet.size;
+    document.getElementById('tradesCount').textContent = tCount;
 }
 
-// MMB Dropdown functions
 function getPairKey(pairName) {
     const base = pairName + '_';
     for (const k of Object.keys(PB_STATE)) { if (k.startsWith(base) && PB_STATE[k] && PB_STATE[k].dir) return k; }
@@ -413,33 +490,27 @@ function openMMBDropdown(event, pairName) {
         document.addEventListener('click', handler);
     }, 0);
 }
-
-// ✅ FIX 1: h1Phase return karna
 function getPairPhaseInfo(pairName) {
     const key = getPairKey(pairName); if (!key) return null;
-    const v = PB_STATE[key]; 
-    return { phase: v.phase, dir: v.dir, h1Phase: v.h1Phase };
+    const v = PB_STATE[key]; return { phase: v.phase, dir: v.dir, h1Phase: v.h1Phase };
 }
 
 function openTargetModal() {
     const forexPairs = new Set(PAIRS.map(p => p.n));
-    const targets = Object.entries(PB_STATE).filter(([k, v]) => {
-        if (!v || v.phase === null || v.phase === 'null') return false;
-        const pairName = k.split('_')[0];
-        return forexPairs.has(pairName);
-    });
+    // 🟢 UPDATE: Use manualTargets inside modal
+    const targets = Object.entries(manualTargets);
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
         let html = '';
-        targets.forEach(([k, v]) => {
-            const pairName = k.split('_')[0];
-            const phaseDisplay = (v.phase || '?').replace(/_/g, ' ').toUpperCase();
-            const badgeBg = v.dir === 'bull' ? '#22c55e' : '#ef4444';
+        targets.forEach(([pairName, data]) => {
+            const phaseDisplay = (data.phase || '?').replace(/_/g, ' ').toUpperCase();
+            const badgeBg = data.dir === 'bull' ? '#22c55e' : '#ef4444';
             html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
                 <span style="font-weight:700;font-size:14px;flex:1;">${pairName}</span>
                 <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${pairName}')">${phaseDisplay}</span>
-                <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${(v.dir||'?').toUpperCase()}</span>
+                <span style="color:${data.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${(data.dir||'?').toUpperCase()}</span>
+                <button onclick="event.stopPropagation(); removeFromTarget('${pairName}')" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;">✕</button>
             </div>`;
         });
         document.getElementById('targetContent').innerHTML = html;
@@ -447,22 +518,15 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-function isInTargetList(p) {
-    const keyBase = `${p}_`;
-    for(const k of Object.keys(PB_STATE)) { if (k.startsWith(keyBase)) { const s = PB_STATE[k]; if (s && s.phase && s.phase!=='watching') return true; } }
-    return false;
-}
-
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
     if(curF==='all') filtered = currentPairs;
     else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target') filtered = currentPairs.filter(p=>isInTargetList(p.n));
-    else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
+    else if(curF==='target' || curF==='trades') filtered = currentPairs.filter(p=>isInTargetList(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
-    const isTargetView = (curF === 'target');
+    const isTargetView = (curF === 'target' || curF === 'trades');
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
@@ -478,42 +542,47 @@ function render() {
         const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
         const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
         const dollarVolVal=t.dollarVolume1d||'—';
-        const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
-        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
         const liveM = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? (liveM.price || liveM.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
-            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
+        // 🟢 NEW: Star logic for manualTargets
+        const isTarget = isInTargetList(p.n);
+        const targetDir = isTarget ? manualTargets[p.n].dir : null;
+        const starIcon = isTarget ? '⭐' : '☆';
+
+        let row = `<div class="item-row">
+            <div class="item-main" 
+                 onmousedown="handlePressStart('${p.n}')" onmouseup="handlePressEnd('${p.n}')" onmouseleave="handlePressEnd('${p.n}')"
+                 ontouchstart="handlePressStart('${p.n}')" ontouchend="handlePressEnd('${p.n}')">
+            <div class="row-pair pair-title">
+                <span class="watchlist-star" onclick="event.stopPropagation(); toggleStar('${p.n}')">${starIcon}</span> 
+                <span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}
+            </div>
             <div class="row-timeframes dots-container">${dots}</div>
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
-            <div class="row-alert" style="display:flex;align-items:center;justify-content:center;gap:2px;">${bellHtml}
+            <div class="row-alert" style="display:flex;align-items:center;justify-content:center;gap:2px;">
                 <span class="mmb-btn" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')" title="Set MMB phase">⚙️</span>
             </div>
         </div>`;
 
-        // ✅ FIX 2: Phase display mein h1Phase add kiya
         if (isTargetView) {
-            const info = getPairPhaseInfo(p.n);
-            if (info) {
-                let phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
-                // h1Phase check kar ke saath append karo
-                if (info.h1Phase && info.h1Phase !== 'null' && info.h1Phase !== undefined) {
-                    phaseDisplay += ` (1H:${info.h1Phase})`;
-                } else {
-                    phaseDisplay += ` (1H:-)`;
-                }
-                const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
-                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
-                </div>`;
-            } else {
-                row += `<div class="phase-row" style="color:var(--muted);">Phase: —</div>`;
+            const phase = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).phase || 'mmb1';
+            const dirLabel = targetDir ? targetDir.toUpperCase() : '?';
+            const badgeBg = targetDir === 'bull' ? '#22c55e' : '#ef4444';
+            const h1PhaseText = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).h1Phase;
+            let phaseDisplay = `${dirLabel} ${phase}`;
+            if (h1PhaseText && h1PhaseText !== 'null') {
+                phaseDisplay += ` (1H:${h1PhaseText})`;
             }
-            row += `</div>`; // close item-row
+
+            row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
+                <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
+                <button onclick="event.stopPropagation(); removeFromTarget('${p.n}')" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:auto;">✕</button>
+            </div>`;
+            row += `</div>`; 
         } else {
             row += `<div class="compact-details">
                 <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
@@ -521,7 +590,7 @@ function render() {
                 <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
                 <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
             </div>`;
-            row += `</div>`; // close item-row
+            row += `</div>`; 
         }
 
         return row;
