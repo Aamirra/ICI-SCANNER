@@ -63,7 +63,7 @@
         body.desktop-mode #tv_chart_container { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
         body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'[CHART]'; font-size:44px; opacity:0.2; }
+        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
         body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
@@ -109,6 +109,7 @@
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+
         .dir-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; display:none; align-items:center; justify-content:center; }
         .dir-modal-overlay.open { display:flex; }
         .dir-modal-box { background:var(--surface); border-radius:16px; padding:24px; max-width:280px; width:90%; text-align:center; color:var(--txt); }
@@ -125,28 +126,28 @@
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
-        <div class="brand"><div class="brand-icon">S</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
+        <div class="brand"><div class="brand-icon">🎚️</div><div class="brand-text"><h1>ICI Screener</h1><span>clean v2</span></div></div>
         <div class="header-actions">
-            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">*</button>
-            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">[]</button>
-            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
-            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
+            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
         </div>
     </div>
     <div class="pills-row">
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
-        <a href="/stocks" class="pill" style="text-decoration:none">Stocks</a>
-        <a href="/crypto" class="pill" style="text-decoration:none">Crypto</a>
-        <a href="/journal" class="pill" style="text-decoration:none">Journal</a>
-        <button class="pill scan-btn" onclick="actualScan()">Scan</button>
-        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">Alerts</button>
-        <div class="cloud-status" id="statusDot">Cloud active</div>
+        <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
+        <a href="/crypto" class="pill" style="text-decoration:none">₿ Crypto</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
+        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
+        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">🔔 Alerts</button>
+        <div class="cloud-status" id="statusDot">● Cloud active</div>
     </div>
     <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><span style="font-size:14px;">V</span></div>
+        <div class="ai-header" onclick="toggleAIAssistant()"><span>🤖 AI Assistant</span><span style="font-size:14px;">▼</span></div>
         <div class="ai-body" id="aiBody">
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
-                <span style="font-weight:600;color:var(--muted);font-size:11px;">Errors</span>
+                <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
                 <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
             </div>
             <div class="error-list-embedded" id="errorListEmbedded"></div>
@@ -160,11 +161,11 @@
         </div>
     </div>
     <div class="pending-code-changes" id="pendingCodePanel">
-        <div class="pending-header">Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
+        <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
     </div>
     <div class="sync-info" onclick="openTargetModal()">
-        Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ></span>
+        ✔ Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ›</span>
         <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
     </div>
     <div class="counters-grid">
@@ -175,17 +176,18 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H / 4H / 1D / 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">(!)</div></div>
+    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div></div>
     <div id="pairsContainer"></div>
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
-        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">&lt;</button>
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
-        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">&gt;</button>
-        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">(!)</button>
-        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">X</button>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
+        <!-- ✅ Alert button in chart -->
+        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert">🔔</button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
@@ -198,7 +200,7 @@
 
 <div class="approval-overlay" id="approvalOverlay">
     <div class="approval-box">
-        <h3>AI Action Approval</h3>
+        <h3>⚠️ AI Action Approval</h3>
         <p id="approvalMessage"></p>
         <div class="approval-btns">
             <button class="reject-btn" onclick="rejectAction()">Reject</button>
@@ -209,19 +211,20 @@
 
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 style="margin-bottom:16px;color:var(--gold)">Forex Target List</h3>
+        <h3 style="margin-bottom:16px;color:var(--gold)">🎯 Forex Target List</h3>
         <div id="targetContent"></div>
     </div>
 </div>
 
+<!-- Direction Selector Modal -->
 <div class="dir-modal-overlay" id="dirModal">
     <div class="dir-modal-box">
         <h3 id="dirModalTitle">Select Trade Direction</h3>
         <p id="dirPairName" style="font-weight:600;font-size:14px;"></p>
-        <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">Remove from Target</button>
+        <button id="dirRemoveBtn" class="dir-btn remove-btn" style="display:none;" onclick="confirmRemoveTarget()">❌ Remove from Target</button>
         <div id="dirAddButtons">
-            <button class="dir-btn bull" onclick="confirmAddTarget('bull')">BULLISH</button>
-            <button class="dir-btn bear" onclick="confirmAddTarget('bear')">BEARISH</button>
+            <button class="dir-btn bull" onclick="confirmAddTarget('bull')">📈 BULLISH</button>
+            <button class="dir-btn bear" onclick="confirmAddTarget('bear')">📉 BEARISH</button>
         </div>
         <button class="dir-btn cancel" onclick="closeDirModal()">Cancel</button>
     </div>
@@ -259,14 +262,14 @@ let touchStartX = 0, touchStartY = 0, touchMoved = false;
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
-    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
+    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? '🔔 Telegram ON' : '🔕 Telegram OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
+    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? '💬 WhatsApp ON' : '🔕 WhatsApp OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
 }
-function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref('alertSettings/'+type).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
+function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
 db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
-function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref('manualWatchlist/'+p).remove(); } else { watchlistSet.add(p); db.ref('manualWatchlist/'+p).set(true); } updateCounts(); render(); }
+function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
 
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
@@ -283,7 +286,7 @@ function updateErrorListEmbedded() {
     if (!listDiv) return;
     if (errorLog.length === 0) { listDiv.classList.remove('has-errors'); listDiv.innerHTML = ''; return; }
     listDiv.classList.add('has-errors');
-    listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => '<div class="error-item">['+new Date(e.time).toLocaleString()+'] '+e.message+'</div>').join('');
+    listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
 }
 function clearErrors() { if (confirm('Sare errors delete kar dein?')) { db.ref('errorLog').remove().then(() => console.log('Error log cleared')).catch(e => console.error(e)); } }
 function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
@@ -295,10 +298,14 @@ db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').
     const items = Object.entries(requests);
     if (items.length === 0) { panel.classList.remove('visible'); return; }
     panel.classList.add('visible'); countSpan.textContent = items.length;
-    listDiv.innerHTML = items.map(([id, req]) => '<div class="pending-item"><span style="flex:1;color:var(--txt);">'+escapeHtml(req.instruction)+'</span><button class="btn-approve" onclick="approveCodeChange(\''+id+'\')">Approve</button><button class="btn-reject" onclick="rejectCodeChange(\''+id+'\')">Reject</button></div>').join('');
+    listDiv.innerHTML = items.map(([id, req]) => `<div class="pending-item">
+        <span style="flex:1;color:var(--txt);">${escapeHtml(req.instruction)}</span>
+        <button class="btn-approve" onclick="approveCodeChange('${id}')">Approve</button>
+        <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
+    </div>`).join('');
 });
 async function approveCodeChange(id) {
-    const snap = await db.ref('codeChangeRequests/'+id).once('value');
+    const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
     const changeReq = snap.val();
     if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found'); return; }
     const newContent = changeReq.newContent;
@@ -306,27 +313,27 @@ async function approveCodeChange(id) {
     try {
         const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
         const result = await res.json();
-        if (res.ok) { await db.ref('codeChangeRequests/'+id+'/status').set('approved'); alert('Committed!'); }
+        if (res.ok) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); alert('Committed!'); }
         else alert('Error: ' + (result.error || 'Failed'));
     } catch(e) { console.error(e); }
 }
-async function rejectCodeChange(id) { await db.ref('codeChangeRequests/'+id).remove(); }
+async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
     const userText = input.value.trim();
     if (!userText) return;
-    messagesDiv.innerHTML += '<div class="chat-message-embedded user"><span>'+escapeHtml(userText)+'</span></div>';
+    messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
     input.value = '';
-    messagesDiv.innerHTML += '<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>';
+    messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     try {
         const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userText }) });
         const data = await response.json();
         const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
         if (!response.ok) {
-            messagesDiv.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X '+escapeHtml(data.error||'HTTP '+response.status)+'</span></div>';
+            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(data.error||`HTTP ${response.status}`)}</span></div>`;
         } else {
             const rawResponse = data.response || 'Sorry, no response.';
             const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
@@ -336,17 +343,17 @@ async function sendOpenRouterChat() {
                 displayText = rawResponse.replace(actionMatch[0], '').trim();
                 try {
                     const params = JSON.parse(paramsStr);
-                    document.getElementById('approvalMessage').textContent = 'AI wants: "'+actionType+'" with '+paramsStr+'. Allow?';
+                    document.getElementById('approvalMessage').textContent = `AI wants: "${actionType}" with ${paramsStr}. Allow?`;
                     document.getElementById('approvalOverlay').classList.add('open');
                     window.__pendingAction = { type: actionType, params };
                 } catch(e) { console.error('Action parse error', e); }
             }
-            if (displayText) messagesDiv.innerHTML += '<div class="chat-message-embedded assistant"><span>'+escapeHtml(displayText)+'</span></div>';
+            if (displayText) messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
         }
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (e) {
         const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
-        messagesDiv.innerHTML += '<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>';
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
     }
 }
 async function approveAction() {
@@ -356,8 +363,8 @@ async function approveAction() {
         const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
         const result = await res.json();
         const messagesDiv = document.getElementById('chatMessagesEmbedded');
-        const msg = result.success ? 'OK '+escapeHtml(result.message) : 'X '+escapeHtml(result.message);
-        messagesDiv.innerHTML += '<div class="chat-message-embedded assistant"><span>'+msg+'</span></div>';
+        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
+        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch(e) { console.error(e); }
     window.__pendingAction = null;
@@ -366,21 +373,21 @@ function rejectAction() { document.getElementById('approvalOverlay').classList.r
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function actualScan() {
-    const btn = document.querySelector('.scan-btn'); btn.textContent = 'Scanning...'; btn.disabled = true;
-    fetch('/scan').then(() => { btn.textContent='Started!'; setTimeout(()=>{ btn.textContent='Scan'; btn.disabled=false; },3000); })
-    .catch(() => { btn.textContent='Error'; setTimeout(()=>{ btn.textContent='Scan'; btn.disabled=false; },3000); });
+    const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
+    fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
+    .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
 }
 
 function toggleTheme() {
     const html = document.documentElement; const isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    document.getElementById('themeBtn').textContent = isDark ? '*' : '*';
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
     localStorage.setItem('ici-theme', html.getAttribute('data-theme'));
 }
 function toggleDesktopMode() {
     const isDesktop = document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
-    document.getElementById('desktopBtn').textContent = isDesktop ? '[]' : '[]';
+    document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '💻';
     localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
 }
 function setFilter(f) { curF = f; render(); }
@@ -436,20 +443,20 @@ function openDirModal(pairName) {
 function closeDirModal() { document.getElementById('dirModal').classList.remove('open'); pendingTargetPair = null; }
 async function confirmAddTarget(dir) {
     if (!pendingTargetPair) return;
-    await db.ref('manualTargets/'+pendingTargetPair).set({ dir: dir, phase: 'mmb1', source: 'manual' });
+    await db.ref(`manualTargets/${pendingTargetPair}`).set({ dir: dir, phase: 'mmb1', source: 'manual' });
     closeDirModal();
 }
 async function confirmRemoveTarget() {
     if (!pendingTargetPair) return;
-    await db.ref('manualTargets/'+pendingTargetPair).remove();
+    await db.ref(`manualTargets/${pendingTargetPair}`).remove();
     closeDirModal();
 }
 function isInTargetList(p) { return !!manualTargets[p]; }
 async function toggleStar(pairName) {
-    if (isInTargetList(pairName)) { await db.ref('manualTargets/'+pairName).remove(); }
-    else { await db.ref('manualTargets/'+pairName).set({ dir: 'bull', phase: 'mmb1', source: 'star' }); }
+    if (isInTargetList(pairName)) { await db.ref(`manualTargets/${pairName}`).remove(); }
+    else { await db.ref(`manualTargets/${pairName}`).set({ dir: 'bull', phase: 'mmb1', source: 'star' }); }
 }
-async function removeFromTarget(pairName) { await db.ref('manualTargets/'+pairName).remove(); }
+async function removeFromTarget(pairName) { await db.ref(`manualTargets/${pairName}`).remove(); }
 
 function updateCounts() {
     let b=0, r=0;
@@ -479,7 +486,7 @@ function openMMBDropdown(event, pairName) {
         btn.textContent = phase.toUpperCase();
         btn.onclick = () => { 
             if(manualTargets[pairName]) {
-                db.ref('manualTargets/'+pairName+'/phase').set(phase);
+                db.ref(`manualTargets/${pairName}/phase`).set(phase);
             }
             dropdown.remove(); 
         };
@@ -507,11 +514,11 @@ function openTargetModal() {
         targets.forEach(([pairName, data]) => {
             const phaseDisplay = (data.phase || '?').replace(/_/g, ' ').toUpperCase();
             const badgeBg = data.dir === 'bull' ? '#22c55e' : '#ef4444';
-            html += '<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair(\''+pairName+'\')">'+
-                '<span style="font-weight:700;font-size:14px;flex:1;">'+pairName+'</span>'+
-                '<span style="background:'+badgeBg+';color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+pairName+'\')">'+phaseDisplay+'</span>'+
-                '<span style="color:'+(data.dir==='bull'?'var(--green)':'var(--red)')+';font-weight:700;font-size:11px;">'+(data.dir||'?').toUpperCase()+'</span>'+
-            '</div>';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
+                <span style="font-weight:700;font-size:14px;flex:1;">${pairName}</span>
+                <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${pairName}')">${phaseDisplay}</span>
+                <span style="color:${data.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${(data.dir||'?').toUpperCase()}</span>
+            </div>`;
         });
         document.getElementById('targetContent').innerHTML = html;
     }
@@ -532,60 +539,60 @@ function render() {
     document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
         const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
         const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
-        const star=isBull?'B':(isBear?'S':'N'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
-        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'--';
+        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
+        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
         const changeClass=t.longTermTrend>=0?'up':'down';
         const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
         const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
         const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
-        const dots = signals.map(sig=>'<span class="trend-dot '+(sig==='bull'?'g':'r')+'"></span>').join('');
-        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'--';
-        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'--';
-        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'--';
-        const dollarVolVal=t.dollarVolume1d||'--';
+        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
+        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
+        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
+        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
+        const dollarVolVal=t.dollarVolume1d||'—';
         const liveM = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? (liveM.price || liveM.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
-        const priceHTML = livePrice ? ' <span style="font-size:10px;color:var(--muted);margin-left:4px;">'+livePrice+'</span>' : '';
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
         const isTarget = isInTargetList(p.n);
         const targetDir = isTarget ? manualTargets[p.n].dir : null;
-        const starIcon = isTarget ? '[*]' : '[ ]';
+        const starIcon = isTarget ? '⭐' : '☆';
 
-        let row = '<div class="item-row">'+
-            '<div class="item-main" '+
-                 'onmousedown="handlePressStart(event, \''+p.n+'\')" onmouseup="handlePressEnd(event, \''+p.n+'\')" onmouseleave="handlePressEnd(event, \''+p.n+'\')" '+
-                 'ontouchstart="handlePressStart(event, \''+p.n+'\')" ontouchend="handlePressEnd(event, \''+p.n+'\')">'+
-            '<div class="row-pair pair-title">'+
-                '<span class="watchlist-star" onclick="event.stopPropagation(); toggleStar(\''+p.n+'\')">'+starIcon+'</span> '+
-                '<span style="color:'+starColor+'">'+star+'</span> '+p.n+priceHTML+
-            '</div>'+
-            '<div class="row-timeframes dots-container">'+dots+'</div>'+
-            '<div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:'+bearW+'%">'+bearW+'%</div><div class="sent-green" style="width:'+bullW+'%">'+bullW+'%</div></div></div>'+
-            '<div class="row-change change-val '+changeClass+'">'+change+'</div>'+
-            '<div class="row-alert" style="text-align:center;">'+
-                getBellHtml(p.n)+
-            '</div>'+
-        '</div>';
+        let row = `<div class="item-row">
+            <div class="item-main" 
+                 onmousedown="handlePressStart(event, '${p.n}')" onmouseup="handlePressEnd(event, '${p.n}')" onmouseleave="handlePressEnd(event, '${p.n}')"
+                 ontouchstart="handlePressStart(event, '${p.n}')" ontouchend="handlePressEnd(event, '${p.n}')">
+            <div class="row-pair pair-title">
+                <span class="watchlist-star" onclick="event.stopPropagation(); toggleStar('${p.n}')">${starIcon}</span> 
+                <span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}
+            </div>
+            <div class="row-timeframes dots-container">${dots}</div>
+            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert" style="text-align:center;">
+                ${getBellHtml(p.n)}
+            </div>
+        </div>`;
 
         if (isTargetView) {
             const manualPhase = manualTargets[p.n]?.phase;
-            const backendPhase = (PB_STATE[p.n+'_1h_'+targetDir] || {}).phase;
+            const backendPhase = (PB_STATE[`${p.n}_1h_${targetDir}`] || {}).phase;
             const phase = manualPhase || backendPhase || 'mmb1';
             const dirLabel = targetDir ? targetDir.toUpperCase() : '?';
             const badgeBg = targetDir === 'bull' ? '#22c55e' : '#ef4444';
-            row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
-                '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+p.n+'\')">'+dirLabel+' '+phase+'</span>'+
-            '</div>';
-            row += '</div>'; 
+            row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
+                <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${dirLabel} ${phase}</span>
+            </div>`;
+            row += `</div>`; 
         } else {
-            row += '<div class="compact-details">'+
-                '<div class="compact-metric"><span class="lbl">10C</span> <span class="val '+(t.shortTermMomentum>=0?'up':'down')+'">'+shortTermVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">1HM</span> <span class="val '+(t.microMomentum>=0?'up':'down')+'">'+microVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">'+vol7dVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">'+dollarVolVal+'</span></div>'+
-            '</div>';
-            row += '</div>'; 
+            row += `<div class="compact-details">
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+            </div>`;
+            row += `</div>`; 
         }
         return row;
     }).join('');
@@ -651,8 +658,8 @@ db.ref('liveMarketData').on('value', snap => {
 
 (function(){
     const saved=localStorage.getItem('ici-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
-    document.getElementById('themeBtn').textContent = saved==='dark'?'*':'*';
-    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='[]'; document.getElementById('chartOverlay').style.display='flex'; }
+    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+    if(localStorage.getItem('desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
 })();
 updateToggleButtons();
 </script>
