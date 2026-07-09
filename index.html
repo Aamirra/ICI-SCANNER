@@ -362,7 +362,7 @@ function toggleDesktopMode() {
 function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
-// ✅ UPDATED: filter only forex pairs
+// ✅ FIXED: target count ab unique forex pairs gin raha hai
 function updateCounts() {
     let b=0, r=0;
     PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
@@ -371,21 +371,21 @@ function updateCounts() {
     document.getElementById('allCount').textContent=PAIRS.length;
 
     const forexPairs = new Set(PAIRS.map(p=>p.n));
-    let tCount=0;
+    const seen = new Set();  // unique pair names
     for(const [k,s] of Object.entries(PB_STATE)) {
         if(!s||!s.phase) continue;
         const pairName = k.split('_')[0];
-        if (forexPairs.has(pairName)) {
-            if (!show4H && k.includes('_4h_')) continue;
-            tCount++;
-        }
+        if (!forexPairs.has(pairName)) continue;
+        if (!show4H && k.includes('_4h_')) continue;
+        seen.add(pairName);
     }
+    const tCount = seen.size;
     document.getElementById('targetCount2').textContent = tCount;
     document.getElementById('targetCount').textContent = tCount;
     document.getElementById('tradesCount').textContent = watchlistSet.size;
 }
 
-// MMB Dropdown functions (same as crypto)
+// MMB Dropdown functions
 function getPairKey(pairName) {
     const base = pairName + '_';
     for (const k of Object.keys(PB_STATE)) { if (k.startsWith(base) && PB_STATE[k] && PB_STATE[k].dir) return k; }
