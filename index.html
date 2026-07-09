@@ -69,8 +69,6 @@
         .toggle-4h.active { background:var(--acc); color:#fff; }
         .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
         .watchlist-star.active { color: #f59e0b !important; }
-        .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
-        .mmb-btn { cursor:pointer; font-size:12px; margin-left:4px; color:var(--acc); }
         .mmb-dropdown { position:fixed; background:var(--surface); border:1px solid var(--border); border-radius:8px; z-index:999; box-shadow:0 4px 8px rgba(0,0,0,0.15); padding:4px 0; min-width:80px; }
         .mmb-dropdown button { display:block; width:100%; padding:6px 12px; background:none; border:none; color:var(--txt); text-align:left; cursor:pointer; font-size:12px; font-weight:500; }
         .mmb-dropdown button:hover { background:var(--pill-bg); }
@@ -177,7 +175,7 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">⚙️</div></div>
+    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">🔔</div></div>
     <div id="pairsContainer"></div>
 </div>
 
@@ -256,7 +254,6 @@ let pendingTargetPair = null;
 let pressTimer = null;
 let isLongPress = false;
 
-// Touch movement detection for scroll vs tap
 let touchStartX = 0, touchStartY = 0, touchMoved = false;
 
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
@@ -396,11 +393,9 @@ function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCas
 
 db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; updateCounts(); render(); });
 
-// ----- FIX 1: Star/Target separation -----
 function handlePressStart(e, pairName) {
     if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) return;
 
-    // Touch start position
     if (e.type === 'touchstart') {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
@@ -422,7 +417,6 @@ function handlePressStart(e, pairName) {
 function handlePressEnd(e, pairName) {
     if (e.target.classList.contains('watchlist-star') || e.target.closest('.watchlist-star')) return;
 
-    // Check if touch moved beyond threshold
     if (e.type === 'touchend') {
         const touch = e.changedTouches[0];
         if (touch) {
@@ -475,20 +469,16 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
 
-    // Count targets (only manual ones, exclude star-sourced)
     const allTargets = Object.values(manualTargets);
     const realTargets = allTargets.filter(t => t.source !== 'star');
     document.getElementById('targetCount2').textContent = realTargets.length;
     document.getElementById('targetCount').textContent = realTargets.length;
-    document.getElementById('tradesCount').textContent = allTargets.length; // trades includes all
+    document.getElementById('tradesCount').textContent = allTargets.length;
 }
 
 function openMMBDropdown(event, pairName) {
     event.stopPropagation();
-    if (!manualTargets[pairName] || !manualTargets[pairName].dir) {
-        console.warn("Pair target list mein nahi hai ya direction undefined hai!");
-        return;
-    }
+    if (!manualTargets[pairName] || !manualTargets[pairName].dir) return;
     const existing = document.querySelector('.mmb-dropdown'); 
     if (existing) existing.remove();
     const dropdown = document.createElement('div'); 
@@ -521,7 +511,7 @@ function openMMBDropdown(event, pairName) {
 
 function openTargetModal() {
     const targets = Object.entries(manualTargets)
-        .filter(([pairName, data]) => data.source !== 'star'); // exclude quick star entries
+        .filter(([pairName, data]) => data.source !== 'star');
 
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
@@ -534,7 +524,6 @@ function openTargetModal() {
                 <span style="font-weight:700;font-size:14px;flex:1;">${pairName}</span>
                 <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${pairName}')">${phaseDisplay}</span>
                 <span style="color:${data.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${(data.dir||'?').toUpperCase()}</span>
-                <button onclick="event.stopPropagation(); removeFromTarget('${pairName}')" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;">✕</button>
             </div>`;
         });
         document.getElementById('targetContent').innerHTML = html;
@@ -586,8 +575,8 @@ function render() {
             <div class="row-timeframes dots-container">${dots}</div>
             <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
             <div class="row-change change-val ${changeClass}">${change}</div>
-            <div class="row-alert" style="display:flex;align-items:center;justify-content:center;gap:2px;">
-                <span class="mmb-btn" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')" title="Set MMB phase">⚙️</span>
+            <div class="row-alert" style="text-align:center;">
+                <span onclick="event.stopPropagation(); togglePairAlert('${p.n}')" style="cursor:pointer; font-size:14px;" title="Toggle Alert">🔔</span>
             </div>
         </div>`;
 
@@ -606,7 +595,6 @@ function render() {
 
             row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
                 <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
-                <button onclick="event.stopPropagation(); removeFromTarget('${p.n}')" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:auto;">✕</button>
             </div>`;
             row += `</div>`; 
         } else {
@@ -660,7 +648,7 @@ function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
-function togglePairAlert(pair) { console.log('Alert toggle',pair); }
+function togglePairAlert(pair) { console.log('Alert toggle',pair); /* 🔔 aap yahan custom alert logic jod sakte hain */ }
 
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
