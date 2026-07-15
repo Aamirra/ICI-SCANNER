@@ -81,7 +81,7 @@
         .error-item { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
         .chat-section { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
         .chat-messages-embedded { max-height: 120px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
-        .chat-message-embedded margin-bottom: 6px; }
+        .chat-message-embedded { margin-bottom: 6px; }
         .chat-message-embedded.user { text-align: right; }
         .chat-message-embedded.assistant { text-align: left; }
         .chat-message-embedded span { display: inline-block; padding: 4px 8px; border-radius: 10px; max-width: 85%; word-wrap: break-word; }
@@ -106,9 +106,27 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
-        .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
-        .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
-        .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        /* ── Chart interval buttons ── */
+        .chart-interval-selector {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .chart-interval-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--pill-bg);
+            color: var(--txt);
+            cursor: pointer;
+        }
+        .chart-interval-btn.active {
+            background: var(--acc);
+            color: #fff;
+            border-color: var(--acc);
+        }
     </style>
 </head>
 <body>
@@ -135,12 +153,14 @@
         <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
     </div>
 
+    <!-- ✅ AI Assistant Panel -->
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()">
             <span>🤖 AI Assistant</span>
             <span style="font-size:14px;">▼</span>
         </div>
         <div class="ai-body" id="aiBody">
+            <!-- Clear button always visible -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
                 <span style="font-weight:600;color:var(--muted);font-size:11px;">⚠️ Errors</span>
                 <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
@@ -156,6 +176,7 @@
         </div>
     </div>
 
+    <!-- Pending Code Changes -->
     <div class="pending-code-changes" id="pendingCodePanel">
         <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
         <div id="pendingCodeList"></div>
@@ -180,10 +201,12 @@
     <div id="pairsContainer"></div>
 </div>
 
+<!-- Target List Modal -->
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()" id="targetContent"></div>
 </div>
 
+<!-- Chart Overlay -->
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
         <button onclick="moveStockPair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
@@ -191,6 +214,7 @@
         <button onclick="moveStockPair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
         <button id="chartCloseBtn" onclick="closeStockChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
     </div>
+    <!-- ✅ Interval selector buttons (new) -->
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
         <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
@@ -200,6 +224,7 @@
     <div id="tv_chart_container" style="flex:1"></div>
 </div>
 
+<!-- Approval Overlay -->
 <div class="approval-overlay" id="approvalOverlay">
     <div class="approval-box">
         <h3>⚠️ AI Action Approval</h3>
@@ -217,6 +242,7 @@
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
+// ── Global State ──
 let currentMarket = 'exness';
 let stockData = {};
 let stockPbState = {};
@@ -231,42 +257,9 @@ let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
 let liveMarketData = {};
 let techMetrics = {};
-let currentChartInterval = "60";
+let currentChartInterval = "60"; // ✅ default 1H
 
-// ── Exness Exchange Routing Table (All Tickers from Screenshots Map Here Seamlessly) ──
-const tvExchangeMap = {
-    // NASDAQ Tech & Growth Stocks
-    'AAPL': 'NASDAQ:AAPL', 'AMD': 'NASDAQ:AMD', 'ADBE': 'NASDAQ:ADBE', 'AMZN': 'NASDAQ:AMZN', 
-    'AVGO': 'NASDAQ:AVGO', 'GOOGL': 'NASDAQ:GOOGL', 'INTC': 'NASDAQ:INTC', 'INTU': 'NASDAQ:INTU', 
-    'ISRG': 'NASDAQ:ISRG', 'MSFT': 'NASDAQ:MSFT', 'NFLX': 'NASDAQ:NFLX', 'NVDA': 'NASDAQ:NVDA', 
-    'PYPL': 'NASDAQ:PYPL', 'SBUX': 'NASDAQ:SBUX', 'TSLA': 'NASDAQ:TSLA', 'TMUS': 'NASDAQ:TMUS', 
-    'CMCSA': 'NASDAQ:CMCSA', 'COST': 'NASDAQ:COST', 'CSCO': 'NASDAQ:CSCO', 'EBAY': 'NASDAQ:EBAY', 
-    'FTNT': 'NASDAQ:FTNT', 'AMGN': 'NASDAQ:AMGN', 'BIIB': 'NASDAQ:BIIB', 'REGN': 'NASDAQ:REGN', 
-    'ABBV': 'NYSE:ABBV', 'ATVI': 'NASDAQ:ATVI', 'CHTR': 'NASDAQ:CHTR', 'ADP': 'NASDAQ:ADP',
-
-    // Chinese Tech / ADRs
-    'BABA': 'NYSE:BABA', 'BIDU': 'NASDAQ:BIDU', 'BILI': 'NASDAQ:BILI', 'JD': 'NASDAQ:JD', 
-    'LI': 'NASDAQ:LI', 'NIO': 'NYSE:NIO', 'PDD': 'NASDAQ:PDD', 'TAL': 'NYSE:TAL', 
-    'TME': 'NYSE:TME', 'VIPS': 'NYSE:VIPS', 'XPEV': 'NYSE:XPEV', 'ZTO': 'NYSE:ZTO', 
-    'EDU': 'NYSE:EDU', 'BEKE': 'NYSE:BEKE', 'FUTU': 'NASDAQ:FUTU', 'NTES': 'NASDAQ:NTES', 'YUMC': 'NYSE:YUMC',
-
-    // NYSE Blue Chip & Large Caps
-    'XOM': 'NYSE:XOM', 'WMT': 'NYSE:WMT', 'VZ': 'NYSE:VZ', 'VRTX': 'NASDAQ:VRTX', 
-    'V': 'NYSE:V', 'UNH': 'NYSE:UNH', 'T': 'NYSE:T', 'PG': 'NYSE:PG', 
-    'NKE': 'NYSE:NKE', 'MS': 'NYSE:MS', 'MRK': 'NYSE:MRK', 'MMM': 'NYSE:MMM', 
-    'MDLZ': 'NASDAQ:MDLZ', 'MA': 'NYSE:MA', 'LLY': 'NYSE:LLY', 'JNJ': 'NYSE:JNJ', 
-    'GILD': 'NASDAQ:GILD', 'META': 'NASDAQ:META', 'FB': 'NASDAQ:META', 'F': 'NYSE:F', 
-    'EQIX': 'NASDAQ:EQIX', 'CSX': 'NASDAQ:CSX', 'PFE': 'NYSE:PFE', 'LMT': 'NYSE:LMT', 
-    'MCD': 'NYSE:MCD', 'PEP': 'NASDAQ:PEP', 'CME': 'NASDAQ:CME', 'C': 'NYSE:C', 
-    'BMY': 'NYSE:BMY', 'BA': 'NYSE:BA', 'CVS': 'NYSE:CVS', 'MO': 'NYSE:MO', 
-    'AMT': 'NYSE:AMT', 'ORCL': 'NYSE:ORCL', 'ABT': 'NYSE:ABT', 'BAC': 'NYSE:BAC', 
-    'UPS': 'NYSE:UPS', 'TMO': 'NYSE:TMO', 'JPM': 'NYSE:JPM', 'LIN': 'NYSE:LIN', 
-    'HD': 'NYSE:HD', 'TSM': 'NYSE:TSM', 'KO': 'NYSE:KO', 'WFC': 'NYSE:WFC', 'PM': 'NYSE:PM', 'IBM': 'NYSE:IBM',
-    
-    // ETFs / Index Special Contracts
-    'SPCX': 'AMEX:SPCX'
-};
-
+// ── Alert Settings ──
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
@@ -275,12 +268,15 @@ function updateToggleButtons() {
 }
 function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
+// ── Watchlist ──
 db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); render(); });
 function isInWatchlist(p) { return watchlistSet.has(p); }
 function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } render(); }
 
+// ── Live Market Data Listener ──
 db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; render(); });
 
+// ── Error Log ──
 db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
 function updateErrorListEmbedded() {
     const listDiv = document.getElementById('errorListEmbedded');
@@ -292,12 +288,15 @@ function updateErrorListEmbedded() {
 
 function clearErrors() {
     if (confirm('Sare errors delete kar dein?')) {
-        db.ref('errorLog').remove().then(() => console.log('Error log cleared')).catch(e => console.error(e));
+        db.ref('errorLog').remove()
+            .then(() => console.log('Error log cleared'))
+            .catch(e => console.error(e));
     }
 }
 
 function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
 
+// ── Pending Code Changes ──
 db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
     const requests = snap.val() || {};
     const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
@@ -326,6 +325,7 @@ async function approveCodeChange(id) {
 }
 async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
 
+// ── AI Chat ──
 async function sendOpenRouterChat() {
     const input = document.getElementById('chatInputEmbedded');
     const messagesDiv = document.getElementById('chatMessagesEmbedded');
@@ -377,12 +377,14 @@ async function approveAction() {
 function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
 function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// ── 4H Toggle ──
 function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); render(); }
 function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
 (function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
 
 function togglePairAlert(pair) { console.log('Alert toggle',pair); }
 
+// Market toggle
 function setMarket(market) {
     currentMarket = market;
     document.getElementById('exnessBtn').classList.toggle('active-market', market === 'exness');
@@ -401,17 +403,47 @@ function attachListeners() {
     if (currentMarket === 'exness') {
         db.ref('stockMarketData').on('value', snap => {
             stockData = snap.val() || {};
+            if (typeof checkAllAlerts === 'function') {
+                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
+                    name,
+                    currentPrice: data.currentPrice || data.price,
+                    ema20: data.ema20 || null,
+                    sentiment: data.sentiment || null,
+                }));
+                checkAllAlerts(pairsArray);
+            }
             render(); updateCounts();
         });
         db.ref('stockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
     } else {
         db.ref('psxStockMarketData').on('value', snap => {
             stockData = snap.val() || {};
+            if (typeof checkAllAlerts === 'function') {
+                const pairsArray = Object.entries(stockData).map(([name, data]) => ({
+                    name,
+                    currentPrice: data.currentPrice || data.price,
+                    ema20: data.ema20 || null,
+                    sentiment: data.sentiment || null,
+                }));
+                checkAllAlerts(pairsArray);
+            }
             render(); updateCounts();
         });
         db.ref('psxStockMarketDataPbState').on('value', snap => { stockPbState = snap.val() || {}; });
     }
-    db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; });
+    db.ref('technicalMetrics').on('value', snap => {
+        techMetrics = snap.val() || {};
+        const dataSrc = currentMarket === 'exness' ? stockData : stockData;
+        if (typeof checkAllAlerts === 'function') {
+            const pairsArray = Object.entries(dataSrc).map(([name, data]) => ({
+                name,
+                currentPrice: data.currentPrice || data.price,
+                ema20: data.ema20 || null,
+                sentiment: data.sentiment || null,
+            }));
+            checkAllAlerts(pairsArray);
+        }
+    });
 }
 
 function isStrongTrend(symbol, data, direction) {
@@ -452,8 +484,10 @@ function render() {
 
         const liveM = liveMarketData && liveMarketData[sym];
         const mktPrice = data.currentPrice || data.price;
-        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? (liveM.price || liveM.currentPrice).toFixed(2) : (mktPrice ? mktPrice.toFixed(2) : '—');
-        const priceHTML = livePrice !== '—' ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">$${livePrice}</span>` : '';
+        const livePrice = (liveM && (liveM.price || liveM.currentPrice)) ? 
+            (liveM.price || liveM.currentPrice).toFixed(4) : 
+            (mktPrice ? mktPrice.toFixed(4) : '—');
+        const priceHTML = livePrice !== '—' ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
         const longTerm = data.longTermTrend != null ? (data.longTermTrend>0?'+':'') + data.longTermTrend.toFixed(2)+'%' : '—';
         const longClass = data.longTermTrend>=0 ? 'up' : 'down';
@@ -498,36 +532,21 @@ function changeChartInterval(interval, btn) {
     openStockChart(stockCIdx);
 }
 
-// ── Correct Chart Loader Integration ──
 function openStockChart(idx) {
     stockCIdx = idx; const sym = stockChartPairs[idx]; if (!sym) return;
     document.getElementById('chartPairName').textContent = sym;
     document.getElementById('chartOverlay').style.display = 'flex';
     document.getElementById('tv_chart_container').innerHTML = '';
-    
-    // Auto resolution based on our screenshot map table
-    let resolvedSymbol = sym;
-    if (currentMarket === 'psx') {
-        resolvedSymbol = 'KSE:' + sym;
-    } else {
-        resolvedSymbol = tvExchangeMap[sym] || sym; // Fallback to raw token if not explicitly found
-    }
-
-    new TradingView.widget({ 
-        autosize: true, 
-        symbol: resolvedSymbol, 
-        interval: currentChartInterval, 
-        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', 
-        container_id: "tv_chart_container",
+    const isPSX = currentMarket === 'psx';
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+sym:sym, interval: currentChartInterval, theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
         studies: [
-            {id:"MASimple@tv-basicstudies", inputs:{length:10}},   // 10 SMA
-            {id:"MASimple@tv-basicstudies", inputs:{length:20}},   // 20 SMA
-            {id:"MASimple@tv-basicstudies", inputs:{length:50}},   // 50 SMA
-            {id:"WilliamFractal@tv-basicstudies"}                  // Fractals
+            {id:"MASimple@tv-basicstudies", inputs:{length:10}},   // ✅ 10 SMA
+            {id:"MASimple@tv-basicstudies", inputs:{length:20}},   // ✅ 20 SMA
+            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
         ]
     });
 }
-
 function moveStockPair(step) { const newIdx = stockCIdx + step; if (newIdx >=0 && newIdx < stockChartPairs.length) { selectedStockSymbol = stockChartPairs[newIdx]; openStockChart(newIdx); } }
 function closeStockChart() { if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none'; }
 
