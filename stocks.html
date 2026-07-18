@@ -451,6 +451,12 @@ function isStrongTrend(symbol, data, direction) {
     return data.signal4h === direction && data.signal1d === direction && data.signal1w === direction;
 }
 
+// ── Added setFilter function here ──
+function setFilter(filter) {
+    currentFilter = filter;
+    render();
+}
+
 function filterStocks(searchText) {
     filteredSymbols = searchText ? Object.keys(stockData).filter(s => s.toLowerCase().includes(searchText.toLowerCase())).sort() : Object.keys(stockData).sort();
     render();
@@ -532,13 +538,14 @@ function changeChartInterval(interval, btn) {
     openStockChart(stockCIdx);
 }
 
+// ── Changed KSE: to PSX: here ──
 function openStockChart(idx) {
     stockCIdx = idx; const sym = stockChartPairs[idx]; if (!sym) return;
     document.getElementById('chartPairName').textContent = sym;
     document.getElementById('chartOverlay').style.display = 'flex';
     document.getElementById('tv_chart_container').innerHTML = '';
     const isPSX = currentMarket === 'psx';
-    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+sym:sym, interval: currentChartInterval, theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
+    new TradingView.widget({ autosize:true, symbol:isPSX?'PSX:'+sym:sym, interval: currentChartInterval, theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light', container_id:"tv_chart_container",
         studies: [
             {id:"MASimple@tv-basicstudies", inputs:{length:10}},   // ✅ 10 SMA
             {id:"MASimple@tv-basicstudies", inputs:{length:20}},   // ✅ 20 SMA
