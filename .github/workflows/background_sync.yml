@@ -2,12 +2,13 @@ name: Background Sync Worker
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Har 5 minutes baad run hoga
-  workflow_dispatch: # Manual trigger button ke liye
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -15,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
 
       - name: Install Dependencies
         run: npm install
@@ -23,6 +24,30 @@ jobs:
       - name: Run Background Script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Twelve Data API Keys
+          TD_KEY_1: ${{ secrets.TD_KEY_1 }}
+          TD_KEY_2: ${{ secrets.TD_KEY_2 }}
+          TD_KEY_3: ${{ secrets.TD_KEY_3 }}
+          TD_KEY_4: ${{ secrets.TD_KEY_4 }}
+          TD_KEY_5: ${{ secrets.TD_KEY_5 }}
+          TD_KEY_6: ${{ secrets.TD_KEY_6 }}
+          TD_KEY_7: ${{ secrets.TD_KEY_7 }}
+          TD_KEY_8: ${{ secrets.TD_KEY_8 }}
+          TD_KEY_9: ${{ secrets.TD_KEY_9 }}
+          TD_KEY_10: ${{ secrets.TD_KEY_10 }}
+          TD_KEY_11: ${{ secrets.TD_KEY_11 }}
+          TD_KEY_12: ${{ secrets.TD_KEY_12 }}
+          TD_KEY_13: ${{ secrets.TD_KEY_13 }}
+          TD_KEY_14: ${{ secrets.TD_KEY_14 }}
+          TD_KEY_15: ${{ secrets.TD_KEY_15 }}
+          TD_KEY_16: ${{ secrets.TD_KEY_16 }}
+          # Additional Services & Telegram Configuration
+          TIINGO_KEY_1: ${{ secrets.TIINGO_KEY_1 }}
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          ALPHA_VANTAGE_KEYS: ${{ secrets.ALPHA_VANTAGE_KEYS }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
         run: node worker.js
