@@ -1,4 +1,4 @@
-Name: Market Scanner Job
+name: Market Scanner Job
 
 on:
   schedule:
