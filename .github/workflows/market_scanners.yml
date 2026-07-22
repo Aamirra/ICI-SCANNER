@@ -31,4 +31,4 @@ jobs:
           ALPHA_VANTAGE_KEYS: ${{ secrets.ALPHA_VANTAGE_KEYS }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: node scanner.js
+        run: node core/scanner.js
