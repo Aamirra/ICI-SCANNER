@@ -1,4 +1,4 @@
-name: Crypto Scanner
+name: Crypto Scanner Job
 
 on:
   schedule:
@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  scan:
+  run-crypto-scanner:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,13 +21,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Crypto Scan
+      - name: Run Crypto Scanner
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FIREBASE_URL: ${{ secrets.DATABASE_URL }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TD_KEY_1: "dummy_key_for_yahoo_migration"
-        run: node worker.js
+        run: node services/cryptoScanner.js
