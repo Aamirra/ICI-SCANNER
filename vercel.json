@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/crypto", "dest": "/crypto.html" },
+    { "src": "/stocks", "dest": "/stocks.html" },
+    { "src": "/journal", "dest": "/journal.html" }
+  ]
+}
