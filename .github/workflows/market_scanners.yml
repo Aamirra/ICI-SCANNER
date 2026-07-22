@@ -2,13 +2,12 @@ name: Market Scanners (Forex & Stocks)
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
-  run-market-scanners:
+  scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,13 +18,12 @@ jobs:
           node-version: '22'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run Main Worker
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TD_KEY_1: "dummy_key_for_yahoo_migration"
         run: node worker.js
