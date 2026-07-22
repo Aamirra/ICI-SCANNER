@@ -1,6 +1,28 @@
 const https = require('https');
 const cheerio = require('cheerio');
 const admin = require('firebase-admin');
+
+// ── 1. Automatic Firebase Initialization (For Standalone / GitHub Actions) ──
+if (!admin.apps.length) {
+    try {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+                ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+                : process.env.FIREBASE_SERVICE_ACCOUNT;
+
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                databaseURL: process.env.DATABASE_URL || process.env.FIREBASE_URL
+            });
+            console.log('[MarketScanner] Firebase initialized successfully.');
+        } else {
+            console.warn('[MarketScanner] FIREBASE_SERVICE_ACCOUNT environment variable is missing!');
+        }
+    } catch (err) {
+        console.error('[MarketScanner] Failed to initialize Firebase:', err.message);
+    }
+}
+
 const config = require('../config');
 const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
@@ -230,7 +252,7 @@ async function fetchIndexCandles(pair, tf) {
     return null;
 }
 
-// ── Yahoo candles for crypto (unchanged) ──
+// ── Yahoo candles for crypto ──
 function fetchYahooCandles(symbol, tf) {
     const yahooSymbol = symbol;
     const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
@@ -285,7 +307,7 @@ function aggregateTo4Hour(hourlyCloses, hourlyHighs, hourlyLows, hourlyTimes, ho
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-// ── Global state (unchanged) ──
+// ── Global state ──
 let DATA_STORE = {};
 let RAW_1H = {};
 let RAW_4H = {};
@@ -363,9 +385,9 @@ function fetchMentFXSentiment() {
                 });
 
                 if (savedCount === 0) {
-                    console.log('[MentFX] WARNING: Koi bhi pair match nahi hua — table structure badal gaya. Snippet: ' + raw.substring(0, 500));
+                    console.log('[MentFX] WARNING: Table structure changed or no matches.');
                 } else {
-                    console.log(`[MentFX] ${savedCount} pairs ka DAILY sentiment Firebase mein save kiya.`);
+                    console.log(`[MentFX] ${savedCount} pairs sentiment saved to Firebase.`);
                 }
             } catch (e) {
                 console.log('[MentFX] Parse error:', e.message);
@@ -459,16 +481,12 @@ async function fetchBatch(jobs) {
 }
 
 async function fetchTF(p, tf, retryCount = 0) {
-    // Crypto → Yahoo
     if (p.isCrypto) {
-        console.log(`[fetchTF] Crypto ${p.n} (${tf}) — Yahoo`);
         return fetchTF_Yahoo(p, tf);
     }
-    // Indices → multi‑source
     if (INDICES.includes(p.n)) {
         return await fetchIndexCandlesAndStore(p, tf);
     }
-    // Forex → Twelve Data
     const key = await getKey();
     const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=200&apikey=${key}`;
     await sleep(REQUEST_DELAY_MS);
@@ -556,15 +574,9 @@ async function fetchIndexCandlesAndStore(p, tf) {
 }
 
 async function fetchTF_Yahoo(p, tf) {
-    let yahooSymbol;
-    if (p.isCrypto) {
-        yahooSymbol = yahooCryptoSymbol(p.n);
-    } else {
-        yahooSymbol = p.n; // fallback, but shouldn't be called for indices now
-    }
+    let yahooSymbol = p.isCrypto ? yahooCryptoSymbol(p.n) : p.n;
     const yahooData = await fetchYahooCandles(yahooSymbol, tf);
     if (!yahooData || !yahooData.closes || yahooData.closes.length < 20) {
-        console.warn(`[Yahoo] No data for ${p.n} (${yahooSymbol}) (${tf})`);
         return false;
     }
     try {
@@ -592,7 +604,6 @@ async function fetchTF_Yahoo(p, tf) {
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: yahooData.closes, volumes: yahooData.volumes, time: yahooData.time };
         }
-        console.log(`[Yahoo] ✅ Data stored for ${p.n} (${tf})`);
         return true;
     } catch (e) {
         console.error(`[Yahoo] Error processing ${p.n} (${tf}):`, e.message);
@@ -675,7 +686,19 @@ async function masterScan() {
     } finally {
         isScanning = false;
     }
-    setTimeout(masterScan, msUntilNextHourClose());
+}
+
+// ── 2. Standalone Trigger (For Direct Node Execution in GitHub Actions) ──
+if (require.main === module) {
+    masterScan()
+        .then(() => {
+            console.log('[MarketScanner] Scan cycle completed successfully.');
+            process.exit(0);
+        })
+        .catch(err => {
+            console.error('[MarketScanner] Critical Failure:', err);
+            process.exit(1);
+        });
 }
 
 masterScan.isBusy = () => isScanning;
