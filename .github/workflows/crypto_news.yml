@@ -28,4 +28,5 @@ jobs:
           FIREBASE_URL: ${{ secrets.DATABASE_URL }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: node -e "require('./firebase'); require('./services/cryptoNewsAlert').fetchAndSendNews().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); })"
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: node services/cryptoNewsAlert.js
