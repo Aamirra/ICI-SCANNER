@@ -1,4 +1,4 @@
-name: Market Scanner Job
+Name: Market Scanner Job
 
 on:
   schedule:
@@ -31,4 +31,4 @@ jobs:
           ALPHA_VANTAGE_KEYS: ${{ secrets.ALPHA_VANTAGE_KEYS }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: node services/marketScanner.js
+        run: node scanner.js
