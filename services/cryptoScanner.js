@@ -1,5 +1,25 @@
 const admin = require('firebase-admin');
-const config = require('../config');
+
+// ── 1. Automatic Firebase Initialization (For Standalone / GitHub Actions) ──
+if (!admin.apps.length) {
+    try {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+                ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+                : process.env.FIREBASE_SERVICE_ACCOUNT;
+
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                databaseURL: process.env.DATABASE_URL || process.env.FIREBASE_URL
+            });
+            console.log('[CryptoScanner] Firebase initialized successfully.');
+        } else {
+            console.warn('[CryptoScanner] FIREBASE_SERVICE_ACCOUNT environment variable is missing!');
+        }
+    } catch (err) {
+        console.error('[CryptoScanner] Failed to initialize Firebase:', err.message);
+    }
+}
 
 const CRYPTO_SYMBOLS = [
     'BTCUSD','ETHUSD','LTCUSD','BCHUSD','XRPUSD','ADAUSD','DOTUSD','LINKUSD','UNIUSD','SOLUSD',
@@ -20,7 +40,7 @@ function toBinanceSymbol(pair) {
 }
 
 async function fetchCandles(symbol, interval, limit = 200) {
-    // ✅ Changed to Binance Futures REST API
+    // Binance Futures REST API
     const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const res = await fetch(url);
     const data = await res.json();
@@ -158,6 +178,19 @@ async function runCryptoScan() {
         await db.ref().update(updates);
         console.log(`[CryptoScanner] Updated ${Object.keys(updates).length} paths`);
     }
+}
+
+// ── 2. Standalone Trigger (For Direct Node Execution in GitHub Actions) ──
+if (require.main === module) {
+    runCryptoScan()
+        .then(() => {
+            console.log('[CryptoScanner] Finished scanning successfully.');
+            process.exit(0);
+        })
+        .catch(err => {
+            console.error('[CryptoScanner] Critical Failure:', err);
+            process.exit(1);
+        });
 }
 
 module.exports = { runCryptoScan };
