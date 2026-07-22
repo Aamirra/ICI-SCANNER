@@ -1,14 +1,13 @@
-name: Crypto Scanner Job
+name: Crypto Scanner
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # Har 2 ghante baad
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
-  run-crypto-scanner:
+  scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -16,14 +15,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run Crypto Scan
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: node -e "require('./services/cryptoScanner').runCryptoScan().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); })"
+          TD_KEY_1: "dummy_key_for_yahoo_migration"
+        run: node worker.js
