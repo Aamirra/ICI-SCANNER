@@ -1,10 +1,30 @@
 const admin = require('firebase-admin');
 const { sendWhatsAppAlert } = require('./whatsappBot');
 
-// Symbol mapping (unchanged)
+// ── 1. Automatic Firebase Initialization (For Standalone / GitHub Actions) ──
+if (!admin.apps.length) {
+    try {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+                ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+                : process.env.FIREBASE_SERVICE_ACCOUNT;
+
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                databaseURL: process.env.DATABASE_URL || process.env.FIREBASE_URL
+            });
+            console.log('[CryptoNewsAlert] Firebase initialized successfully.');
+        } else {
+            console.warn('[CryptoNewsAlert] FIREBASE_SERVICE_ACCOUNT environment variable is missing!');
+        }
+    } catch (err) {
+        console.error('[CryptoNewsAlert] Failed to initialize Firebase:', err.message);
+    }
+}
+
+// Symbol mapping
 const SYMBOL_TO_COIN = {
     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
-    // ... (poori list wahi hai jo pehle di thi, yahan abbreviated)
     'MASKUSD': 'mask network'
 };
 
@@ -34,7 +54,7 @@ function getAffectedSymbols(item) {
     return affected;
 }
 
-// AI translation (unchanged)
+// AI translation
 async function translateToUrdu(text) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) return text;
@@ -57,7 +77,7 @@ async function translateToUrdu(text) {
     return text;
 }
 
-// ── Deduplication via Firebase (unchanged) ──
+// ── Deduplication via Firebase ──
 let sentNewsCache = new Set();
 const SENT_NEWS_LIMIT = 200;
 
@@ -83,19 +103,15 @@ async function markNewsSent(url) {
     await admin.database().ref('sentNews').set(arr);
 }
 
-// ✅ Extract article text from URL (simple HTML stripping)
+// Extract article text from URL (simple HTML stripping)
 async function fetchArticleText(url) {
     try {
         const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ICI-Bot/1.0)' } });
         const html = await res.text();
-        // Remove scripts, styles
         let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
         text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-        // Remove HTML tags
         text = text.replace(/<[^>]+>/g, ' ');
-        // Replace multiple spaces/newlines with single space
         text = text.replace(/\s+/g, ' ').trim();
-        // Limit to 3000 characters
         return text.substring(0, 3000);
     } catch (e) {
         console.error('[CryptoNewsAlert] Failed to fetch article:', e.message);
@@ -134,10 +150,9 @@ async function fetchAndSendNews() {
             // Translate headline
             const urduTitle = await translateToUrdu(item.title);
 
-            // Fetch and translate full article (or use description as fallback)
+            // Fetch and translate full article
             let articleText = await fetchArticleText(item.url);
             if (!articleText || articleText.length < 100) {
-                // Fallback to RSS description
                 articleText = item.description.replace(/<[^>]+>/g, '').trim();
             }
             let urduBody = '';
@@ -172,6 +187,19 @@ async function fetchAndSendNews() {
     } catch(e) {
         console.error('[CryptoNewsAlert] Error:', e.message);
     }
+}
+
+// ── 2. Standalone Trigger (For Direct Node Execution in GitHub Actions) ──
+if (require.main === module) {
+    fetchAndSendNews()
+        .then(() => {
+            console.log('[CryptoNewsAlert] Finished execution successfully.');
+            process.exit(0);
+        })
+        .catch(err => {
+            console.error('[CryptoNewsAlert] Critical Failure:', err);
+            process.exit(1);
+        });
 }
 
 module.exports = { fetchAndSendNews };
