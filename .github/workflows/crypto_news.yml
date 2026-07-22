@@ -1,8 +1,8 @@
-name: Crypto News Alert
+Name: Crypto News Alert
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # Har 10 minute baad
+    - cron: '*/5 * * * *' # Har 5 minute baad
   workflow_dispatch:
 
 jobs:
@@ -16,15 +16,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run News Alert
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_URL: ${{ secrets.DATABASE_URL }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: node -e "require('./services/cryptoNewsAlert').fetchAndSendNews().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); })"
