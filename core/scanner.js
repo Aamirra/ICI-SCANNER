@@ -36,6 +36,10 @@ const { shouldSkip } = require('../pullback/marketTimeHelper');
 const { calculateAndUpdateTechnicalMetrics } = require('../services/technicalMetrics');
 const { PB_STATE } = require('../pullback/tradeStateManager');
 
+// ── Strategy Monitors ──
+const { bullMonitor } = require('../pullback/bullMonitor');
+const { bearMonitor } = require('../pullback/bearMonitor');
+
 let calculateAndUpdateStockMetrics = null;
 try {
     const stockModule = require('../services/stockMetrics');
@@ -312,6 +316,7 @@ let DATA_STORE = {};
 let RAW_1H = {};
 let RAW_4H = {};
 let RAW_DAILY = {};
+let RAW_WEEKLY = {};
 let keyUsage = {};
 let keyCallTimes = {};
 let keyCooldown = {};
@@ -528,6 +533,9 @@ async function fetchTF(p, tf, retryCount = 0) {
                             const dailyVols = sorted.map(v => parseFloat(v.volume || '0'));
                             RAW_DAILY[p.n] = { closes: dailyCls, volumes: dailyVols, time: sorted[sorted.length-1]?.datetime };
                         }
+                        if (tf === '1week') {
+                            RAW_WEEKLY[p.n] = { closes: cls, time: sorted[sorted.length-1]?.datetime };
+                        }
                         resolve(true);
                     } else resolve(false);
                 } catch (e) { resolve(false); }
@@ -566,6 +574,9 @@ async function fetchIndexCandlesAndStore(p, tf) {
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.times[data.times.length-1] };
         }
+        if (tf === '1week') {
+            RAW_WEEKLY[p.n] = { closes: data.closes, time: data.times[data.times.length-1] };
+        }
         return true;
     } catch (e) {
         console.error(`[Index] Error storing ${p.n} (${tf}):`, e.message);
@@ -603,6 +614,9 @@ async function fetchTF_Yahoo(p, tf) {
         }
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: yahooData.closes, volumes: yahooData.volumes, time: yahooData.time };
+        }
+        if (tf === '1week') {
+            RAW_WEEKLY[p.n] = { closes: yahooData.closes, time: yahooData.time };
         }
         return true;
     } catch (e) {
@@ -679,6 +693,21 @@ async function masterScan() {
                     pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], sendTG, firebasePut, '4h');
                 }
             }
+
+            // 🔥 Execute Strategy Monitors
+            const pairName = p.n;
+            const dailyData = {
+                closes: RAW_DAILY[pairName]?.closes,
+                weeklyCloses: RAW_WEEKLY[pairName]?.closes
+            };
+            const hourlyData = {
+                closes: RAW_1H[pairName]?.closes
+            };
+
+            if (dailyData.closes && hourlyData.closes) {
+                await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, sendTG, firebasePut);
+                await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, sendTG, firebasePut);
+            }
         }
         await refreshRealUsage();
     } catch (err) {
@@ -703,4 +732,4 @@ if (require.main === module) {
 
 masterScan.isBusy = () => isScanning;
 
-module.exports = { masterScan, RAW_1H, RAW_4H, RAW_DAILY };
+module.exports = { masterScan, RAW_1H, RAW_4H, RAW_DAILY, RAW_WEEKLY };
