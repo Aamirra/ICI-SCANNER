@@ -3,8 +3,17 @@ const calcSMA = require('../utils/smaCalc');
 const { PB_STATE, restoreState, getPBState, defaultBullState, defaultBearState } = require('./tradeStateManager');
 const { shouldSkip } = require('./marketTimeHelper');
 const { bullMonitor } = require('./bullMonitor');
-const { bearMonitor } = require('./bearMonitor'); // ✅ Bear Monitor ab ON hai
+const { bearMonitor } = require('./bearMonitor');
 const saveTargetList = require('./targetList');
+
+// ✅ Manual alerts checker
+let checkManualAlerts = null;
+try {
+    const manualModule = require('../services/checkManualAlerts');
+    checkManualAlerts = manualModule.checkManualAlerts;
+} catch(e) {
+    console.warn('Manual alerts service not available:', e.message);
+}
 
 async function syncAllTargets(firebasePut) {
     const phaseOrderBull = {
@@ -75,18 +84,29 @@ async function checkSetup(p, r, raw, sendTG, firebasePut, tf = '1h') {
         lows:   raw.hourlyLows  || raw.hourlyCloses
     };
 
-    // ✅ BULL aur BEAR dono monitor call ho rahe hain
     const sBull = await bullMonitor(bullKey, p.n, dailyData, hourlyData, sendTG, firebasePut);
     PB_STATE[bullKey] = sBull;
 
     const sBear = await bearMonitor(bearKey, p.n, dailyData, hourlyData, sendTG, firebasePut);
     PB_STATE[bearKey] = sBear;
-
-    await syncAllTargets(firebasePut);
 }
 
 async function checkRules(p, r, raw, sendTG, firebasePut, tf = '1h') {
     await checkSetup(p, r, raw, sendTG, firebasePut, tf);
+    
+    // ✅ Check manual alerts after all pairs are processed (only once per scan)
+    // Use first pair as trigger to run manual alerts check
+    if (checkManualAlerts && !checkRules._manualAlertsChecked) {
+        checkRules._manualAlertsChecked = true;
+        try {
+            await checkManualAlerts();
+            console.log('Manual alerts checked successfully');
+        } catch(e) {
+            console.error('Manual alerts check error:', e.message);
+        }
+        // Reset flag after 55 minutes for next scan
+        setTimeout(() => { checkRules._manualAlertsChecked = false; }, 55 * 60 * 1000);
+    }
 }
 
 module.exports = {
