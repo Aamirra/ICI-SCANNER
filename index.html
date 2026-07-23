@@ -363,30 +363,18 @@ function actualScan() {
 function toggleTheme() {
     const h=document.documentElement, isDark=h.getAttribute('data-theme')==='dark';
     h.setAttribute('data-theme', isDark?'light':'dark');
-    
-    // Icon change on click
     const themeIcon = document.querySelector('#themeBtn i');
-    if(isDark) {
-        themeIcon.className = 'fas fa-sun';
-    } else {
-        themeIcon.className = 'fas fa-moon';
-    }
-    
+    if(isDark) { themeIcon.className = 'fas fa-sun'; }
+    else { themeIcon.className = 'fas fa-moon'; }
     localStorage.setItem('ici-theme', h.getAttribute('data-theme'));
 }
 
 function toggleDesktopMode() {
     const isDesktop=document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display=isDesktop?'flex':'none';
-    
-    // Icon change on click
     const desktopIcon = document.querySelector('#desktopBtn i');
-    if(isDesktop) {
-        desktopIcon.className = 'fas fa-mobile-alt';
-    } else {
-        desktopIcon.className = 'fas fa-desktop';
-    }
-    
+    if(isDesktop) { desktopIcon.className = 'fas fa-mobile-alt'; }
+    else { desktopIcon.className = 'fas fa-desktop'; }
     localStorage.setItem('desktop-mode', isDesktop?'desktop':'mobile');
 }
 
@@ -453,10 +441,19 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
     const allTargets = Object.values(manualTargets);
-    const realTargets = allTargets.filter(t => t.source === 'manual');
-    document.getElementById('targetCount2').textContent = realTargets.length;
-    document.getElementById('targetCount').textContent = realTargets.length;
-    document.getElementById('tradesCount').textContent = allTargets.length;
+    
+    // Manual count
+    const manualCount = allTargets.filter(t => t.source === 'manual').length;
+    
+    // Auto PB_STATE count (excluding waiting phases)
+    const autoCount = Object.keys(PB_STATE).filter(key => {
+        const s = PB_STATE[key];
+        return s && s.phase && s.phase !== 'wait_daily_reclaim' && s.phase !== 'wait_h1_dip';
+    }).length;
+    
+    document.getElementById('targetCount2').textContent = manualCount + autoCount;
+    document.getElementById('targetCount').textContent = manualCount + autoCount;
+    document.getElementById('tradesCount').textContent = allTargets.length; // trades still all manual
 }
 
 function openMMBDropdown(event, pairName) {
@@ -493,18 +490,37 @@ function openMMBDropdown(event, pairName) {
 }
 
 function openTargetModal() {
-    const targets = Object.entries(manualTargets).filter(([n,d]) => d.source === 'manual');
+    // Manual entries
+    const manualEntries = Object.entries(manualTargets)
+        .filter(([n,d]) => d.source === 'manual')
+        .map(([n,d]) => ({ pair: n, dir: d.dir, phase: d.phase, source: 'manual' }));
+    
+    // Auto PB_STATE entries (excluding waiting phases)
+    const autoEntries = [];
+    for (const key in PB_STATE) {
+        const s = PB_STATE[key];
+        if (!s || !s.phase || s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') continue;
+        const pairName = key.split('_')[0];
+        // Avoid duplicate with manual
+        if (manualEntries.some(e => e.pair === pairName)) continue;
+        const dir = key.includes('_bull') ? 'bull' : (key.includes('_bear') ? 'bear' : 'bull');
+        autoEntries.push({ pair: pairName, dir: dir, phase: s.phase, source: 'auto' });
+    }
+    
+    const targets = [...manualEntries, ...autoEntries];
+    
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
         let html = '';
-        targets.forEach(([pn, data]) => {
-            const ph = (data.phase||'?').toUpperCase();
-            const bg = data.dir==='bull'?'#22c55e':'#ef4444';
-            html += '<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair(\''+pn+'\')">'+
-                '<span style="font-weight:700;font-size:14px;flex:1;">'+pn+'</span>'+
-                '<span style="background:'+bg+';color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+pn+'\')">'+ph+'</span>'+
-                '<span style="color:'+(data.dir==='bull'?'var(--green)':'var(--red)')+';font-weight:700;font-size:11px;">'+(data.dir||'?').toUpperCase()+'</span>'+
+        targets.forEach(t => {
+            const ph = (t.phase||'?').toUpperCase();
+            const bg = t.dir==='bull'?'#22c55e':'#ef4444';
+            const sourceLabel = t.source === 'auto' ? ' (Auto)' : '';
+            html += '<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair(\''+t.pair+'\')">'+
+                '<span style="font-weight:700;font-size:14px;flex:1;">'+t.pair+sourceLabel+'</span>'+
+                '<span style="background:'+bg+';color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+t.pair+'\')">'+ph+'</span>'+
+                '<span style="color:'+(t.dir==='bull'?'var(--green)':'var(--red)')+';font-weight:700;font-size:11px;">'+(t.dir||'?').toUpperCase()+'</span>'+
             '</div>';
         });
         document.getElementById('targetContent').innerHTML = html;
@@ -517,7 +533,19 @@ function render() {
     let filtered;
     if(curF==='all') filtered = currentPairs;
     else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target') filtered = currentPairs.filter(p=> manualTargets[p.n] && manualTargets[p.n].source === 'manual');
+    else if(curF==='target') filtered = currentPairs.filter(p=> {
+        // Manual target entries
+        const isManual = manualTargets[p.n] && manualTargets[p.n].source === 'manual';
+        // Auto PB_STATE entries (bullish/bearish setups)
+        const hasAutoSetup = Object.keys(PB_STATE).some(key => 
+            key.startsWith(p.n + '_') && 
+            PB_STATE[key] && 
+            PB_STATE[key].phase && 
+            PB_STATE[key].phase !== 'wait_daily_reclaim' && 
+            PB_STATE[key].phase !== 'wait_h1_dip'
+        );
+        return isManual || hasAutoSetup;
+    });
     else if(curF==='trades') filtered = currentPairs.filter(p=>isInTargetList(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
@@ -544,8 +572,6 @@ function render() {
 
         const isTarget = isInTargetList(p.n);
         const targetDir = isTarget ? manualTargets[p.n].dir : null;
-        
-        // Star Icon Fixes
         const starIcon = isTarget ? '<i class="fas fa-star" style="color:var(--gold)"></i>' : '<i class="far fa-star"></i>';
 
         let row = '<div class="item-row"><div class="item-main" '+
@@ -562,11 +588,24 @@ function render() {
             '</div>';
 
         if (isTargetView) {
-            const manualPhase = manualTargets[p.n]?.phase;
-            const backendPhase = (PB_STATE[p.n+'_1h_'+targetDir] || {}).phase;
-            const phase = manualPhase || backendPhase || 'mmb1';
-            const dirLabel = targetDir ? targetDir.toUpperCase() : '?';
-            const badgeBg = targetDir === 'bull' ? '#22c55e' : '#ef4444';
+            // Get the best phase from either manualTargets or PB_STATE
+            let phase = manualTargets[p.n]?.phase;
+            let dirLabel = targetDir ? targetDir.toUpperCase() : '?';
+            
+            // If no manual phase, check PB_STATE for auto phase
+            if (!phase) {
+                const bullKey = p.n + '_1h_bull';
+                const bearKey = p.n + '_1h_bear';
+                const autoPhase = (PB_STATE[bullKey] || PB_STATE[bearKey])?.phase;
+                if (autoPhase) {
+                    phase = autoPhase;
+                    dirLabel = PB_STATE[bullKey] ? 'BULL' : 'BEAR';
+                }
+            }
+            
+            phase = phase || 'mmb1';
+            const badgeBg = dirLabel.includes('BULL') ? '#22c55e' : '#ef4444';
+            
             row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
                 '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+p.n+'\')">'+dirLabel+' '+phase+'</span>'+
                 '</div>';
@@ -647,7 +686,6 @@ db.ref('liveMarketData').on('value', snap => {
         document.documentElement.setAttribute('data-theme',saved);
         if(saved === 'dark') document.querySelector('#themeBtn i').className = 'fas fa-sun';
     }
-    
     if(localStorage.getItem('desktop-mode')==='desktop'){ 
         document.body.classList.add('desktop-mode'); 
         document.getElementById('chartOverlay').style.display='flex'; 
