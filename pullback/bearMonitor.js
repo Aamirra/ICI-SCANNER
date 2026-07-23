@@ -2,55 +2,53 @@ const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
 const { PB_STATE, defaultBearState } = require('./tradeStateManager');
 
-// ⚠️ ALERTS ENABLED
-const ALERTS_ENABLED = true; 
+const ALERTS_ENABLED = true;
 
 async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut) {
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
-    // Basic data validation
-    if (!dCloses || dCloses.length < 50 || !weeklyCloses || weeklyCloses.length < 50) return;
+    if (!dCloses || dCloses.length < 50 || !weeklyCloses || weeklyCloses.length < 50) {
+        delete PB_STATE[stateKey];
+        return null;
+    }
 
-    // ==========================================
-    // 1. WEEKLY FILTER (Global Bearish Condition)
-    // ==========================================
+    // WEEKLY FILTER (Bearish)
     const wClose = weeklyCloses[weeklyCloses.length - 1];
     const wSMA50 = calcSMA(weeklyCloses, 50);
     const wEMA20 = calcEMA(weeklyCloses, 20);
 
-    if (!wSMA50 || !wEMA20) return;
-
-    // Rule 1: Weekly pe Price 50 SMA aur 20 EMA dono ke NEECHE honi chahiye
-    if (wClose >= wSMA50 || wClose >= wEMA20) {
-        PB_STATE[stateKey] = defaultBearState ? defaultBearState() : {};
-        return PB_STATE[stateKey];
+    if (!wSMA50 || !wEMA20) {
+        delete PB_STATE[stateKey];
+        return null;
     }
 
-    // ==========================================
-    // 2. DAILY FILTER
-    // ==========================================
-    let s = PB_STATE[stateKey] || (defaultBearState ? defaultBearState() : {});
+    // Weekly bearish: price below both MAs
+    if (wClose >= wSMA50 || wClose >= wEMA20) {
+        delete PB_STATE[stateKey];
+        return null;
+    }
+
+    // DAILY FILTER (Bearish)
+    let s = PB_STATE[stateKey] || defaultBearState();
     
     const dClose = dCloses[dCloses.length - 1];
     const dSMA50 = calcSMA(dCloses, 50);
     const dEMA20 = calcEMA(dCloses, 20);
 
-    if (!dSMA50 || !dEMA20) return s;
+    if (!dSMA50 || !dEMA20) {
+        delete PB_STATE[stateKey];
+        return null;
+    }
 
-    // Rule 2: Daily pe price 50 SMA aur 20 EMA ke NEECHE honi chahiye
     const isDailyBearish = (dClose < dSMA50 && dClose < dEMA20);
 
     if (!isDailyBearish) {
-        // Agar Daily setup Bearish nahi hai toh 1H monitor nahi hoga
-        s.h1Phase = 'wait_daily_breakdown';
-        PB_STATE[stateKey] = s;
-        return s;
+        delete PB_STATE[stateKey];
+        return null;
     }
 
-    // ==========================================
-    // 3. HOURLY (1H) LOGIC & SELL TRIGGER
-    // ==========================================
+    // HOURLY LOGIC (Inverse of bull)
     if (hCloses && hCloses.length >= 50) {
         const hClose = hCloses[hCloses.length - 1];
         const hSMA50 = calcSMA(hCloses, 50);
@@ -58,40 +56,56 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
         if (!hSMA50 || !hEMA20) return s;
 
-        // Daily Bearish hone par initial 1H status set karein
-        if (!s.h1Phase || s.h1Phase === 'wait_daily_breakdown') {
-            s.h1Phase = 'wait_h1_pump';
+        if (!s.h1Phase || s.h1Phase === 'wait_daily_reclaim') {
+            s.h1Phase = 'wait_h1_push';
         }
 
-        // Step A: Wait karo jab tak 1H pe Price 50 SMA aur 20 EMA dono ke UPAR candle close kare (Retrace / Pump)
-        if (s.h1Phase === 'wait_h1_pump') {
+        if (s.h1Phase === 'wait_h1_push') {
             if (hClose > hSMA50 && hClose > hEMA20) {
-                s.h1Phase = 'wait_h1_breakdown'; // Bounce aagaya, ab breakdown ka wait hai
+                s.h1Phase = 'wait_h1_reclaim';
             }
-        }
-
-        // Step B: Ab wait karo jab tak 1H pe Price 50 SMA aur 20 EMA dono ke NEECHE ek candle close na kar de
-        else if (s.h1Phase === 'wait_h1_breakdown') {
+        } else if (s.h1Phase === 'wait_h1_reclaim') {
             if (hClose < hSMA50 && hClose < hEMA20) {
                 s.h1Phase = 'alert_triggered';
                 
-                // 🚨 TELEGRAM BEARISH ALERT
-                if (ALERTS_ENABLED && typeof sendTG === 'function') {
-                    sendTG(
-                        `🔻 *${pairName}* | 1H Bearish Entry Alert!\n\n` +
-                        `• Weekly: Bearish (Below 50SMA & 20EMA)\n` +
-                        `• Daily: Bearish (Below 50SMA & 20EMA)\n` +
-                        `• 1H: Closed below 50SMA & 20EMA!\n` +
-                        `• Current Price: ${hClose}`
-                    );
+                if (ALERTS_ENABLED) {
+                    const message = '🔴 *' + pairName + '* | 1H Breakdown Entry Alert!\n\n' +
+                        '• Weekly: Bearish (Below 50SMA & 20EMA)\n' +
+                        '• Daily: Bearish (Below 50SMA & 20EMA)\n' +
+                        '• 1H: Closed below 50SMA & 20EMA!\n' +
+                        '• Current Price: ' + hClose;
+
+                    // Telegram
+                    if (typeof sendTG === 'function') {
+                        sendTG(message);
+                    }
+
+                    // WhatsApp
+                    try {
+                        const https = require('https');
+                        const data = JSON.stringify({
+                            action: 'send_whatsapp',
+                            params: { text: message }
+                        });
+                        const req = https.request({
+                            hostname: 'ici-scanner.onrender.com',
+                            path: '/api/execute-action',
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Content-Length': data.length
+                            }
+                        });
+                        req.write(data);
+                        req.end();
+                    } catch(e) {
+                        console.error('WhatsApp alert error:', e.message);
+                    }
                 }
             }
-        }
-
-        // Step C: Alert bhejne ke baad agar wapas 1H pe price upar chali jaye toh reset karein
-        else if (s.h1Phase === 'alert_triggered') {
+        } else if (s.h1Phase === 'alert_triggered') {
             if (hClose > hSMA50 && hClose > hEMA20) {
-                s.h1Phase = 'wait_h1_breakdown'; // Agli Short entry ke liye dobara ready
+                s.h1Phase = 'wait_h1_reclaim';
             }
         }
     }
