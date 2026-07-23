@@ -64,7 +64,7 @@
         body.desktop-mode #tv_chart_container { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
         body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'Chart'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
+        body.desktop-mode #tv_chart_container:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
         body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
@@ -441,19 +441,29 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
     const allTargets = Object.values(manualTargets);
-    
-    // Manual count
     const manualCount = allTargets.filter(t => t.source === 'manual').length;
-    
-    // Auto PB_STATE count (excluding waiting phases)
+
+    // Auto count: sirf valid forex pairs + weekly/daily match
+    const forexPairNames = new Set(PAIRS.map(p => p.n));
     const autoCount = Object.keys(PB_STATE).filter(key => {
         const s = PB_STATE[key];
-        return s && s.phase && s.phase !== 'wait_daily_reclaim' && s.phase !== 'wait_h1_dip';
+        if (!s || !s.phase) return false;
+        if (s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') return false;
+        const pairName = key.split('_')[0];
+        if (!forexPairNames.has(pairName)) return false;
+        const marketData = MARKET_DATA[pairName];
+        if (marketData) {
+            const isWeeklyBullish = marketData['1week'] === 'bull';
+            const isWeeklyBearish = marketData['1week'] === 'bear';
+            if (key.includes('_bull') && !isWeeklyBullish) return false;
+            if (key.includes('_bear') && !isWeeklyBearish) return false;
+        }
+        return true;
     }).length;
-    
+
     document.getElementById('targetCount2').textContent = manualCount + autoCount;
     document.getElementById('targetCount').textContent = manualCount + autoCount;
-    document.getElementById('tradesCount').textContent = allTargets.length; // trades still all manual
+    document.getElementById('tradesCount').textContent = allTargets.length;
 }
 
 function openMMBDropdown(event, pairName) {
@@ -490,25 +500,34 @@ function openMMBDropdown(event, pairName) {
 }
 
 function openTargetModal() {
-    // Manual entries
     const manualEntries = Object.entries(manualTargets)
         .filter(([n,d]) => d.source === 'manual')
         .map(([n,d]) => ({ pair: n, dir: d.dir, phase: d.phase, source: 'manual' }));
-    
-    // Auto PB_STATE entries (excluding waiting phases)
+
+    const forexPairNames = new Set(PAIRS.map(p => p.n));
     const autoEntries = [];
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
-        if (!s || !s.phase || s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') continue;
+        if (!s || !s.phase) continue;
+        if (s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') continue;
         const pairName = key.split('_')[0];
-        // Avoid duplicate with manual
+        if (!forexPairNames.has(pairName)) continue;
         if (manualEntries.some(e => e.pair === pairName)) continue;
+
+        const marketData = MARKET_DATA[pairName];
+        if (marketData) {
+            const isWeeklyBullish = marketData['1week'] === 'bull';
+            const isWeeklyBearish = marketData['1week'] === 'bear';
+            if (key.includes('_bull') && !isWeeklyBullish) continue;
+            if (key.includes('_bear') && !isWeeklyBearish) continue;
+        }
+
         const dir = key.includes('_bull') ? 'bull' : (key.includes('_bear') ? 'bear' : 'bull');
         autoEntries.push({ pair: pairName, dir: dir, phase: s.phase, source: 'auto' });
     }
-    
+
     const targets = [...manualEntries, ...autoEntries];
-    
+
     if (targets.length === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
@@ -534,16 +553,21 @@ function render() {
     if(curF==='all') filtered = currentPairs;
     else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
     else if(curF==='target') filtered = currentPairs.filter(p=> {
-        // Manual target entries
         const isManual = manualTargets[p.n] && manualTargets[p.n].source === 'manual';
-        // Auto PB_STATE entries (bullish/bearish setups)
-        const hasAutoSetup = Object.keys(PB_STATE).some(key => 
-            key.startsWith(p.n + '_') && 
-            PB_STATE[key] && 
-            PB_STATE[key].phase && 
-            PB_STATE[key].phase !== 'wait_daily_reclaim' && 
-            PB_STATE[key].phase !== 'wait_h1_dip'
-        );
+        const hasAutoSetup = Object.keys(PB_STATE).some(key => {
+            if (!key.startsWith(p.n + '_')) return false;
+            const state = PB_STATE[key];
+            if (!state || !state.phase) return false;
+            if (state.phase === 'wait_daily_reclaim' || state.phase === 'wait_h1_dip') return false;
+            const marketData = MARKET_DATA[p.n];
+            if (marketData) {
+                const isWeeklyBullish = marketData['1week'] === 'bull';
+                const isWeeklyBearish = marketData['1week'] === 'bear';
+                if (key.includes('_bull') && !isWeeklyBullish) return false;
+                if (key.includes('_bear') && !isWeeklyBearish) return false;
+            }
+            return true;
+        });
         return isManual || hasAutoSetup;
     });
     else if(curF==='trades') filtered = currentPairs.filter(p=>isInTargetList(p.n));
@@ -588,11 +612,8 @@ function render() {
             '</div>';
 
         if (isTargetView) {
-            // Get the best phase from either manualTargets or PB_STATE
             let phase = manualTargets[p.n]?.phase;
             let dirLabel = targetDir ? targetDir.toUpperCase() : '?';
-            
-            // If no manual phase, check PB_STATE for auto phase
             if (!phase) {
                 const bullKey = p.n + '_1h_bull';
                 const bearKey = p.n + '_1h_bear';
@@ -602,10 +623,8 @@ function render() {
                     dirLabel = PB_STATE[bullKey] ? 'BULL' : 'BEAR';
                 }
             }
-            
             phase = phase || 'mmb1';
             const badgeBg = dirLabel.includes('BULL') ? '#22c55e' : '#ef4444';
-            
             row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
                 '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,\''+p.n+'\')">'+dirLabel+' '+phase+'</span>'+
                 '</div>';
