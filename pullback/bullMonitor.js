@@ -9,7 +9,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
-    // Basic data validation
     if (!dCloses || dCloses.length < 50 || !weeklyCloses || weeklyCloses.length < 50) {
         delete PB_STATE[stateKey];
         return null;
@@ -25,7 +24,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
         return null;
     }
 
-    // Weekly condition fail -> delete PB_STATE entry
     if (wClose <= wSMA50 || wClose <= wEMA20) {
         delete PB_STATE[stateKey];
         return null;
@@ -45,13 +43,12 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
     const isDailyBullish = (dClose > dSMA50 && dClose > dEMA20);
 
-    // Daily condition fail -> delete PB_STATE entry
     if (!isDailyBullish) {
         delete PB_STATE[stateKey];
         return null;
     }
 
-    // HOURLY (1H) LOGIC & ENTRY TRIGGER
+    // HOURLY LOGIC
     if (hCloses && hCloses.length >= 50) {
         const hClose = hCloses[hCloses.length - 1];
         const hSMA50 = calcSMA(hCloses, 50);
@@ -71,14 +68,39 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
             if (hClose > hSMA50 && hClose > hEMA20) {
                 s.h1Phase = 'alert_triggered';
                 
-                if (ALERTS_ENABLED && typeof sendTG === 'function') {
-                    sendTG(
-                        '🚀 *' + pairName + '* | 1H Reclaim Entry Alert!\n\n' +
+                if (ALERTS_ENABLED) {
+                    const message = '🚀 *' + pairName + '* | 1H Reclaim Entry Alert!\n\n' +
                         '• Weekly: Bullish (Above 50SMA & 20EMA)\n' +
                         '• Daily: Bullish (Above 50SMA & 20EMA)\n' +
                         '• 1H: Closed above 50SMA & 20EMA!\n' +
-                        '• Current Price: ' + hClose
-                    );
+                        '• Current Price: ' + hClose;
+
+                    // Telegram
+                    if (typeof sendTG === 'function') {
+                        sendTG(message);
+                    }
+
+                    // WhatsApp via execute-action
+                    try {
+                        const https = require('https');
+                        const data = JSON.stringify({
+                            action: 'send_whatsapp',
+                            params: { text: message }
+                        });
+                        const req = https.request({
+                            hostname: 'ici-scanner.onrender.com',
+                            path: '/api/execute-action',
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Content-Length': data.length
+                            }
+                        });
+                        req.write(data);
+                        req.end();
+                    } catch(e) {
+                        console.error('WhatsApp alert error:', e.message);
+                    }
                 }
             }
         } else if (s.h1Phase === 'alert_triggered') {
