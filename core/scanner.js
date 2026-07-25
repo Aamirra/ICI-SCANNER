@@ -673,6 +673,14 @@ async function sendStrongPullbackNotifications() {
 async function masterScan() {
     if (isScanning) return;
     isScanning = true;
+
+    // 🟢 SCAN START STATUS
+    try {
+        await admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
+    } catch (err) {
+        console.error('[masterScan] Failed to set scan start status:', err.message);
+    }
+
     try {
         maybeResetDaily();
         const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
@@ -713,6 +721,13 @@ async function masterScan() {
     } catch (err) {
         console.error('[masterScan] Fatal error:', err);
     } finally {
+        // 🔴 SCAN COMPLETE STATUS
+        try {
+            await admin.database().ref('scanStatus').set({ running: false, completedAt: Date.now() });
+            await admin.database().ref('lastScanTime').set({ time: Date.now() });
+        } catch (err) {
+            console.error('[masterScan] Failed to set scan complete status:', err.message);
+        }
         isScanning = false;
     }
 }
