@@ -10,18 +10,6 @@ const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 // ── In-Memory Tracking for Twelve Data Minutely Limits ──
 const tdKeyTimestamps = {}; 
 
-// ── Tiingo Keys Setup (Reads TIINGO_KEY_1) ──
-const TIINGO_KEYS = [];
-for (let i = 1; i <= 16; i++) {
-    const key = process.env[`TIINGO_KEY_${i}`];
-    if (key && key.trim().length > 0) {
-        if (!TIINGO_KEYS.includes(key.trim())) {
-            TIINGO_KEYS.push(key.trim());
-        }
-    }
-}
-console.log(`[Setup] Total Tiingo Keys Loaded: ${TIINGO_KEYS.length}`);
-
 // ── Twelve Data Keys Setup (Reads TD_KEY_1 to TD_KEY_16) ──
 const TD_KEYS = [];
 for (let i = 1; i <= 16; i++) {
@@ -52,10 +40,6 @@ function getYahooForexSymbol(pairName) {
 }
 
 // ── Symbol Mappings ──
-function getTiingoSymbol(pairName) {
-    return pairName.toLowerCase();
-}
-
 function getTwelveDataSymbol(pairName) {
     const map = {
         'XAUUSD': 'XAU/USD',
@@ -192,72 +176,7 @@ function fetchYahooDailyCandles(yahooSymbol) {
 }
 
 // ═══════════════════════════════════════════
-// 3. TIINGO API (PRIMARY FOR FOREX & GOLD)
-// ═══════════════════════════════════════════
-async function fetchTiingoVolume(pairName, attempt = 0) {
-    if (TIINGO_KEYS.length === 0) return null;
-    if (attempt >= TIINGO_KEYS.length) {
-        console.warn(`[Tiingo] All available keys exhausted for this hour.`);
-        return null;
-    }
-
-    const currentHour = new Date().toISOString().slice(0, 13);
-    let keyIndex = -1;
-
-    for (let i = 0; i < TIINGO_KEYS.length; i++) {
-        const snap = await admin.database().ref(`tiingo_counter/${currentHour}/${i}`).once('value');
-        if (snap.val() !== 'exhausted') {
-            keyIndex = i;
-            break;
-        }
-    }
-
-    if (keyIndex === -1) {
-        console.warn(`[Tiingo] No active keys left for the hour: ${currentHour}`);
-        return null;
-    }
-
-    const apiKey = TIINGO_KEYS[keyIndex];
-    const symbol = getTiingoSymbol(pairName);
-    const endDate = new Date().toISOString().slice(0, 10);
-    const startDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const url = `https://api.tiingo.com/tiingo/fx/${symbol}/prices?startDate=${startDate}&endDate=${endDate}&resampleFreq=1day&token=${apiKey}`;
-
-    console.log(`[Tiingo] Fetching ${pairName} using key index ${keyIndex}...`);
-    return new Promise((resolve) => {
-        https.get(url, { agent }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', async () => {
-                try {
-                    const json = JSON.parse(data);
-
-                    if (json && json.detail && (json.detail.includes('allocation') || json.detail.includes('limit'))) {
-                        console.warn(`[Tiingo] Key index ${keyIndex} hit allocation limit. Shifting key.`);
-                        await admin.database().ref(`tiingo_counter/${currentHour}/${keyIndex}`).set('exhausted');
-                        resolve(await fetchTiingoVolume(pairName, attempt + 1));
-                        return;
-                    }
-
-                    if (!Array.isArray(json) || json.length < 200) {
-                        resolve(null);
-                        return;
-                    }
-
-                    const closes = json.map(d => d.close);
-                    const volumes = json.map(d => d.volume || 0);
-                    console.log(`[Tiingo] ✅ Success for ${pairName}`);
-                    resolve({ closes, volumes, currentPrice: closes[closes.length - 1], source: 'Tiingo' });
-                } catch (e) {
-                    resolve(null);
-                }
-            });
-        }).on('error', () => resolve(null));
-    });
-}
-
-// ═══════════════════════════════════════════
-// 4. TWELVE DATA API (SAFE MULTI-KEY POOL EXECUTION)
+// 3. TWELVE DATA API (SAFE MULTI-KEY POOL EXECUTION)
 // ═══════════════════════════════════════════
 async function fetchTwelveDataVolume(pairName) {
     const keyIndex = await getAvailableKeyIndex(TD_KEYS, 'td_counter', TD_DAILY_LIMIT_PER_KEY);
@@ -370,18 +289,14 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
 
             if (isCrypto) {
                 volumeData = await fetchBinanceDailyCandles(pair.n.replace('USD', 'USDT'));
-                if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchTiingoVolume(pair.n);
                 if (!volumeData || !hasValidVolume(volumeData.volumes)) volumeData = await fetchYahooDailyCandles(pair.n + '=X');
             } else if (isIndex) {
                 volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 if (!volumeData) volumeData = await fetchYahooDailyCandles(pair.n);
             } else {
                 // Main Sequence for Forex & Gold
-                // 1. Tiingo primary
-                volumeData = await fetchTiingoVolume(pair.n);
-                
-                // 2. Yahoo Futures (free, no key) – only for forex
-                if ((!volumeData || !hasValidVolume(volumeData.volumes)) && isForex) {
+                // 1. Yahoo Futures (free, no key) – only for forex
+                if (isForex) {
                     const futuresSymbol = getYahooForexSymbol(pair.n);
                     console.log(`[Yahoo Futures] Trying futures volume for ${pair.n} -> ${futuresSymbol}`);
                     const futuresData = await fetchYahooDailyCandles(futuresSymbol);
@@ -390,12 +305,12 @@ async function calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H) {
                     }
                 }
 
-                // 3. Twelve Data
+                // 2. Twelve Data
                 if (!volumeData || (!hasValidVolume(volumeData.volumes) && isGold)) {
                     volumeData = await fetchTwelveDataVolume(pair.n);
                 }
                 
-                // 4. Yahoo spot fallback
+                // 3. Yahoo spot fallback
                 if (!volumeData) {
                     volumeData = await fetchYahooDailyCandles(getYahooSymbol(pair.n));
                 }
