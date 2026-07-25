@@ -643,7 +643,6 @@ function render() {
     updateCounts();
 }
 
-// ✅ UPDATED: 10 EMA, 20 EMA, aur 50 SMA yahan set kiye gaye hain
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -661,10 +660,13 @@ function openChart(idx) {
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
     const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
+    new TradingView.widget({
+        autosize: true,
+        symbol: isPSX?'KSE:'+symbol:symbol,
         interval: currentChartInterval,
-        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id:"tv_chart_container",
+        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id: "tv_chart_container",
+        volume: false, // ✅ Volume hide kar diya
         studies: [
             {id:"EMA@tv-basicstudies", inputs:{length:10}},   // ✅ 10 EMA
             {id:"EMA@tv-basicstudies", inputs:{length:20}},   // ✅ 20 EMA
