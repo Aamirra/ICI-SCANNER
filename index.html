@@ -304,7 +304,7 @@ async function sendOpenRouterChat() {
     } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`; }
 }
 
-// === SCAN WITH VERIFICATION (AND SET LAST SCAN TIME) ===
+// === SCAN WITH VERIFICATION & LAST SCAN TIME UPDATE ===
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -316,18 +316,18 @@ function actualScan() {
     fetch('/scan').catch(() => {});
 
     let attempts = 0;
-    const maxAttempts = 20; // 60 sec
+    const maxAttempts = 20;
     const checker = setInterval(() => {
         attempts++;
         db.ref('liveMarketData/EURUSD').once('value', snap => {
             if (snap.exists()) {
                 clearInterval(checker);
+                const now = new Date();
                 btn.textContent = '✅ Done';
                 btn.disabled = false;
-                const now = Date.now();
-                // Backend bhi set karega, lekin frontend bhi set kar raha taaki foran dikhe
-                db.ref('lastScanTime').set({ time: now });
-                statusEl.textContent = '✅ Scan completed';
+                // Update last scan time in Firebase (and UI will react)
+                db.ref('lastScanTime').set({ time: now.getTime() });
+                statusEl.textContent = '✅ Data received at ' + now.toLocaleTimeString();
                 setTimeout(() => {
                     btn.textContent = 'Scan';
                 }, 4000);
