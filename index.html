@@ -643,6 +643,7 @@ function render() {
     updateCounts();
 }
 
+// ✅ UPDATED: 10 EMA, 20 EMA, aur 50 SMA yahan set kiye gaye hain
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
@@ -665,9 +666,9 @@ function openChart(idx) {
         theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id:"tv_chart_container",
         studies: [
-            {id:"MASimple@tv-basicstudies", inputs:{length:10}},
-            {id:"MASimple@tv-basicstudies", inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
+            {id:"EMA@tv-basicstudies", inputs:{length:10}},   // ✅ 10 EMA
+            {id:"EMA@tv-basicstudies", inputs:{length:20}},   // ✅ 20 EMA
+            {id:"MASimple@tv-basicstudies", inputs:{length:50}}, // ✅ 50 SMA
             {id:"WilliamFractal@tv-basicstudies"}
         ]
     });
