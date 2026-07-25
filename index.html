@@ -106,6 +106,8 @@
         .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
         .approve-btn { background:var(--green); color:#fff; }
         .reject-btn { background:var(--red); color:#fff; }
+        .scan-status-line { font-size:11px; color: var(--muted); margin-left:8px; }
+        .last-scan-line { font-size:11px; color: var(--gold); margin-left:auto; }
     </style>
 </head>
 <body>
@@ -127,6 +129,11 @@
         <button class="pill scan-btn" onclick="actualScan()">Scan</button>
         <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">Alerts</button>
         <div class="cloud-status" id="statusDot">Cloud active</div>
+    </div>
+    <!-- Scan status line and last scan time -->
+    <div style="display:flex; align-items:center; margin-bottom:8px;">
+        <span id="scanStatusText" class="scan-status-line"></span>
+        <span id="lastScanTime" class="last-scan-line"></span>
     </div>
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><i class="fas fa-chevron-down" style="font-size:12px;"></i></div>
@@ -220,6 +227,23 @@ let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, cur
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
+let lastScanTimestamp = null;
+
+// Listen for last scan time
+db.ref('lastScanTime/time').on('value', snap => {
+    lastScanTimestamp = snap.val();
+    updateLastScanDisplay();
+});
+
+function updateLastScanDisplay() {
+    const el = document.getElementById('lastScanTime');
+    if (lastScanTimestamp) {
+        const d = new Date(lastScanTimestamp);
+        el.textContent = '🕒 Last scan: ' + d.toLocaleTimeString();
+    } else {
+        el.textContent = '🕒 Last scan: never';
+    }
+}
 
 db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
 function updateToggleButtons() {
@@ -280,17 +304,19 @@ async function sendOpenRouterChat() {
     } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`; }
 }
 
-// === SCAN WITH LIVE PROGRESS (POLLING liveMarketData/EURUSD) ===
+// === SCAN WITH VERIFICATION (AND SET LAST SCAN TIME) ===
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
+    const statusEl = document.getElementById('scanStatusText');
     btn.textContent = '⏳ Scanning...';
     btn.disabled = true;
+    statusEl.textContent = 'Scan triggered, waiting for data...';
 
     // Trigger backend
     fetch('/scan').catch(() => {});
 
     let attempts = 0;
-    const maxAttempts = 20; // 20 * 3 sec = 60 sec timeout
+    const maxAttempts = 20; // 60 sec
     const checker = setInterval(() => {
         attempts++;
         db.ref('liveMarketData/EURUSD').once('value', snap => {
@@ -298,19 +324,26 @@ function actualScan() {
                 clearInterval(checker);
                 btn.textContent = '✅ Done';
                 btn.disabled = false;
+                const now = Date.now();
+                // Backend bhi set karega, lekin frontend bhi set kar raha taaki foran dikhe
+                db.ref('lastScanTime').set({ time: now });
+                statusEl.textContent = '✅ Scan completed';
                 setTimeout(() => {
                     btn.textContent = 'Scan';
-                }, 3000);
+                }, 4000);
             } else if (attempts >= maxAttempts) {
                 clearInterval(checker);
                 btn.textContent = 'Scan';
                 btn.disabled = false;
+                statusEl.textContent = '⚠️ Scan timeout (no data after 60s)';
+            } else {
+                statusEl.textContent = '⏳ Checking for new data... (' + attempts + '/' + maxAttempts + ')';
             }
         });
     }, 3000);
 }
 
-// === TARGET SETUP (Normalized old phases) ===
+// === TARGET SETUP (with old phase normalization) ===
 function getUniqueAutoSetups() {
     const forexPairNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
@@ -500,7 +533,6 @@ db.ref('liveMarketData').on('value', snap => {
         const arr = Object.entries(liveMarketData).map(([n,d]) => ({ name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50 }));
         checkAllAlerts(arr);
     }
-    render();
 });
 
 (function(){
@@ -516,6 +548,7 @@ db.ref('liveMarketData').on('value', snap => {
     }
 })();
 updateToggleButtons();
+updateLastScanDisplay();
 </script>
 </body>
 </html>
