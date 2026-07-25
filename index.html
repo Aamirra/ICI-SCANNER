@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        /* (Baaki sab CSS same hai, space bachane ke liye short kar raha hoon, aap apna original CSS yahan rakhte hain) */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -122,6 +121,12 @@
         .dir-btn.bear { background:#ef4444; }
         .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
         .dir-btn.remove-btn { background:var(--red); color:#fff; margin-bottom:8px; }
+
+        /* ✅ ADDED: Force Hide Volume Pane using CSS */
+        #tv_chart_container div[data-name="pane"]:last-child,
+        #tv_chart_container .chart-container .chart-pane:last-child {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -656,7 +661,7 @@ function changeChartInterval(interval, btn) {
     openChart(chartIdx);
 }
 
-// ✅ YAHAN FIX KIYA HAI (SAHI STUDY IDs)
+// ✅ FINAL FIXED OPENCHART FUNCTION (10 EMA, 20 EMA, 50 SMA, William Fractal)
 function openChart(idx) {
     chartIdx=idx; const symbol=chartPairs[idx];
     document.getElementById('chartPairName').textContent=symbol;
@@ -669,12 +674,12 @@ function openChart(idx) {
         interval: currentChartInterval,
         theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id: "tv_chart_container",
-        volume: false, // ✅ Volume hide ho gaya
+        volume: false, // Volume pane should be hidden
         studies: [
-            {id: "EMA", inputs: {length: 10}},      // ✅ 10 EMA (sahih)
-            {id: "EMA", inputs: {length: 20}},      // ✅ 20 EMA (sahih)
-            {id: "MASimple", inputs: {length: 50}}, // ✅ 50 SMA (MASimple kaam karta hai)
-            {id: "WilliamFractal"}                  // ✅ William Fractal (sahih)
+            {id: "EMA", inputs: {length: 10}},        // ✅ 10 EMA
+            {id: "EMA", inputs: {length: 20}},        // ✅ 20 EMA
+            {id: "MASimple", inputs: {length: 50}},   // ✅ 50 SMA
+            {id: "WilliamFractal"}                    // ✅ William Fractal
         ]
     });
 }
