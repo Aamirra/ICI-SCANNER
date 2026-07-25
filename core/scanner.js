@@ -63,12 +63,12 @@ const MINUTE_WAIT_MS    = 61 * 1000;
 const INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
 // Symbol mapping for various APIs
 const INDEX_SYMBOLS = {
-    'US500': { finnhub: '^GSPC', yahoo: '^GSPC', twelvedata: 'SPY', tiingo: 'SPY', alphavantage: 'SPY' },
-    'US100': { finnhub: '^NDX', yahoo: '^NDX', twelvedata: 'QQQ', tiingo: 'QQQ', alphavantage: 'QQQ' },
-    'US30':  { finnhub: '^DJI', yahoo: '^DJI', twelvedata: 'DIA', tiingo: 'DIA', alphavantage: 'DIA' },
-    'GER40': { finnhub: '^GDAXI', yahoo: '^GDAXI', twelvedata: 'EWG', tiingo: 'EWG', alphavantage: 'EWG' },
-    'UK100': { finnhub: '^FTSE', yahoo: '^FTSE', twelvedata: 'EWU', tiingo: 'EWU', alphavantage: 'EWU' },
-    'JPN225':{ finnhub: '^N225', yahoo: '^N225', twelvedata: 'EWJ', tiingo: 'EWJ', alphavantage: 'EWJ' }
+    'US500': { finnhub: '^GSPC', yahoo: '^GSPC', twelvedata: 'SPY', alphavantage: 'SPY' },
+    'US100': { finnhub: '^NDX', yahoo: '^NDX', twelvedata: 'QQQ', alphavantage: 'QQQ' },
+    'US30':  { finnhub: '^DJI', yahoo: '^DJI', twelvedata: 'DIA', alphavantage: 'DIA' },
+    'GER40': { finnhub: '^GDAXI', yahoo: '^GDAXI', twelvedata: 'EWG', alphavantage: 'EWG' },
+    'UK100': { finnhub: '^FTSE', yahoo: '^FTSE', twelvedata: 'EWU', alphavantage: 'EWU' },
+    'JPN225':{ finnhub: '^N225', yahoo: '^N225', twelvedata: 'EWJ', alphavantage: 'EWJ' }
 };
 
 // Crypto → Yahoo mapping
@@ -167,44 +167,6 @@ async function fetchIndexCandles(pair, tf) {
                 return candles && candles.closes.length >= 20 ? candles : null;
             },
             retries: 3
-        },
-        {
-            name: 'Tiingo',
-            fetch: async () => {
-                const tiingoKey = process.env.TIINGO_KEY;
-                if (!tiingoKey) return null;
-                const tiingoSymbol = symMap.tiingo;
-                if (tf === '1day' || tf === '1week') {
-                    const url = `https://api.tiingo.com/tiingo/daily/${tiingoSymbol}/prices?startDate=2020-01-01&token=${tiingoKey}`;
-                    const res = await fetch(url);
-                    const json = await res.json();
-                    if (!Array.isArray(json) || json.length < 20) return null;
-                    const sorted = json.sort((a,b) => new Date(a.date) - new Date(b.date));
-                    const closes = sorted.map(d => d.adjClose || d.close);
-                    const highs = sorted.map(d => d.high);
-                    const lows = sorted.map(d => d.low);
-                    const volumes = sorted.map(d => d.volume);
-                    const times = sorted.map(d => d.date);
-                    if (tf === '1week') {
-                        const weeklyCandles = { closes: [], highs: [], lows: [], volumes: [], times: [] };
-                        for (let i = 4; i < closes.length; i += 5) {
-                            const cSlice = closes.slice(i-4, i+1);
-                            const hSlice = highs.slice(i-4, i+1);
-                            const lSlice = lows.slice(i-4, i+1);
-                            const vSlice = volumes.slice(i-4, i+1);
-                            weeklyCandles.closes.push(cSlice[cSlice.length-1]);
-                            weeklyCandles.highs.push(Math.max(...hSlice));
-                            weeklyCandles.lows.push(Math.min(...lSlice));
-                            weeklyCandles.times.push(times[i]);
-                            weeklyCandles.volumes.push(vSlice.reduce((a,b)=>a+b,0));
-                        }
-                        return weeklyCandles.closes.length >= 20 ? weeklyCandles : null;
-                    }
-                    return { closes, highs, lows, volumes, times };
-                }
-                return null;
-            },
-            retries: 2
         },
         {
             name: 'Alpha Vantage',
