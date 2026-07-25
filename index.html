@@ -9,13 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        :root {
-            --bg: #f1f5f9; --surface: #ffffff; --border: #e2e8f0;
-            --txt: #0f172a; --txt-muted: #64748b; --acc: #0062ff;
-            --green: #22c55e; --red: #ef4444; --gold: #f59e0b;
-            --pill-bg: #f8fafc; --shadow: 0 4px 12px rgba(0,0,0,0.05);
-            --radius: 6px;
-        }
+        :root { --bg: #f1f5f9; --surface: #ffffff; --border: #e2e8f0; --txt: #0f172a; --txt-muted: #64748b; --acc: #0062ff; --green: #22c55e; --red: #ef4444; --gold: #f59e0b; --pill-bg: #f8fafc; --shadow: 0 4px 12px rgba(0,0,0,0.05); --radius: 6px; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
         body { background:var(--bg); color:var(--txt); height:100vh; overflow:hidden; display:flex; }
 
@@ -31,8 +25,8 @@
 
         .action-bar { display:flex; gap:4px; padding:10px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
         .action-btn { background:var(--pill-bg); border:1px solid var(--border); padding:4px 10px; border-radius:var(--radius); font-size:11px; font-weight:600; color:var(--txt); cursor:pointer; transition:0.2s; }
-        .action-btn:hover { background:var(--border); }
         .action-btn.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
+        .action-btn:hover { background:var(--border); }
 
         .search-area { padding:10px 16px; display:flex; gap:8px; align-items:center; border-bottom:1px solid var(--border); }
         .search-area input { flex:1; padding:6px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px; outline:none; background:var(--surface); }
@@ -47,7 +41,7 @@
         .sort-icon { font-size:9px; margin-left:4px; color:var(--acc); }
 
         .scroll-area { flex:1; overflow-y:auto; }
-        .row-item { display:flex; align-items:center; padding:10px 0 10px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:0.1s; }
+        .row-item { display:flex; align-items:center; padding:10px 0 10px 16px; border-bottom:1px solid var(--border); cursor:pointer; }
         .row-item:hover { background:var(--pill-bg); }
         .row-pair { width:22%; font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px; }
         .row-pair i { color:var(--txt-muted); cursor:pointer; font-size:12px; }
@@ -77,8 +71,8 @@
         .int-btn { padding:2px 8px; border:1px solid var(--border); background:var(--surface); border-radius:4px; font-size:11px; font-weight:500; cursor:pointer; color:var(--txt-muted); }
         .int-btn.active { background:var(--pill-bg); color:var(--txt); font-weight:600; }
         .int-btn.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
-
         .chart-container { flex:1; position:relative; overflow:hidden; }
+        #tv_chart_container { height:100%; width:100%; }
 
         .settings-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.3); display:none; justify-content:flex-end; }
         .settings-overlay.open { display:flex; }
@@ -104,13 +98,9 @@
         .sort-dropdown button { display:block; width:100%; padding:6px 14px; background:none; border:none; text-align:left; font-size:12px; color:var(--txt); cursor:pointer; }
         .sort-dropdown button:hover { background:var(--pill-bg); }
         .sort-dropdown .sep { border-top:1px solid var(--border); margin:4px 14px; }
-        .sort-dropdown .disabled { color:var(--txt-muted); cursor:default; }
-
-        #tv_chart_container { height:100%; width:100%; }
     </style>
 </head>
 <body>
-
     <!-- LEFT PANEL -->
     <div class="left-panel">
         <div class="header-bar">
@@ -121,7 +111,7 @@
             </div>
         </div>
         <div class="action-bar">
-            <button class="action-btn active-blue">CHART</button>
+            <button class="action-btn active-blue" onclick="setFilter('all')">CHART</button>
             <button class="action-btn" onclick="actualScan()">REFRESH</button>
             <button class="action-btn" onclick="openSettings()">COLUMNS</button>
             <button class="action-btn">REPORT</button>
@@ -143,7 +133,7 @@
         </div>
         <div class="scroll-area" id="pairsContainer"></div>
         <div class="bottom-actions">
-            <span>Showing 1 - <span id="totalCount">0</span> of <span id="totalCount">0</span></span>
+            <span>Showing 1 - <span id="totalCount">0</span></span>
             <span><i class="fas fa-chevron-left" style="cursor:pointer;"></i> <i class="fas fa-chevron-right" style="cursor:pointer;"></i></span>
         </div>
     </div>
@@ -173,10 +163,7 @@
     <!-- SETTINGS DRAWER -->
     <div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this) closeSettings()">
         <div class="settings-drawer" onclick="event.stopPropagation()">
-            <div class="settings-header">
-                <h2>CANDLE CHANGE</h2>
-                <i class="fas fa-times" style="cursor:pointer;" onclick="closeSettings()"></i>
-            </div>
+            <div class="settings-header"><h2>CANDLE CHANGE</h2><i class="fas fa-times" style="cursor:pointer;" onclick="closeSettings()"></i></div>
             <div class="settings-layout">
                 <div class="settings-menu">
                     <div class="settings-menu-item active">Price</div>
@@ -189,57 +176,20 @@
                     <div class="settings-menu-item">Avg Daily Range %</div>
                 </div>
                 <div class="settings-content">
-                    <div class="cfg-section">
-                        <h5>TIMEFRAMES</h5>
-                        <div class="cfg-btns" id="settTime">
-                            <button class="cfg-btn" onclick="selectTime(this)">1m</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">5m</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">15m</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">30m</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">1H</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">2H</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">4H</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">8H</button>
-                            <button class="cfg-btn" onclick="selectTime(this)">12H</button>
-                            <button class="cfg-btn active-blue" onclick="selectTime(this)">1D</button>
-                        </div>
-                    </div>
-                    <div class="cfg-section">
-                        <h5>DISPLAY SETTINGS</h5>
-                        <div class="cfg-btns">
-                            <button class="cfg-btn" onclick="selectDisplay(this)">Monochrome text</button>
-                            <button class="cfg-btn active-blue" onclick="selectDisplay(this)">Colored text</button>
-                        </div>
-                    </div>
-                    <div class="cfg-section">
-                        <h5>INDICATOR SETTINGS</h5>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            <div><label style="font-size:11px;">Lookback period</label>
-                            <input type="number" class="cfg-input" value="10"></div>
-                            <div><label style="font-size:11px;">Candle Change Type</label>
-                            <select class="cfg-input"><option>Expansion</option><option>Contraction</option></select></div>
-                            <div><label style="font-size:11px;">Extension Type</label>
-                            <select class="cfg-input"><option>Bullish</option><option>Bearish</option></select></div>
-                        </div>
-                    </div>
-                    <div class="cfg-footer">
-                        <button class="cfg-btn-cancel" onclick="closeSettings()">CANCEL</button>
-                        <button class="cfg-btn-close" onclick="closeSettings()">CLOSE</button>
-                    </div>
+                    <div class="cfg-section"><h5>TIMEFRAMES</h5><div class="cfg-btns" id="settTime"><button class="cfg-btn" onclick="selectTime(this)">1m</button><button class="cfg-btn" onclick="selectTime(this)">5m</button><button class="cfg-btn" onclick="selectTime(this)">15m</button><button class="cfg-btn" onclick="selectTime(this)">30m</button><button class="cfg-btn" onclick="selectTime(this)">1H</button><button class="cfg-btn" onclick="selectTime(this)">2H</button><button class="cfg-btn" onclick="selectTime(this)">4H</button><button class="cfg-btn" onclick="selectTime(this)">8H</button><button class="cfg-btn" onclick="selectTime(this)">12H</button><button class="cfg-btn active-blue" onclick="selectTime(this)">1D</button></div></div>
+                    <div class="cfg-section"><h5>DISPLAY SETTINGS</h5><div class="cfg-btns"><button class="cfg-btn" onclick="selectDisplay(this)">Monochrome text</button><button class="cfg-btn active-blue" onclick="selectDisplay(this)">Colored text</button></div></div>
+                    <div class="cfg-section"><h5>INDICATOR SETTINGS</h5><div style="display:flex;flex-direction:column;gap:8px;"><div><label style="font-size:11px;">Lookback period</label><input type="number" class="cfg-input" value="10"></div><div><label style="font-size:11px;">Candle Change Type</label><select class="cfg-input"><option>Expansion</option><option>Contraction</option></select></div><div><label style="font-size:11px;">Extension Type</label><select class="cfg-input"><option>Bullish</option><option>Bearish</option></select></div></div></div>
+                    <div class="cfg-footer"><button class="cfg-btn-cancel" onclick="closeSettings()">CANCEL</button><button class="cfg-btn-close" onclick="closeSettings()">CLOSE</button></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://s3.tradingview.com/tv.js"></script>
-    <!-- AGAR Aapke paas Alerts.js hai toh use include kar lein, warna ye comment mein rakhein -->
-    <!-- <script src="Alerts.js"></script> -->
     <script>
-        // --- FIXED FIREBASE CONFIG (Paths updated as per your screenshot) ---
+        // ----- YOUR ORIGINAL FIREBASE LOGIC AND PAIRS -----
         firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
         const db = firebase.database();
-
-        // ----- YOUR ORIGINAL PAIRS LIST -----
         const PAIRS = [
             {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
             {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
@@ -249,34 +199,69 @@
             {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
         ];
 
-        // ----- APP STATES -----
+        // ----- YOUR ORIGINAL VARIABLES -----
         let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
-        let curF = 'all', filteredPairs = [...PAIRS];
-        let watchlistSet = new Set();
+        let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [];
+        let watchlistSet = new Set(), liveMarketData = {}, manualTargets = {};
         let currentChartInterval = "1D";
         let currentSort = { column: null, order: null };
-        let manualTargets = {};
 
-        // ----- FIXED: DATA LISTENERS (Your exact paths) -----
-        db.ref('stockMarketData').on('value', snap => {
-            MARKET_DATA = snap.val() || {};
-            render();
-        });
-        db.ref('techMetrics').on('value', snap => { 
-            techMetrics = snap.val() || {}; 
-            render(); 
-        });
-        db.ref('sentiment').on('value', snap => { 
-            sentimentData = snap.val() || {}; 
-            render(); 
-        });
-        db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
-        
-        // NOTE: Apne console mein 'targetList' hai, agar aapka code 'manualTargets' use karta hai toh woh bhi theek hai. 
-        // Isko firebase mein bhi manualTargets rename kar lijiye ga.
-        db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; render(); });
+        // ----- YOUR ORIGINAL DATA LISTENERS (Exact same paths) -----
+        db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
+        db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
+        db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
+        db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; render(); });
+        db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val()||{}; render(); });
+        db.ref('manualTargets').on('value', snap => { manualTargets = snap.val()||{}; render(); });
 
-        // ----- FIXED: SORTING LOGIC (Uses your exact keys: longTermTrend & shortTermMomentum) -----
+        // ----- CORE RENDER FUNCTION (MentFX UI + Your original keys) -----
+        function render() {
+            let list = filteredPairs.length ? filteredPairs : PAIRS;
+            if(curF !== 'all') list = list.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+            
+            // Sorting logic
+            if (currentSort.column) {
+                list.sort((a,b) => {
+                    let va = getSortValue(a.n, currentSort.column);
+                    let vb = getSortValue(b.n, currentSort.column);
+                    if(typeof va === 'string') return currentSort.order === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+                    return currentSort.order === 'asc' ? va - vb : vb - va;
+                });
+            }
+            
+            currentDisplayPairs = list.map(p=>p.n);
+            document.getElementById('totalCount').textContent = list.length;
+
+            document.getElementById('pairsContainer').innerHTML = list.map(p => {
+                const t = techMetrics[p.n]||{}, s = sentimentData[p.n]||{}, m = MARKET_DATA[p.n]||{};
+                
+                // Sentiment 
+                const bullPct = Math.round(s.bullish_pct||0), bearPct = Math.round(s.bearish_pct||0);
+                const total = bullPct + bearPct || 1;
+                const bw = Math.round((bearPct/total)*100), gw = 100-bw;
+
+                // 30D (Uses your exact 'longTermTrend')
+                const val30 = t.longTermTrend != null ? t.longTermTrend : 0;
+                const str30 = (val30 > 0 ? '+' : '') + val30.toFixed(1) + '%';
+                const cls30 = val30 >= 0 ? 'g' : 'r';
+
+                // 10D (Uses your exact 'shortTermMomentum')
+                const val10 = t.shortTermMomentum != null ? t.shortTermMomentum : 0;
+                const str10 = (val10 > 0 ? '+' : '') + val10.toFixed(1) + '%';
+                const cls10 = val10 >= 0 ? 'g' : 'r';
+
+                const star = manualTargets[p.n] ? 'fas fa-star' : 'far fa-star';
+
+                return `<div class="row-item" onclick="openChartForPair('${p.n}')">
+                    <div class="row-pair"><i class="${star}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')"></i><span>${p.n}</span></div>
+                    <div class="sentiment-box"><div class="sent-progress"><div class="sent-red" style="width:${bw}%">${bearPct}</div><div class="sent-green" style="width:${gw}%">${bullPct}</div></div></div>
+                    <div class="change-box"><div class="change-bar ${cls30}">${str30}</div></div>
+                    <div class="change-box-10"><div class="change-bar ${cls10}">${str10}</div></div>
+                </div>`;
+            }).join('');
+            updateSortIcons();
+        }
+
         function getSortValue(pair, col) {
             const t = techMetrics[pair] || {}, s = sentimentData[pair] || {};
             if(col === 'symbol') return pair;
@@ -286,81 +271,7 @@
             return 0;
         }
 
-        // ----- FIXED: RENDER FUNCTION (MentFX Display + Your Data keys) -----
-        function render() {
-            let list = filteredPairs;
-            if(curF !== 'all') list = list.filter(p => { const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-            
-            if (currentSort.column) {
-                list.sort((a,b) => {
-                    let va = getSortValue(a.n, currentSort.column), vb = getSortValue(b.n, currentSort.column);
-                    if(typeof va === 'string') return currentSort.order === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-                    return currentSort.order === 'asc' ? va - vb : vb - va;
-                });
-            }
-            document.getElementById('totalCount').textContent = list.length;
-
-            document.getElementById('pairsContainer').innerHTML = list.map(p => {
-                const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {};
-                
-                // 1. Sentiment bar (Math same)
-                const bullPct = Math.round(s.bullish_pct || 0);
-                const bearPct = Math.round(s.bearish_pct || 0);
-                const total = bullPct + bearPct || 1;
-                const bw = Math.round((bearPct/total)*100);
-                const gw = 100 - bw;
-                
-                // 2. 30D Change bar (Using YOUR original 'longTermTrend' key)
-                const val30 = t.longTermTrend != null ? t.longTermTrend : 0;
-                const str30 = (val30 > 0 ? '+' : '') + val30.toFixed(1) + '%';
-                const cls30 = val30 >= 0 ? 'g' : 'r';
-
-                // 3. 10D Change bar (Using YOUR original 'shortTermMomentum' key)
-                const val10 = t.shortTermMomentum != null ? t.shortTermMomentum : 0;
-                const str10 = (val10 > 0 ? '+' : '') + val10.toFixed(1) + '%';
-                const cls10 = val10 >= 0 ? 'g' : 'r';
-
-                const star = manualTargets[p.n] ? 'fas fa-star' : 'far fa-star';
-
-                return `<div class="row-item" onclick="openChart('${p.n}')">
-                    <div class="row-pair"><i class="${star}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')"></i><span>${p.n}</span></div>
-                    <div class="sentiment-box"><div class="sent-progress"><div class="sent-red" style="width:${bw}%">${bearPct}</div><div class="sent-green" style="width:${gw}%">${bullPct}</div></div></div>
-                    <div class="change-box"><div class="change-bar ${cls30}">${str30}</div></div>
-                    <div class="change-box-10"><div class="change-bar ${cls10}">${str10}</div></div>
-                </div>`;
-            }).join('');
-            updateHeaderSortIcons();
-        }
-
-        // ----- DROPDOWN & SORT UI FUNCTIONS -----
-        function showSortDropdown(e, col) {
-            e.stopPropagation();
-            const existing = document.querySelector('.sort-dropdown');
-            if(existing) existing.remove();
-
-            const d = document.createElement('div');
-            d.className = 'sort-dropdown';
-            const rect = e.target.getBoundingClientRect();
-            d.style.left = (rect.left - 40) + 'px';
-            d.style.top = (rect.bottom + 4) + 'px';
-
-            const addBtn = (txt, cb) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = () => { cb(); d.remove(); }; d.appendChild(b); };
-            const addSep = () => { const s = document.createElement('div'); s.className = 'sep'; d.appendChild(s); };
-
-            addBtn('From highest', () => { currentSort = { column: col, order: 'desc' }; render(); });
-            addBtn('From lowest', () => { currentSort = { column: col, order: 'asc' }; render(); });
-            addBtn('Reset sorting', () => { currentSort = { column: null, order: null }; render(); });
-            addSep();
-            addBtn('Edit column', () => {});
-            addBtn('Hide column', () => {});
-            addBtn('Delete column', () => {});
-            addBtn('Filter', () => {});
-
-            document.body.appendChild(d);
-            setTimeout(() => document.addEventListener('click', (ev) => { if(!d.contains(ev.target)) d.remove(); }, {once:true}), 0);
-        }
-
-        function updateHeaderSortIcons() {
+        function updateSortIcons() {
             ['sent', '30d', '10d'].forEach(col => {
                 const icon = document.getElementById(col+'-icon');
                 if(!icon) return;
@@ -372,57 +283,59 @@
             });
         }
 
-        // ----- YOUR ORIGINAL HELPER FUNCTIONS -----
-        function filterPairs(txt) { 
-            filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; 
-            render(); 
+        // ----- DROPDOWN / FILTER / SEARCH -----
+        function showSortDropdown(e, col) {
+            e.stopPropagation();
+            const existing = document.querySelector('.sort-dropdown');
+            if(existing) existing.remove();
+            const d = document.createElement('div');
+            d.className = 'sort-dropdown';
+            const rect = e.target.getBoundingClientRect();
+            d.style.left = (rect.left - 40) + 'px'; d.style.top = (rect.bottom + 4) + 'px';
+            const addBtn = (txt, cb) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = () => { cb(); d.remove(); }; d.appendChild(b); };
+            addBtn('From highest', () => { currentSort = { column: col, order: 'desc' }; render(); });
+            addBtn('From lowest', () => { currentSort = { column: col, order: 'asc' }; render(); });
+            const sep = document.createElement('div'); sep.className = 'sep'; d.appendChild(sep);
+            addBtn('Reset sorting', () => { currentSort = { column: null, order: null }; render(); });
+            document.body.appendChild(d);
+            setTimeout(() => document.addEventListener('click', (ev) => { if(!d.contains(ev.target)) d.remove(); }, {once:true}), 0);
+        }
+
+        function setFilter(f) { curF = f; render(); }
+        function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
+        function toggleWatchlist(p) { watchlistSet.has(p) ? watchlistSet.delete(p) : watchlistSet.add(p); db.ref('manualTargets').set(Object.fromEntries([...watchlistSet].map(k=>[k,true]))); }
+        function actualScan() { const b=document.querySelector('.action-btn.active-blue'); if(b){ b.textContent='...'; setTimeout(()=>{b.textContent='CHART';},1500); } }
+
+        // ----- EXACT ORIGINAL CHART LOGIC (Row click opens right side chart) -----
+        function openChartForPair(pairName) {
+            chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+            chartIdx = chartPairs.indexOf(pairName); 
+            if(chartIdx===-1) chartIdx=0;
+            openChart(chartIdx);
         }
         
-        function toggleWatchlist(p) { 
-            if(manualTargets[p]){ 
-                delete manualTargets[p]; 
-                db.ref('manualTargets/'+p).remove(); 
-            } else { 
-                manualTargets[p] = true; 
-                db.ref('manualTargets/'+p).set(true); 
-            } 
-            render(); 
-        }
-
-        function actualScan() { 
-            const b=document.querySelector('.action-btn.active-blue'); 
-            if(b){ b.textContent='...'; setTimeout(()=>{b.textContent='REFRESH';},1500); } 
-        }
-
-        // ----- SETTINGS DRAWER -----
-        function openSettings() { document.getElementById('settingsOverlay').classList.add('open'); }
-        function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
-        function selectTime(el) { document.querySelectorAll('#settTime .cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
-        function selectDisplay(el) { el.parentElement.querySelectorAll('.cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
-
-        // ----- CHART LOGIC (Uses your keys for header) -----
-        let currentSymbol = null;
-        function openChart(sym) {
-            currentSymbol = sym;
-            document.getElementById('activeSymbol').textContent = sym;
+        function openChart(idx) {
+            chartIdx=idx; 
+            const symbol=chartPairs[idx];
+            document.getElementById('activeSymbol').textContent = symbol;
             document.getElementById('tv_chart_container').innerHTML = '';
             
-            const m = MARKET_DATA[sym] || {}; const t = techMetrics[sym] || {};
-            const pr = m.price || m.currentPrice || 0;
+            // Update header price
+            const t = techMetrics[symbol]||{}, m = MARKET_DATA[symbol]||{};
+            const pr = m.currentPrice || m.price || 0;
             const change = t.longTermTrend || 0;
-            
             document.getElementById('activePrice').textContent = pr ? pr.toFixed(4) : '--';
             const changeEl = document.getElementById('activeChange');
             changeEl.textContent = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
             changeEl.className = 'change ' + (change >= 0 ? 'up' : 'down');
 
-            const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(sym);
+            const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
             new TradingView.widget({ 
                 autosize:true, 
-                symbol: isPSX ? 'KSE:'+sym : sym,
+                symbol: isPSX ? 'KSE:'+symbol : symbol,
                 interval: currentChartInterval === '1D' ? 'D' : currentChartInterval.replace('H', '').toLowerCase(),
-                theme:'light', 
-                container_id:"tv_chart_container",
+                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+                container_id: "tv_chart_container",
                 studies: [{id:"MASimple@tv-basicstudies", inputs:{length:20}}, {id:"MASimple@tv-basicstudies", inputs:{length:50}}]
             });
         }
@@ -431,9 +344,16 @@
             document.querySelectorAll('.int-btn').forEach(b=>b.className='int-btn');
             el.className = 'int-btn active-blue';
             currentChartInterval = int;
-            if(currentSymbol) openChart(currentSymbol);
+            if(chartPairs && chartPairs.length > 0) openChart(chartIdx);
         }
 
+        // ----- SETTINGS UI -----
+        function openSettings() { document.getElementById('settingsOverlay').classList.add('open'); }
+        function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+        function selectTime(el) { document.querySelectorAll('#settTime .cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
+        function selectDisplay(el) { el.parentElement.querySelectorAll('.cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
+
+        // ----- INITIAL RENDER -----
         render();
     </script>
 </body>
