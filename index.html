@@ -125,12 +125,11 @@
         <button class="pill active-blue" onclick="setFilter('all')">Forex</button>
         <a href="/stocks" class="pill" style="text-decoration:none">Stocks</a>
         <a href="/crypto" class="pill" style="text-decoration:none">Crypto</a>
-        <a href="/journal" class="pill" style="text-decoration:none">Journal</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
         <button class="pill scan-btn" onclick="actualScan()">Scan</button>
         <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">Alerts</button>
         <div class="cloud-status" id="statusDot">Cloud active</div>
     </div>
-    <!-- Scan status line and last scan time -->
     <div style="display:flex; align-items:center; margin-bottom:8px;">
         <span id="scanStatusText" class="scan-status-line"></span>
         <span id="lastScanTime" class="last-scan-line"></span>
@@ -229,12 +228,10 @@ let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 let lastScanTimestamp = null;
 
-// Listen for last scan time
 db.ref('lastScanTime/time').on('value', snap => {
     lastScanTimestamp = snap.val();
     updateLastScanDisplay();
 });
-
 function updateLastScanDisplay() {
     const el = document.getElementById('lastScanTime');
     if (lastScanTimestamp) {
@@ -245,18 +242,34 @@ function updateLastScanDisplay() {
     }
 }
 
-db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
+db.ref('alertSettings').on('value', snap => {
+    alertSettings = snap.val() || { telegram: true, whatsapp: true };
+    updateToggleButtons();
+});
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
-    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
+    if(tgBtn) {
+        tgBtn.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF';
+        tgBtn.className = 'alert-toggle ' + (alertSettings.telegram ? 'active' : 'inactive');
+    }
+    if(waBtn) {
+        waBtn.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF';
+        waBtn.className = 'alert-toggle ' + (alertSettings.whatsapp ? 'active' : 'inactive');
+    }
 }
-function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref('alertSettings/'+type).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
+function toggleAlert(type) {
+    const newVal = !(alertSettings[type] ?? true);
+    db.ref('alertSettings/' + type).set(newVal);
+    alertSettings[type] = newVal;
+    updateToggleButtons();
+}
 
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const arr = Object.entries(liveMarketData).map(([n,d]) => ({ name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50 }));
+        const arr = Object.entries(liveMarketData).map(([n,d]) => ({
+            name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
+        }));
         checkAllAlerts(arr);
     }
     render();
@@ -265,23 +278,23 @@ db.ref('liveMarketData').on('value', snap => {
 function toggleTheme() {
     const h=document.documentElement, isDark=h.getAttribute('data-theme')==='dark';
     h.setAttribute('data-theme', isDark?'light':'dark');
-    const themeIcon = document.querySelector('#themeBtn i');
-    if(isDark) { themeIcon.className = 'fas fa-sun'; }
-    else { themeIcon.className = 'fas fa-moon'; }
+    const icon = document.querySelector('#themeBtn i');
+    icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
     localStorage.setItem('ici-theme', h.getAttribute('data-theme'));
 }
-
 function toggleDesktopMode() {
-    const isDesktop=document.body.classList.toggle('desktop-mode');
-    document.getElementById('chartOverlay').style.display=isDesktop?'flex':'none';
-    const desktopIcon = document.querySelector('#desktopBtn i');
-    if(isDesktop) { desktopIcon.className = 'fas fa-mobile-alt'; }
-    else { desktopIcon.className = 'fas fa-desktop'; }
-    localStorage.setItem('desktop-mode', isDesktop?'desktop':'mobile');
+    const isDesktop = document.body.classList.toggle('desktop-mode');
+    document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
+    const icon = document.querySelector('#desktopBtn i');
+    icon.className = isDesktop ? 'fas fa-mobile-alt' : 'fas fa-desktop';
+    localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
 }
 
-function setFilter(f) { curF=f; render(); }
-function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
+function setFilter(f) { curF = f; render(); }
+function filterPairs(txt) {
+    filteredPairs = txt ? PAIRS.filter(p => p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS];
+    render();
+}
 
 function toggleAIAssistant() { document.getElementById('aiBody').classList.toggle('collapsed'); }
 function clearErrors() { if (confirm('Sare errors delete kar dein?')) { db.ref('errorLog').remove(); } }
@@ -294,17 +307,52 @@ async function sendOpenRouterChat() {
     input.value = '';
     md.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
     try {
-        const res = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:txt}) });
+        const res = await fetch('/api/chat', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ message: txt })
+        });
         const data = await res.json();
         const le = document.getElementById('loadingMsg'); if (le) le.remove();
         if (!res.ok) md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X ${data.error||''}</span></div>`;
         else {
-            if (data.response) md.innerHTML += `<div class="chat-message-embedded assistant"><span>${data.response}</span></div>`;
+            const r = data.response || '';
+            const m = r.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
+            let dt = r;
+            if (m) {
+                dt = r.replace(m[0], '').trim();
+                try {
+                    const p = JSON.parse(m[2]);
+                    document.getElementById('approvalMessage').textContent = 'AI wants: ' + m[1] + ' ' + m[2];
+                    document.getElementById('approvalOverlay').classList.add('open');
+                    window.__pendingAction = { type: m[1], params: p };
+                } catch(e){}
+            }
+            if (dt) md.innerHTML += `<div class="chat-message-embedded assistant"><span>${dt}</span></div>`;
         }
-    } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`; }
+    } catch(e) {
+        const le = document.getElementById('loadingMsg'); if (le) le.remove();
+        md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`;
+    }
+}
+async function approveAction() {
+    const act = window.__pendingAction; if (!act) return;
+    document.getElementById('approvalOverlay').classList.remove('open');
+    try {
+        const res = await fetch('/api/execute-action', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ action: act.type, params: act.params })
+        });
+        const r = await res.json();
+        const md = document.getElementById('chatMessagesEmbedded');
+        md.innerHTML += `<div class="chat-message-embedded assistant"><span>${r.success ? 'OK ' : 'X '}${r.message}</span></div>`;
+    } catch(e) {}
+    window.__pendingAction = null;
+}
+function rejectAction() {
+    document.getElementById('approvalOverlay').classList.remove('open');
+    window.__pendingAction = null;
 }
 
-// === SCAN WITH VERIFICATION & LAST SCAN TIME UPDATE ===
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -312,25 +360,21 @@ function actualScan() {
     btn.disabled = true;
     statusEl.textContent = 'Scan triggered, waiting for data...';
 
-    // Trigger backend
     fetch('/scan').catch(() => {});
 
     let attempts = 0;
     const maxAttempts = 20;
     const checker = setInterval(() => {
         attempts++;
-        db.ref('liveMarketData/EURUSD').once('value', snap => {
+        db.ref('liveMarketData').once('value', snap => {
             if (snap.exists()) {
                 clearInterval(checker);
                 const now = new Date();
                 btn.textContent = '✅ Done';
                 btn.disabled = false;
-                // Update last scan time in Firebase (and UI will react)
                 db.ref('lastScanTime').set({ time: now.getTime() });
                 statusEl.textContent = '✅ Data received at ' + now.toLocaleTimeString();
-                setTimeout(() => {
-                    btn.textContent = 'Scan';
-                }, 4000);
+                setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
             } else if (attempts >= maxAttempts) {
                 clearInterval(checker);
                 btn.textContent = 'Scan';
@@ -343,40 +387,25 @@ function actualScan() {
     }, 3000);
 }
 
-// === TARGET SETUP (with old phase normalization) ===
 function getUniqueAutoSetups() {
-    const forexPairNames = new Set(PAIRS.map(p => p.n));
+    const forexNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
-
-    const normalizePhase = (phase) => {
-        const map = {
-            'wait_push': 'wait_h1_push',
-            'wait_daily_reclaim': null
-        };
-        return map[phase] !== undefined ? map[phase] : phase;
+    const normalize = phase => ({ 'wait_push':'wait_h1_push', 'wait_daily_reclaim':null }[phase] ?? phase);
+    const prio = {
+        'alert_triggered':4, 'wait_h1_reclaim':3, 'wait_h1_dip':2, 'wait_h1_push':2
     };
-
-    const phasePriority = {
-        'alert_triggered': 4,
-        'wait_h1_reclaim': 3,
-        'wait_h1_dip': 2,
-        'wait_h1_push': 2
-    };
-
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!s || !s.phase) continue;
-        const phase = normalizePhase(s.phase);
+        const phase = normalize(s.phase);
         if (!phase) continue;
-
-        const pairName = key.split('_')[0];
-        if (!forexPairNames.has(pairName)) continue;
-
+        const pair = key.split('_')[0];
+        if (!forexNames.has(pair)) continue;
         const dir = key.includes('_bull') ? 'bull' : 'bear';
-        const priority = phasePriority[phase] || 0;
-        const existing = pairMap.get(pairName);
-        if (!existing || priority > existing.priority) {
-            pairMap.set(pairName, { dir, phase, priority });
+        const p = prio[phase] || 0;
+        const existing = pairMap.get(pair);
+        if (!existing || p > existing.priority) {
+            pairMap.set(pair, { dir, phase, priority: p });
         }
     }
     return pairMap;
@@ -384,25 +413,30 @@ function getUniqueAutoSetups() {
 
 function updateCounts() {
     let b=0, r=0;
-    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
-    document.getElementById('bc').textContent=b;
-    document.getElementById('rc').textContent=r;
-    document.getElementById('allCount').textContent=PAIRS.length;
-    const uniqueCount = getUniqueAutoSetups().size;
-    document.getElementById('targetCount2').textContent = uniqueCount;
-    document.getElementById('targetCount').textContent = uniqueCount;
-    document.getElementById('tradesCount').textContent = uniqueCount;
+    PAIRS.forEach(p => {
+        const d = MARKET_DATA[p.n] || {};
+        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
+        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
+    });
+    document.getElementById('bc').textContent = b;
+    document.getElementById('rc').textContent = r;
+    document.getElementById('allCount').textContent = PAIRS.length;
+    const u = getUniqueAutoSetups().size;
+    document.getElementById('targetCount2').textContent = u;
+    document.getElementById('targetCount').textContent = u;
+    document.getElementById('tradesCount').textContent = u;
 }
 
 function openTargetModal() {
     const setups = getUniqueAutoSetups();
     if (setups.size === 0) {
-        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
+        document.getElementById('targetContent').innerHTML =
+            '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
     } else {
         let html = '';
         for (const [pair, info] of setups) {
             const ph = (info.phase||'?').toUpperCase();
-            const bg = info.dir==='bull'?'#22c55e':'#ef4444';
+            const bg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
             html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pair}')">
                 <span style="font-weight:700;font-size:14px;flex:1;">${pair} (Auto)</span>
                 <span style="background:${bg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${ph}</span>
@@ -418,59 +452,73 @@ function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
     const validTargets = new Set(getUniqueAutoSetups().keys());
-    if(curF==='all') filtered = currentPairs;
-    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target'||curF==='trades') filtered = currentPairs.filter(p => validTargets.has(p.n));
+    if (curF === 'all') filtered = currentPairs;
+    else if (curF === 'bull' || curF === 'bear')
+        filtered = currentPairs.filter(p => {
+            const d = MARKET_DATA[p.n] || {};
+            return ['4h','1day','1week'].every(tf => d[tf] === curF);
+        });
+    else if (curF === 'target' || curF === 'trades')
+        filtered = currentPairs.filter(p => validTargets.has(p.n));
     else filtered = currentPairs;
-    currentDisplayPairs = filtered.map(p=>p.n);
-    
-    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
-        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
-        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
-        const star=isBull?'B':(isBear?'S':'N'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
-        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'--';
-        const changeClass=t.longTermTrend>=0?'up':'down';
-        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
-        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const lm = liveMarketData && liveMarketData[p.n]; if (lm && lm[tf]) return lm[tf]; return ''; });
-        const dots = signals.map(sig=>'<span class="trend-dot '+(sig==='bull'?'g':'r')+'"></span>').join('');
-        const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'--';
-        const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'--';
-        const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'--';
-        const dollarVolVal=t.dollarVolume1d||'--';
+    currentDisplayPairs = filtered.map(p => p.n);
+
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
+        const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {}, m = MARKET_DATA[p.n] || {};
+        const isBull = ['4h','1day','1week'].every(tf => m[tf] === 'bull'),
+              isBear = ['4h','1day','1week'].every(tf => m[tf] === 'bear');
+        const star = isBull ? 'B' : (isBear ? 'S' : 'N'),
+              starColor = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : '#cbd5e1');
+        const change = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '--';
+        const changeClass = t.longTermTrend >= 0 ? 'up' : 'down';
+        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
+        const bearW = Math.round((bearPct / total) * 100), bullW = 100 - bearW;
+        const signals = ['1h','4h','1day','1week'].map(tf => {
+            if (m[tf]) return m[tf];
+            const lm = liveMarketData && liveMarketData[p.n];
+            return lm && lm[tf] ? lm[tf] : '';
+        });
+        const dots = signals.map(sig => `<span class="trend-dot ${sig === 'bull' ? 'g' : 'r'}"></span>`).join('');
+        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum > 0 ? '+' : '') + t.shortTermMomentum.toFixed(2) + '%' : '--';
+        const microVal = t.microMomentum != null ? (t.microMomentum > 0 ? '+' : '') + t.microMomentum.toFixed(2) + '%' : '--';
+        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '--';
+        const dollarVolVal = t.dollarVolume1d || '--';
         const lm = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
-        const priceHTML = livePrice ? ' <span style="font-size:10px;color:var(--muted);margin-left:4px;">'+livePrice+'</span>' : '';
+        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        let row = '<div class="item-row"><div class="item-main" '+
-            'onclick="openChartForPair(\''+p.n+'\')">'+
-            '<div class="row-pair pair-title">'+
-            '<span style="color:'+starColor+'">'+star+'</span> '+p.n+priceHTML+
-            '</div>'+
-            '<div class="row-timeframes dots-container">'+dots+'</div>'+
-            '<div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:'+bearW+'%">'+bearW+'%</div><div class="sent-green" style="width:'+bullW+'%">'+bullW+'%</div></div></div>'+
-            '<div class="row-change change-val '+changeClass+'">'+change+'</div>'+
-            '<div class="row-alert" style="text-align:center;">'+getBellHtml(p.n)+'</div>'+
-            '</div>';
+        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
+            <div class="row-pair pair-title">
+                <span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}
+            </div>
+            <div class="row-timeframes dots-container">${dots}</div>
+            <div class="row-sentiment sentiment-wrapper">
+                <div class="sentiment-progress">
+                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
+                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
+                </div>
+            </div>
+            <div class="row-change change-val ${changeClass}">${change}</div>
+            <div class="row-alert" style="text-align:center;">${getBellHtml(p.n)}</div>
+        </div>`;
 
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
-                    '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">'+info.dir.toUpperCase()+' '+info.phase+'</span>'+
-                    '</div>';
+                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
+                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span>
+                </div>`;
             }
             row += '</div>';
         } else {
-            row += '<div class="compact-details">'+
-                '<div class="compact-metric"><span class="lbl">10C</span> <span class="val '+(t.shortTermMomentum>=0?'up':'down')+'">'+shortTermVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">1HM</span> <span class="val '+(t.microMomentum>=0?'up':'down')+'">'+microVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">'+vol7dVal+'</span></div>'+
-                '<div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">'+dollarVolVal+'</span></div>'+
-                '</div>';
-            row += '</div>';
+            row += `<div class="compact-details">
+                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum >= 0 ? 'up' : 'down'}">${shortTermVal}</span></div>
+                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum >= 0 ? 'up' : 'down'}">${microVal}</span></div>
+                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
+                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
+            </div></div>`;
         }
         return row;
     }).join('');
@@ -478,8 +526,9 @@ function render() {
 }
 
 function openChartForPair(pairName) {
-    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
-    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
+    chartIdx = chartPairs.indexOf(pairName);
+    if (chartIdx === -1) chartIdx = 0;
     openChart(chartIdx);
 }
 function changeChartInterval(interval, btn) {
@@ -489,61 +538,74 @@ function changeChartInterval(interval, btn) {
     openChart(chartIdx);
 }
 function openChart(idx) {
-    chartIdx=idx; const symbol=chartPairs[idx];
-    document.getElementById('chartPairName').textContent=symbol;
-    document.getElementById('chartOverlay').style.display='flex';
-    document.getElementById('tv_chart_container').innerHTML='';
-    const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({ 
-        autosize:true, 
-        symbol:isPSX?'KSE:'+symbol:symbol,
+    chartIdx = idx;
+    const symbol = chartPairs[idx];
+    document.getElementById('chartPairName').textContent = symbol;
+    document.getElementById('chartOverlay').style.display = 'flex';
+    document.getElementById('tv_chart_container').innerHTML = '';
+    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
+    new TradingView.widget({
+        autosize: true,
+        symbol: isPSX ? 'KSE:' + symbol : symbol,
         interval: currentChartInterval,
-        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id:"tv_chart_container",
+        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+        container_id: "tv_chart_container",
         overrides: { "volumePaneSize": "0" },
         studies: [
-            {id:"MAExp@tv-basicstudies", inputs:{length:10}},
-            {id:"MAExp@tv-basicstudies", inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
-            {id:"WilliamFractal@tv-basicstudies"}
+            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
+            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
+            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } },
+            { id: "WilliamFractal@tv-basicstudies" }
         ]
     });
 }
-function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
-function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
+function movePair(step) {
+    if (chartIdx + step >= 0 && chartIdx + step < chartPairs.length) openChart(chartIdx + step);
+}
+function closeChart() {
+    if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none';
+}
 
-function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); render(); }
-function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
-(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
+function toggle4H() {
+    show4H = !show4H;
+    localStorage.setItem('show4H', show4H ? 'true' : 'false');
+    update4hButton();
+    render();
+}
+function update4hButton() {
+    const btn = document.getElementById('toggle4hBtn');
+    if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); }
+    else { btn.textContent = '4H OFF'; btn.classList.remove('active'); }
+}
+(function(){
+    const saved = localStorage.getItem('show4H');
+    show4H = saved === 'false' ? false : true;
+    update4hButton();
+})();
 
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; updateCounts(); render(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const arr = Object.entries(MARKET_DATA).map(([n,d]) => ({ name:n, currentPrice:d.currentPrice, ema20:d.ema20, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50 }));
+        const arr = Object.entries(MARKET_DATA).map(([n,d]) => ({
+            name:n, currentPrice:d.currentPrice, ema20:d.ema20, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
+        }));
         checkAllAlerts(arr);
     }
     render();
 });
-db.ref('liveMarketData').on('value', snap => {
-    liveMarketData = snap.val() || {};
-    if (typeof checkAllAlerts === 'function') {
-        const arr = Object.entries(liveMarketData).map(([n,d]) => ({ name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50 }));
-        checkAllAlerts(arr);
-    }
-});
 
 (function(){
-    const saved=localStorage.getItem('ici-theme');
-    if(saved) {
-        document.documentElement.setAttribute('data-theme',saved);
-        if(saved === 'dark') document.querySelector('#themeBtn i').className = 'fas fa-sun';
+    const saved = localStorage.getItem('ici-theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('#themeBtn i').className = saved === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     }
-    if(localStorage.getItem('desktop-mode')==='desktop'){ 
-        document.body.classList.add('desktop-mode'); 
-        document.getElementById('chartOverlay').style.display='flex'; 
+    if (localStorage.getItem('desktop-mode') === 'desktop') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('chartOverlay').style.display = 'flex';
         document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
     }
 })();
