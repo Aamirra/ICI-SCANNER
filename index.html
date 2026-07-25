@@ -353,7 +353,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// ---- NEW actualScan using scanStatus ----
+// ---- actualScan with 10 min timeout ----
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -378,21 +378,24 @@ function actualScan() {
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
         } else if (s.running === true) {
-            statusEl.textContent = '🔄 Scanning in progress... (started ' + new Date(s.startedAt).toLocaleTimeString() + ')';
+            const startTime = s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?';
+            statusEl.textContent = '🔄 Scanning in progress... (started ' + startTime + ')';
         }
     });
 
+    // timeout 10 minutes
     setTimeout(() => {
         if (!resolved) {
             statusRef.off('value', listener);
             btn.textContent = 'Scan';
             btn.disabled = false;
-            statusEl.textContent = '⚠️ Scan timeout (>5 min)';
+            statusEl.textContent = '⚠️ Scan timeout (>10 min) – check backend';
+            resolved = true;
         }
-    }, 300000);
+    }, 600000);
 }
 
-// ---- TARGET LOGIC ----
+// ---- TARGET LOGIC (bullMonitor + bearMonitor phases) ----
 function getUniqueAutoSetups() {
     const forexNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
