@@ -89,6 +89,44 @@ async function checkSetup(p, r, raw, sendTG, firebasePut, tf = '1h') {
 
     const sBear = await bearMonitor(bearKey, p.n, dailyData, hourlyData, sendTG, firebasePut);
     PB_STATE[bearKey] = sBear;
+
+    // ─────────────────────────────────────────────────────────────────
+    // 🔥 NAYA CODE: Yahan check kar ke targetList mein save/remove karein
+    // ─────────────────────────────────────────────────────────────────
+    if (typeof firebasePut === 'function') {
+        const pairName = p.n;
+        
+        // ✅ Bullish setup check - Valid h1Phase with valid state
+        if (sBull && sBull.h1Phase && sBull.h1Phase !== 'wait_h1_dip') {
+            await firebasePut(`targetList/${pairName}`, {
+                dir: 'bull',
+                phase: sBull.h1Phase,
+                timestamp: Date.now(),
+                tf: tf,
+                runningHigh: sBull.runningHigh || null,
+                lowestLow: sBull.lowestLow || null
+            }).catch(err => console.error(`[targetList] Error saving bull setup for ${pairName}:`, err.message));
+            console.log(`[targetList] ✅ Bull setup saved for ${pairName} (phase: ${sBull.h1Phase})`);
+        } 
+        // ✅ Bearish setup check - Valid h1Phase with valid state
+        else if (sBear && sBear.h1Phase && sBear.h1Phase !== 'wait_h1_push') {
+            await firebasePut(`targetList/${pairName}`, {
+                dir: 'bear',
+                phase: sBear.h1Phase,
+                timestamp: Date.now(),
+                tf: tf,
+                runningLow: sBear.runningLow || null,
+                highestHigh: sBear.highestHigh || null
+            }).catch(err => console.error(`[targetList] Error saving bear setup for ${pairName}:`, err.message));
+            console.log(`[targetList] ✅ Bear setup saved for ${pairName} (phase: ${sBear.h1Phase})`);
+        } 
+        // ❌ Koi bhi valid setup nahi hai toh targetList se hata dein
+        else {
+            await firebasePut(`targetList/${pairName}`, null)
+                .catch(err => console.error(`[targetList] Error removing ${pairName}:`, err.message));
+            console.log(`[targetList] ❌ No valid setup for ${pairName} - removed from targetList`);
+        }
+    }
 }
 
 async function checkRules(p, r, raw, sendTG, firebasePut, tf = '1h') {
