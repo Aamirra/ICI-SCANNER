@@ -286,18 +286,25 @@ function actualScan() {
     .catch(()=>{ btn.textContent='Error'; setTimeout(()=>{btn.textContent='Scan';btn.disabled=false;},3000); });
 }
 
-// Helper: Get best auto setup per pair (unique pair, highest phase priority)
+// 🎯 NEW: Bull + Bear dono monitors support
 function getUniqueAutoSetups() {
     const forexPairNames = new Set(PAIRS.map(p => p.n));
-    const pairMap = new Map(); // pair -> { dir, phase }
-    const phasePriority = { 'alert_triggered':4, 'wait_h1_reclaim':3, 'wait_h1_dip':2, 'wait_daily_reclaim':1 };
-    
+    const pairMap = new Map();
+    const phasePriority = {
+        'alert_triggered': 3,
+        'wait_h1_reclaim': 2,
+        'wait_h1_dip': 1,
+        'wait_h1_push': 1
+    };
+
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!s || !s.phase) continue;
-        if (s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') continue;
+        if (s.phase === 'wait_daily_reclaim') continue;
+
         const pairName = key.split('_')[0];
         if (!forexPairNames.has(pairName)) continue;
+
         const marketData = MARKET_DATA[pairName];
         if (marketData) {
             const isWeeklyBullish = marketData['1week'] === 'bull';
@@ -305,13 +312,15 @@ function getUniqueAutoSetups() {
             if (key.includes('_bull') && !isWeeklyBullish) continue;
             if (key.includes('_bear') && !isWeeklyBearish) continue;
         }
+
         const dir = key.includes('_bull') ? 'bull' : 'bear';
         const priority = phasePriority[s.phase] || 0;
-        if (!pairMap.has(pairName) || priority > (phasePriority[pairMap.get(pairName).phase] || 0)) {
-            pairMap.set(pairName, { dir, phase: s.phase });
+        const existing = pairMap.get(pairName);
+        if (!existing || priority > existing.priority) {
+            pairMap.set(pairName, { dir, phase: s.phase, priority });
         }
     }
-    return pairMap; // Map of pair -> { dir, phase }
+    return pairMap;
 }
 
 function updateCounts() {
@@ -321,20 +330,19 @@ function updateCounts() {
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
     
-    const autoSetups = getUniqueAutoSetups();
-    const uniqueCount = autoSetups.size;
+    const uniqueCount = getUniqueAutoSetups().size;
     document.getElementById('targetCount2').textContent = uniqueCount;
     document.getElementById('targetCount').textContent = uniqueCount;
     document.getElementById('tradesCount').textContent = uniqueCount;
 }
 
 function openTargetModal() {
-    const autoSetups = getUniqueAutoSetups();
-    if (autoSetups.size === 0) {
-        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
+    const setups = getUniqueAutoSetups();
+    if (setups.size === 0) {
+        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
     } else {
         let html = '';
-        for (const [pair, info] of autoSetups) {
+        for (const [pair, info] of setups) {
             const ph = (info.phase||'?').toUpperCase();
             const bg = info.dir==='bull'?'#22c55e':'#ef4444';
             html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pair}')">
@@ -351,17 +359,10 @@ function openTargetModal() {
 function render() {
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
+    const validTargets = new Set(getUniqueAutoSetups().keys());
     if(curF==='all') filtered = currentPairs;
     else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target') {
-        const validPairs = new Set(getUniqueAutoSetups().keys());
-        filtered = currentPairs.filter(p => validPairs.has(p.n));
-    }
-    else if(curF==='trades') {
-        // Trades bhi auto setups hi dikhayega (no manual)
-        const validPairs = new Set(getUniqueAutoSetups().keys());
-        filtered = currentPairs.filter(p => validPairs.has(p.n));
-    }
+    else if(curF==='target'||curF==='trades') filtered = currentPairs.filter(p => validTargets.has(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
     
@@ -396,8 +397,7 @@ function render() {
             '</div>';
 
         if (curF === 'target' || curF === 'trades') {
-            const setups = getUniqueAutoSetups();
-            const info = setups.get(p.n);
+            const info = getUniqueAutoSetups().get(p.n);
             if (info) {
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
                 row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
