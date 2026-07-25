@@ -353,40 +353,46 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
+// ---- NEW actualScan using scanStatus ----
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
     btn.textContent = '⏳ Scanning...';
     btn.disabled = true;
-    statusEl.textContent = 'Scan triggered, waiting for data...';
+    statusEl.textContent = 'Scan started (may take 2‑3 min)...';
 
     fetch('/scan').catch(() => {});
 
-    let attempts = 0;
-    const maxAttempts = 20;
-    const checker = setInterval(() => {
-        attempts++;
-        db.ref('liveMarketData').once('value', snap => {
-            if (snap.exists()) {
-                clearInterval(checker);
-                const now = new Date();
-                btn.textContent = '✅ Done';
-                btn.disabled = false;
-                db.ref('lastScanTime').set({ time: now.getTime() });
-                statusEl.textContent = '✅ Data received at ' + now.toLocaleTimeString();
-                setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
-            } else if (attempts >= maxAttempts) {
-                clearInterval(checker);
-                btn.textContent = 'Scan';
-                btn.disabled = false;
-                statusEl.textContent = '⚠️ Scan timeout (no data after 60s)';
-            } else {
-                statusEl.textContent = '⏳ Checking for new data... (' + attempts + '/' + maxAttempts + ')';
-            }
-        });
-    }, 3000);
+    const statusRef = db.ref('scanStatus');
+    let resolved = false;
+    const listener = statusRef.on('value', snap => {
+        const s = snap.val();
+        if (!s) return;
+        if (s.running === false && !resolved) {
+            resolved = true;
+            statusRef.off('value', listener);
+            const now = new Date(s.completedAt || Date.now());
+            btn.textContent = '✅ Done';
+            btn.disabled = false;
+            db.ref('lastScanTime').set({ time: now.getTime() });
+            statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
+            setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
+        } else if (s.running === true) {
+            statusEl.textContent = '🔄 Scanning in progress... (started ' + new Date(s.startedAt).toLocaleTimeString() + ')';
+        }
+    });
+
+    setTimeout(() => {
+        if (!resolved) {
+            statusRef.off('value', listener);
+            btn.textContent = 'Scan';
+            btn.disabled = false;
+            statusEl.textContent = '⚠️ Scan timeout (>5 min)';
+        }
+    }, 300000);
 }
 
+// ---- TARGET LOGIC ----
 function getUniqueAutoSetups() {
     const forexNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
