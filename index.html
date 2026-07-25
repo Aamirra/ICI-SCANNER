@@ -443,7 +443,6 @@ function updateCounts() {
     const allTargets = Object.values(manualTargets);
     const manualCount = allTargets.filter(t => t.source === 'manual').length;
 
-    // Auto count: sirf valid forex pairs + weekly/daily match
     const forexPairNames = new Set(PAIRS.map(p => p.n));
     const autoCount = Object.keys(PB_STATE).filter(key => {
         const s = PB_STATE[key];
@@ -667,7 +666,7 @@ function openChart(idx) {
         studies: [
             {id:"MAExp@tv-basicstudies", inputs:{length:10}},
             {id:"MAExp@tv-basicstudies", inputs:{length:20}},
-            {id:"MAExp@tv-basicstudies", inputs:{length:50}},
+            {id:"MASimple@tv-basicstudies", inputs:{length:50}},
             {id:"WilliamFractal@tv-basicstudies"}
         ]
     });
