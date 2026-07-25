@@ -4,8 +4,8 @@ const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
-const crypto = require('crypto');          // 👈 Added
-const { exec } = require('child_process'); // 👈 Added
+const crypto = require('crypto');
+const { exec } = require('child_process');
 
 let scannerModule;
 
@@ -343,14 +343,28 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── 👇 NEW: GitHub Webhook for Auto-Deploy 👇 ──
+    // ── 👇 GitHub Webhook for Auto-Deploy 👇 ──
     if (req.method === 'POST' && safePath === '/webhook') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', () => {
             try {
+                // Ping event ke liye direct 200 bhej do, taaki GitHub fail na kare
+                if (req.headers['x-github-event'] === 'ping') {
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end('Pong! Webhook is active.');
+                    return;
+                }
+
                 const signature = req.headers['x-hub-signature-256'];
                 const secret = process.env.WEBHOOK_SECRET || "MY_SUPER_SECRET_KEY";
+
+                // Agar body empty hai, toh signature verify nahi karna
+                if (!body) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Empty body');
+                    return;
+                }
 
                 // Verify signature
                 const hmac = crypto.createHmac('sha256', secret);
