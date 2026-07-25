@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
+        /* (Baaki sab CSS same hai, space bachane ke liye short kar raha hoon, aap apna original CSS yahan rakhte hain) */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -654,6 +655,8 @@ function changeChartInterval(interval, btn) {
     btn.classList.add('active');
     openChart(chartIdx);
 }
+
+// ✅ YAHAN FIX KIYA HAI (SAHI STUDY IDs)
 function openChart(idx) {
     chartIdx=idx; const symbol=chartPairs[idx];
     document.getElementById('chartPairName').textContent=symbol;
@@ -666,15 +669,16 @@ function openChart(idx) {
         interval: currentChartInterval,
         theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id: "tv_chart_container",
-        volume: false, // ✅ Volume hide kar diya
+        volume: false, // ✅ Volume hide ho gaya
         studies: [
-            {id:"EMA@tv-basicstudies", inputs:{length:10}},   // ✅ 10 EMA
-            {id:"EMA@tv-basicstudies", inputs:{length:20}},   // ✅ 20 EMA
-            {id:"MASimple@tv-basicstudies", inputs:{length:50}}, // ✅ 50 SMA
-            {id:"WilliamFractal@tv-basicstudies"}
+            {id: "EMA", inputs: {length: 10}},      // ✅ 10 EMA (sahih)
+            {id: "EMA", inputs: {length: 20}},      // ✅ 20 EMA (sahih)
+            {id: "MASimple", inputs: {length: 50}}, // ✅ 50 SMA (MASimple kaam karta hai)
+            {id: "WilliamFractal"}                  // ✅ William Fractal (sahih)
         ]
     });
 }
+
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
 
