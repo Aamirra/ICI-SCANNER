@@ -280,13 +280,37 @@ async function sendOpenRouterChat() {
     } catch(e) { const le=document.getElementById('loadingMsg'); if(le)le.remove(); md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`; }
 }
 
+// === SCAN WITH LIVE PROGRESS (POLLING liveMarketData/EURUSD) ===
 function actualScan() {
-    const btn = document.querySelector('.scan-btn'); btn.textContent='Scanning...'; btn.disabled=true;
-    fetch('/scan').then(()=>{ btn.textContent='Started!'; setTimeout(()=>{btn.textContent='Scan';btn.disabled=false;},3000); })
-    .catch(()=>{ btn.textContent='Error'; setTimeout(()=>{btn.textContent='Scan';btn.disabled=false;},3000); });
+    const btn = document.querySelector('.scan-btn');
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+
+    // Trigger backend
+    fetch('/scan').catch(() => {});
+
+    let attempts = 0;
+    const maxAttempts = 20; // 20 * 3 sec = 60 sec timeout
+    const checker = setInterval(() => {
+        attempts++;
+        db.ref('liveMarketData/EURUSD').once('value', snap => {
+            if (snap.exists()) {
+                clearInterval(checker);
+                btn.textContent = '✅ Done';
+                btn.disabled = false;
+                setTimeout(() => {
+                    btn.textContent = 'Scan';
+                }, 3000);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checker);
+                btn.textContent = 'Scan';
+                btn.disabled = false;
+            }
+        });
+    }, 3000);
 }
 
-// 🎯 Normalize old phase names + unique pair logic
+// === TARGET SETUP (Normalized old phases) ===
 function getUniqueAutoSetups() {
     const forexPairNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
