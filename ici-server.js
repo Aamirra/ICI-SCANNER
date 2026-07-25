@@ -401,21 +401,32 @@ Always put the action block FIRST, then your reply.`;
     // ── 👆 END: New Webhook 👆 ──
 
     // ── Scan & static files ──
+    // ✅ Updated /scan route – sets scanStatus for frontend
     if (safePath === '/scan') {
+        // Scan start status turant Firebase mein set karo
+        admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
+        
         res.writeHead(200, { 'Content-Type': 'application/json' });
         if (scannerModule && typeof scannerModule.masterScan === 'function') {
             const scanFn = scannerModule.masterScan;
             if (scanFn.isBusy && scanFn.isBusy()) {
+                admin.database().ref('scanStatus').set({ running: false, error: 'Already running' });
                 res.end(JSON.stringify({ status: 'Scan already running — please wait!' }));
             } else {
                 res.end(JSON.stringify({ status: 'Scan started!' }));
-                scanFn();
+                scanFn().finally(() => {
+                    // Scan complete status Firebase mein set karo
+                    admin.database().ref('scanStatus').set({ running: false, completedAt: Date.now() });
+                    admin.database().ref('lastScanTime').set({ time: Date.now() });
+                });
             }
         } else {
+            admin.database().ref('scanStatus').set({ running: false, error: 'Scanner not available' });
             res.end(JSON.stringify({ status: 'Scanner not available' }));
         }
         return;
     }
+
     if (safePath === '/stocks' || safePath === '/stocks.html') {
         const filePath = path.join(__dirname, 'stocks.html');
         fs.readFile(filePath, (err, data) => {
