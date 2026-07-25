@@ -665,7 +665,7 @@ function openChart(idx) {
         interval: currentChartInterval,
         theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id:"tv_chart_container",
-        volumePane: false,  // ✅ Volume hide kar diya
+        overrides: { "volumePaneSize": "0" },  // ✅ Volume completely hide
         studies: [
             {id:"MAExp@tv-basicstudies", inputs:{length:10}},
             {id:"MAExp@tv-basicstudies", inputs:{length:20}},
