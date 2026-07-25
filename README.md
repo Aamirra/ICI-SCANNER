@@ -1,6 +1,8 @@
+```markdown
 ICI-SCANNER/
 ├── .github/
 │   └── workflows/
+│       ├── master_runner.yml
 │       ├── scrape.yml
 │       └── sentiment_scraper.yml
 ├── core/
@@ -14,8 +16,8 @@ ICI-SCANNER/
 │   └── render.js
 ├── pullback/
 │   ├── alertSettings.js
-│   ├── bearSetupLogic.js
-│   ├── bullSetupLogic.js
+│   ├── bearMonitor.js
+│   ├── bullMonitor.js
 │   ├── checkReminders.js
 │   ├── marketTimeHelper.js
 │   ├── setupScanner.js
@@ -27,11 +29,13 @@ ICI-SCANNER/
 │   ├── sentiment_job.py
 │   └── sentiment_scraper.py
 ├── services/
-│   ├── AlertScheduler
-│   ├── AlertWorker.kt
+│   ├── AlertWorker.kt + AlertScheduler
 │   ├── AndroidBridge.kt
 │   ├── apiTracker.js
 │   ├── broadcast.js
+│   ├── checkManualAlerts.js
+│   ├── cryptoNewsAlert.js
+│   ├── cryptoScanner.js
 │   ├── database.js
 │   ├── healthMonitor.js
 │   ├── liveTicks.js
@@ -50,13 +54,20 @@ ICI-SCANNER/
 │   └── timer.js
 ├── Alerts.js
 ├── MainActivity.kt
+├── PROJECT_SUMMARY.md
 ├── README.md
 ├── config.js
 ├── ici-server.js
 ├── index.html
+├── crypto.html
+├── journal.html
 ├── package.json
 ├── psxStockList.js
 ├── pullback_engine.js
 ├── requirements.txt
 ├── stockList.js
-└── stocks.html
+├── stocks.html
+├── vercel.json
+└── worker.js
+
+```
