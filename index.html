@@ -121,12 +121,6 @@
         .dir-btn.bear { background:#ef4444; }
         .dir-btn.cancel { background:var(--muted); color:#fff; margin-top:4px; }
         .dir-btn.remove-btn { background:var(--red); color:#fff; margin-bottom:8px; }
-
-        /* ✅ ADDED: Force Hide Volume Pane using CSS */
-        #tv_chart_container div[data-name="pane"]:last-child,
-        #tv_chart_container .chart-container .chart-pane:last-child {
-            display: none !important;
-        }
     </style>
 </head>
 <body>
@@ -660,30 +654,24 @@ function changeChartInterval(interval, btn) {
     btn.classList.add('active');
     openChart(chartIdx);
 }
-
-// ✅ CHANGED: Now shows 10 EMA, 20 EMA, 50 EMA (all Exponential Moving Averages)
 function openChart(idx) {
     chartIdx=idx; const symbol=chartPairs[idx];
     document.getElementById('chartPairName').textContent=symbol;
     document.getElementById('chartOverlay').style.display='flex';
     document.getElementById('tv_chart_container').innerHTML='';
     const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({
-        autosize: true,
-        symbol: isPSX?'KSE:'+symbol:symbol,
+    new TradingView.widget({ autosize:true, symbol:isPSX?'KSE:'+symbol:symbol,
         interval: currentChartInterval,
-        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id: "tv_chart_container",
-        volume: false, // Volume pane hidden
+        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:"tv_chart_container",
         studies: [
-            {id: "EMA", inputs: {length: 10}},        // 10 EMA
-            {id: "EMA", inputs: {length: 20}},        // 20 EMA
-            {id: "EMA", inputs: {length: 50}},        // 50 EMA (pehle 50 SMA tha)
-            {id: "WilliamFractal"}                    // William Fractal
+            {id:"MAExp@tv-basicstudies", inputs:{length:10}},
+            {id:"MAExp@tv-basicstudies", inputs:{length:20}},
+            {id:"MAExp@tv-basicstudies", inputs:{length:50}},
+            {id:"WilliamFractal@tv-basicstudies"}
         ]
     });
 }
-
 function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
 function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
 
