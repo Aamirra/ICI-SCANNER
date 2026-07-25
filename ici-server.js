@@ -4,6 +4,8 @@ const path = require('path');
 const admin = require('firebase-admin');
 const config = require('./config');
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
+const crypto = require('crypto');          // 👈 Added
+const { exec } = require('child_process'); // 👈 Added
 
 let scannerModule;
 
@@ -340,6 +342,46 @@ Always put the action block FIRST, then your reply.`;
         })();
         return;
     }
+
+    // ── 👇 NEW: GitHub Webhook for Auto-Deploy 👇 ──
+    if (req.method === 'POST' && safePath === '/webhook') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            try {
+                const signature = req.headers['x-hub-signature-256'];
+                const secret = process.env.WEBHOOK_SECRET || "MY_SUPER_SECRET_KEY";
+
+                // Verify signature
+                const hmac = crypto.createHmac('sha256', secret);
+                const digest = `sha256=${hmac.update(body).digest('hex')}`;
+
+                if (signature !== digest) {
+                    res.writeHead(401, { 'Content-Type': 'text/plain' });
+                    res.end('Unauthorized: Signature mismatch');
+                    return;
+                }
+
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end('Webhook received, updating application...');
+
+                // Run update in background
+                exec('git pull origin main && npm install && pm2 restart ici-scanner', (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`Exec error: ${error}`);
+                        return;
+                    }
+                    console.log(`Stdout: ${stdout}`);
+                    console.log(`Stderr: ${stderr}`);
+                });
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end(`Server error: ${err.message}`);
+            }
+        });
+        return;
+    }
+    // ── 👆 END: New Webhook 👆 ──
 
     // ── Scan & static files ──
     if (safePath === '/scan') {
