@@ -1,5 +1,5 @@
 const https = require('https');
-const admin = require('firebase-admin');
+const admin = require('../core/firebase');
 const config = require('../config');
 
 function sendTG(t) {
