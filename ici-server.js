@@ -343,13 +343,13 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
-    // ── 👇 GitHub Webhook for Auto-Deploy 👇 ──
+    // ── 👇 GITHUB WEBHOOK BLOCK (Yeh exact yahan hona chahiye) 👇 ──
     if (req.method === 'POST' && safePath === '/webhook') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', () => {
             try {
-                // Ping event ke liye direct 200 bhej do, taaki GitHub fail na kare
+                // Ping event handle
                 if (req.headers['x-github-event'] === 'ping') {
                     res.writeHead(200, { 'Content-Type': 'text/plain' });
                     res.end('Pong! Webhook is active.');
@@ -359,7 +359,6 @@ Always put the action block FIRST, then your reply.`;
                 const signature = req.headers['x-hub-signature-256'];
                 const secret = process.env.WEBHOOK_SECRET || "MY_SUPER_SECRET_KEY";
 
-                // Agar body empty hai, toh signature verify nahi karna
                 if (!body) {
                     res.writeHead(400, { 'Content-Type': 'text/plain' });
                     res.end('Empty body');
@@ -376,19 +375,23 @@ Always put the action block FIRST, then your reply.`;
                     return;
                 }
 
+                // Github ko 200 bhejo
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
                 res.end('Webhook received, updating application...');
 
-                // Run update in background
-                exec('git pull origin main && npm install && pm2 restart ici-scanner', (error, stdout, stderr) => {
+                // Background deploy
+                const deployCommand = 'git pull origin main && npm install && pm2 reload ici-scanner';
+                
+                exec(deployCommand, (error, stdout, stderr) => {
                     if (error) {
-                        console.error(`Exec error: ${error}`);
+                        console.error(`❌ Deploy Error: ${error.message}`);
                         return;
                     }
-                    console.log(`Stdout: ${stdout}`);
-                    console.log(`Stderr: ${stderr}`);
+                    console.log(`✅ Deploy Logs:\n${stdout}`);
+                    if (stderr) console.error(`⚠️ Stderr: ${stderr}`);
                 });
             } catch (err) {
+                console.error("❌ Webhook Catch Error:", err.message);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end(`Server error: ${err.message}`);
             }
