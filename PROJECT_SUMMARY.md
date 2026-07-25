@@ -2,6 +2,12 @@
 
 ## 🔗 Repositories & Deployments
 - **GitHub Repo**: `https://github.com/Aamirra/ICI-SCANNER`
+- **OCI Server (Self-Hosted Production/Deployment)**:
+  - **Server IP**: `158.101.232.120`
+  - **Application Path**: `~/ICI-SCANNER`
+  - **Process Manager**: PM2 (`pm2 restart ici-scanner`)
+  - **Access**: RSA Private Key authentication (`ssh -i "path_to_key" ubuntu@158.101.232.120`)
+  - **Live Web App URL**: `http://158.101.232.120:3000`
 - **Render Account 1 (New — Main)**: `ici-scanner` → `https://ici-scanner.onrender.com`  
   Start Command: `node ici-server.js`  
   Purpose: Dashboard (Forex + Stocks + Crypto), AI Chat, Scanner, Telegram/WhatsApp actions, Crypto News endpoint, Trading Journal
@@ -21,11 +27,11 @@
   - `/journal` — Serves `journal.html` (trading journal with equity curve, pair search, chart link)
   - Serves `index.html`, `stocks.html`, static files
 - `worker.js`: Runs background jobs (minimal HTTP server for health check).
-  - `liveTicks.start()` → real‑time prices for Forex, Indices, 100 Crypto via Binance Futures WebSocket + Yahoo Finance REST for indices
-  - `sentiment_job.py` → sentiment scraping
+  - `liveTicks.start()` — real‑time prices for Forex, Indices, 100 Crypto via Binance Futures WebSocket + Yahoo Finance REST for indices
+  - `sentiment_job.py` — sentiment scraping
   - `healthMonitor.start()`, `selfHealer.start()`
-  - `cryptoScanner.runCryptoScan()` → every 15 minutes, fetches historical candles from Binance Futures and updates `technicalMetrics` and `marketData` for crypto pairs
-  - `cryptoNewsAlert.fetchAndSendNews()` → every 2 minutes, fetches major news from CoinDesk RSS, translates full article to Roman Urdu via OpenRouter AI, and sends to WhatsApp/Telegram if toggles are ON; includes deduplication via Firebase
+  - `cryptoScanner.runCryptoScan()` — every 15 minutes, fetches historical candles from Binance Futures and updates `technicalMetrics` and `marketData` for crypto pairs
+  - `cryptoNewsAlert.fetchAndSendNews()` — every 2 minutes, fetches major news from CoinDesk RSS, translates full article to Roman Urdu via OpenRouter AI, and sends to WhatsApp/Telegram if toggles are ON; includes deduplication via Firebase
 - `index.html`: Main Forex dashboard — AI Assistant, live prices, toggles, TradingView chart, watchlist, 4H toggle, Crypto pill, Journal pill, error clear button, target count fix (only Forex pairs)
 - `stocks.html`: Stocks dashboard — Exness/PSX market toggle, Target List modal, Crypto pill, Journal pill, AI/toggle/chart features
 - `crypto.html`: Crypto dashboard — 100 symbols, AI Assistant, live prices, toggles, chart, watchlist, 4H toggle, Crypto News modal (manual, via 📰 icon), target list modal (crypto only), alerts integrated
@@ -71,12 +77,13 @@
 - Automatic alerts: `cryptoNewsAlert.js` runs every 2 minutes in worker, fetches CoinDesk RSS, filters major news (keyword‑based), fetches full article text (first 1500 chars), translates to Roman Urdu via OpenRouter, sends to WhatsApp/Telegram if toggles ON, deduplication using Firebase `sentNews` node (stores last 200 URLs)
 
 ## 🐛 Recent Fixes & History
+- OCI Server deployment & PM2 process restart configured (`ssh` access via private key to `158.101.232.120`, app running at port `3000`)
 - Toggle button conflict fixed: renamed `toggleAlert(pair)` to `togglePairAlert(pair)`
 - WhatsApp integration completed (QR scan + passkey), currently broken due to WhatsApp library update
 - DeepSeek free model discontinued → switched to `cohere/north-mini-code:free` (dynamic env var)
 - RAM limit exceeded fixed by splitting services across two Render accounts (Main + Worker)
 - Live prices field mismatch fixed: frontend checks both `price` and `currentPrice`
-- Crypto dashboard added (crypto.html, crypto route, cryptoScanner.js, worker.js updated)
+- Crypto dashboard added (`crypto.html`, crypto route, `cryptoScanner.js`, `worker.js` updated)
 - Crypto news modal added (CoinDesk RSS, fixed 502/403 issues by switching from other APIs)
 - Crypto news automatic alerts with AI Urdu translation added (full article translation)
 - Indices dots fixed by multi‑source fallback scanner (Finnhub, Yahoo, Twelve Data, Tiingo, Alpha Vantage)
@@ -91,7 +98,7 @@
 - Data stored in Firebase `trades` node
 - Accessible from all dashboards via "📒 Journal" pill button
 
-## 🔑 Key Environment Variables (Set in Both Render Services)
+## 🔑 Key Environment Variables (Set in Both Render Services & OCI Server)
 - `OPENROUTER_API_KEY`
 - `BOT_TOKEN` (Telegram)
 - `CHAT_ID` (Telegram)
@@ -109,11 +116,14 @@
 - Test WhatsApp: `fetch('/api/execute-action', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send_whatsapp',params:{text:'Test'}})}).then(r=>r.json()).then(console.log)`
 - Test Telegram: Same, use `action: 'send_telegram'`
 - Check live data: Firebase console → `liveMarketData`
-- Crypto Scanner status: Check Render worker logs for `[CryptoScanner]` entries
+- Crypto Scanner status: Check Render worker logs or OCI PM2 logs for `[CryptoScanner]` entries
 - AI Translation test: `fetch('/api/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:"Translate this to Roman Urdu: Bitcoin price surges after major ETF approval"})}).then(r=>r.json()).then(d=>console.log(d.response))`
 - Check target list data: Firebase console → `pb_state`
 - Test crypto news: `fetch('/api/crypto-news?symbol=BTCUSD').then(r=>r.json()).then(console.log)`
 - Clear errors: Use "Clear" button in AI Assistant panel or run `db.ref('errorLog').remove()` in browser console
+- **OCI Server Management**: 
+  - Connect: `ssh -i "path_to_key" ubuntu@158.101.232.120`
+  - Restart App: `cd ~/ICI-SCANNER && pm2 restart ici-scanner`
 
 ## 📱 Android App Details
 - Package: `com.aamir.iciscreener`
