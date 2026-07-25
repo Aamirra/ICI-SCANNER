@@ -1,7 +1,6 @@
 const https = require('https');
 const admin = require('firebase-admin');
 const config = require('../config');
-const { sendWhatsAppAlert } = require('./whatsapp'); // 1. WhatsApp service import ki
 
 let lastBroadcastTimestamp = 0;
 
@@ -12,7 +11,6 @@ async function checkBroadcasts() {
         let d = '';
         res.on('data', chunk => d += chunk);
         
-        // Callback ko async banaya taake WhatsApp trigger ka await kiya ja sakay
         res.on('end', async () => { 
             try {
                 const data = JSON.parse(d);
@@ -53,17 +51,13 @@ async function checkBroadcasts() {
                             }
                         };
 
-                        // 2. Existing App Notification Send Krna
+                        // Existing App Notification Send Krna
                         admin.messaging().send(message)
                             .then(res => console.log('✅ Broadcast Notification sent:', res))
                             .catch(err => console.error('❌ Broadcast FCM Error:', err));
 
-                        // 3. Naya WhatsApp Alert Logic
-                        // WhatsApp pr *bold* chalta hai, isliye hum original message heading k sath bheinjein gy
-                        if (data.message) {
-                            const whatsappTemplate = `📢 *ICI SCANNER UPDATE*\n\n${data.message.trim()}`;
-                            await sendWhatsAppAlert(whatsappTemplate);
-                        }
+                        // WhatsApp disabled - no alerts
+                        console.log('ℹ️ WhatsApp alerts are disabled.');
                     }
 
                     lastBroadcastTimestamp = data.timestamp;
