@@ -72,7 +72,6 @@
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
-        /* AI Assistant & Pending Changes hidden for brevity; only needed if used, keep existing classes */
         .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
         .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
         .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
@@ -260,7 +259,6 @@ function toggleDesktopMode() {
 function setFilter(f) { curF=f; render(); }
 function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
 
-// AI Chat and Error handling (keep simple)
 function toggleAIAssistant() { document.getElementById('aiBody').classList.toggle('collapsed'); }
 function clearErrors() { if (confirm('Sare errors delete kar dein?')) { db.ref('errorLog').remove(); } }
 async function sendOpenRouterChat() {
@@ -288,37 +286,12 @@ function actualScan() {
     .catch(()=>{ btn.textContent='Error'; setTimeout(()=>{btn.textContent='Scan';btn.disabled=false;},3000); });
 }
 
-function updateCounts() {
-    let b=0, r=0;
-    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
-    document.getElementById('bc').textContent=b;
-    document.getElementById('rc').textContent=r;
-    document.getElementById('allCount').textContent=PAIRS.length;
+// Helper: Get best auto setup per pair (unique pair, highest phase priority)
+function getUniqueAutoSetups() {
+    const forexPairNames = new Set(PAIRS.map(p => p.n));
+    const pairMap = new Map(); // pair -> { dir, phase }
+    const phasePriority = { 'alert_triggered':4, 'wait_h1_reclaim':3, 'wait_h1_dip':2, 'wait_daily_reclaim':1 };
     
-    const forexPairNames = new Set(PAIRS.map(p => p.n));
-    const autoCount = Object.keys(PB_STATE).filter(key => {
-        const s = PB_STATE[key];
-        if (!s || !s.phase) return false;
-        if (s.phase === 'wait_daily_reclaim' || s.phase === 'wait_h1_dip') return false;
-        const pairName = key.split('_')[0];
-        if (!forexPairNames.has(pairName)) return false;
-        const marketData = MARKET_DATA[pairName];
-        if (marketData) {
-            const isWeeklyBullish = marketData['1week'] === 'bull';
-            const isWeeklyBearish = marketData['1week'] === 'bear';
-            if (key.includes('_bull') && !isWeeklyBullish) return false;
-            if (key.includes('_bear') && !isWeeklyBearish) return false;
-        }
-        return true;
-    }).length;
-    document.getElementById('targetCount2').textContent = autoCount;
-    document.getElementById('targetCount').textContent = autoCount;
-    document.getElementById('tradesCount').textContent = autoCount;
-}
-
-function openTargetModal() {
-    const forexPairNames = new Set(PAIRS.map(p => p.n));
-    const autoEntries = [];
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!s || !s.phase) continue;
@@ -332,22 +305,44 @@ function openTargetModal() {
             if (key.includes('_bull') && !isWeeklyBullish) continue;
             if (key.includes('_bear') && !isWeeklyBearish) continue;
         }
-        const dir = key.includes('_bull') ? 'bull' : (key.includes('_bear') ? 'bear' : 'bull');
-        autoEntries.push({ pair: pairName, dir: dir, phase: s.phase });
+        const dir = key.includes('_bull') ? 'bull' : 'bear';
+        const priority = phasePriority[s.phase] || 0;
+        if (!pairMap.has(pairName) || priority > (phasePriority[pairMap.get(pairName).phase] || 0)) {
+            pairMap.set(pairName, { dir, phase: s.phase });
+        }
     }
-    if (autoEntries.length === 0) {
+    return pairMap; // Map of pair -> { dir, phase }
+}
+
+function updateCounts() {
+    let b=0, r=0;
+    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
+    document.getElementById('bc').textContent=b;
+    document.getElementById('rc').textContent=r;
+    document.getElementById('allCount').textContent=PAIRS.length;
+    
+    const autoSetups = getUniqueAutoSetups();
+    const uniqueCount = autoSetups.size;
+    document.getElementById('targetCount2').textContent = uniqueCount;
+    document.getElementById('targetCount').textContent = uniqueCount;
+    document.getElementById('tradesCount').textContent = uniqueCount;
+}
+
+function openTargetModal() {
+    const autoSetups = getUniqueAutoSetups();
+    if (autoSetups.size === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active forex setups</div>';
     } else {
         let html = '';
-        autoEntries.forEach(t => {
-            const ph = (t.phase||'?').toUpperCase();
-            const bg = t.dir==='bull'?'#22c55e':'#ef4444';
-            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${t.pair}')">
-                <span style="font-weight:700;font-size:14px;flex:1;">${t.pair} (Auto)</span>
+        for (const [pair, info] of autoSetups) {
+            const ph = (info.phase||'?').toUpperCase();
+            const bg = info.dir==='bull'?'#22c55e':'#ef4444';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pair}')">
+                <span style="font-weight:700;font-size:14px;flex:1;">${pair} (Auto)</span>
                 <span style="background:${bg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${ph}</span>
-                <span style="color:${t.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${t.dir.toUpperCase()}</span>
+                <span style="color:${info.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${info.dir.toUpperCase()}</span>
             </div>`;
-        });
+        }
         document.getElementById('targetContent').innerHTML = html;
     }
     document.getElementById('targetModal').classList.add('open');
@@ -358,31 +353,15 @@ function render() {
     let filtered;
     if(curF==='all') filtered = currentPairs;
     else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target') filtered = currentPairs.filter(p=> {
-        return Object.keys(PB_STATE).some(key => {
-            if (!key.startsWith(p.n + '_')) return false;
-            const state = PB_STATE[key];
-            if (!state || !state.phase) return false;
-            if (state.phase === 'wait_daily_reclaim' || state.phase === 'wait_h1_dip') return false;
-            const marketData = MARKET_DATA[p.n];
-            if (marketData) {
-                const isWeeklyBullish = marketData['1week'] === 'bull';
-                const isWeeklyBearish = marketData['1week'] === 'bear';
-                if (key.includes('_bull') && !isWeeklyBullish) return false;
-                if (key.includes('_bear') && !isWeeklyBearish) return false;
-            }
-            return true;
-        });
-    });
-    else if(curF==='trades') filtered = currentPairs.filter(p=>{
-        return Object.keys(PB_STATE).some(key => {
-            if (!key.startsWith(p.n + '_')) return false;
-            const state = PB_STATE[key];
-            if (!state || !state.phase) return false;
-            if (state.phase === 'wait_daily_reclaim' || state.phase === 'wait_h1_dip') return false;
-            return true;
-        });
-    });
+    else if(curF==='target') {
+        const validPairs = new Set(getUniqueAutoSetups().keys());
+        filtered = currentPairs.filter(p => validPairs.has(p.n));
+    }
+    else if(curF==='trades') {
+        // Trades bhi auto setups hi dikhayega (no manual)
+        const validPairs = new Set(getUniqueAutoSetups().keys());
+        filtered = currentPairs.filter(p => validPairs.has(p.n));
+    }
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p=>p.n);
     
@@ -417,18 +396,12 @@ function render() {
             '</div>';
 
         if (curF === 'target' || curF === 'trades') {
-            let phase = null, dir = 'bull';
-            const bullKey = p.n + '_1h_bull';
-            const bearKey = p.n + '_1h_bear';
-            const autoPhase = (PB_STATE[bullKey] || PB_STATE[bearKey])?.phase;
-            if (autoPhase) {
-                phase = autoPhase;
-                dir = PB_STATE[bullKey] ? 'bull' : 'bear';
-            }
-            if (phase) {
-                const badgeBg = dir === 'bull' ? '#22c55e' : '#ef4444';
+            const setups = getUniqueAutoSetups();
+            const info = setups.get(p.n);
+            if (info) {
+                const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
                 row += '<div class="phase-row"><span style="color:var(--muted);">Phase:</span>'+
-                    '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">'+dir.toUpperCase()+' '+phase+'</span>'+
+                    '<span style="background:'+badgeBg+';color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">'+info.dir.toUpperCase()+' '+info.phase+'</span>'+
                     '</div>';
             }
             row += '</div>';
