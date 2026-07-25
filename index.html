@@ -286,38 +286,40 @@ function actualScan() {
     .catch(()=>{ btn.textContent='Error'; setTimeout(()=>{btn.textContent='Scan';btn.disabled=false;},3000); });
 }
 
-// 🎯 NEW: Bull + Bear dono monitors support
+// 🎯 Normalize old phase names + unique pair logic
 function getUniqueAutoSetups() {
     const forexPairNames = new Set(PAIRS.map(p => p.n));
     const pairMap = new Map();
+
+    const normalizePhase = (phase) => {
+        const map = {
+            'wait_push': 'wait_h1_push',
+            'wait_daily_reclaim': null
+        };
+        return map[phase] !== undefined ? map[phase] : phase;
+    };
+
     const phasePriority = {
-        'alert_triggered': 3,
-        'wait_h1_reclaim': 2,
-        'wait_h1_dip': 1,
-        'wait_h1_push': 1
+        'alert_triggered': 4,
+        'wait_h1_reclaim': 3,
+        'wait_h1_dip': 2,
+        'wait_h1_push': 2
     };
 
     for (const key in PB_STATE) {
         const s = PB_STATE[key];
         if (!s || !s.phase) continue;
-        if (s.phase === 'wait_daily_reclaim') continue;
+        const phase = normalizePhase(s.phase);
+        if (!phase) continue;
 
         const pairName = key.split('_')[0];
         if (!forexPairNames.has(pairName)) continue;
 
-        const marketData = MARKET_DATA[pairName];
-        if (marketData) {
-            const isWeeklyBullish = marketData['1week'] === 'bull';
-            const isWeeklyBearish = marketData['1week'] === 'bear';
-            if (key.includes('_bull') && !isWeeklyBullish) continue;
-            if (key.includes('_bear') && !isWeeklyBearish) continue;
-        }
-
         const dir = key.includes('_bull') ? 'bull' : 'bear';
-        const priority = phasePriority[s.phase] || 0;
+        const priority = phasePriority[phase] || 0;
         const existing = pairMap.get(pairName);
         if (!existing || priority > existing.priority) {
-            pairMap.set(pairName, { dir, phase: s.phase, priority });
+            pairMap.set(pairName, { dir, phase, priority });
         }
     }
     return pairMap;
@@ -329,7 +331,6 @@ function updateCounts() {
     document.getElementById('bc').textContent=b;
     document.getElementById('rc').textContent=r;
     document.getElementById('allCount').textContent=PAIRS.length;
-    
     const uniqueCount = getUniqueAutoSetups().size;
     document.getElementById('targetCount2').textContent = uniqueCount;
     document.getElementById('targetCount').textContent = uniqueCount;
