@@ -661,7 +661,7 @@ function changeChartInterval(interval, btn) {
     openChart(chartIdx);
 }
 
-// ✅ FINAL FIXED OPENCHART FUNCTION (10 EMA, 20 EMA, 50 SMA, William Fractal)
+// ✅ CHANGED: Now shows 10 EMA, 20 EMA, 50 EMA (all Exponential Moving Averages)
 function openChart(idx) {
     chartIdx=idx; const symbol=chartPairs[idx];
     document.getElementById('chartPairName').textContent=symbol;
@@ -674,12 +674,12 @@ function openChart(idx) {
         interval: currentChartInterval,
         theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id: "tv_chart_container",
-        volume: false, // Volume pane should be hidden
+        volume: false, // Volume pane hidden
         studies: [
-            {id: "EMA", inputs: {length: 10}},        // ✅ 10 EMA
-            {id: "EMA", inputs: {length: 20}},        // ✅ 20 EMA
-            {id: "MASimple", inputs: {length: 50}},   // ✅ 50 SMA
-            {id: "WilliamFractal"}                    // ✅ William Fractal
+            {id: "EMA", inputs: {length: 10}},        // 10 EMA
+            {id: "EMA", inputs: {length: 20}},        // 20 EMA
+            {id: "EMA", inputs: {length: 50}},        // 50 EMA (pehle 50 SMA tha)
+            {id: "WilliamFractal"}                    // William Fractal
         ]
     });
 }
