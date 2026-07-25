@@ -19,15 +19,13 @@
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
         body { background:var(--bg); color:var(--txt); height:100vh; overflow:hidden; display:flex; }
 
-        /* ========= LAYOUT ========= */
         .left-panel { width:420px; background:var(--surface); border-right:1px solid var(--border); height:100%; display:flex; flex-direction:column; flex-shrink:0; }
         .right-panel { flex:1; height:100%; display:flex; flex-direction:column; position:relative; background:var(--bg); }
 
-        /* ========= LEFT PANEL (LIST) ========= */
         .header-bar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); }
         .logo { font-weight:700; font-size:16px; letter-spacing:0.5px; }
         .header-icons { display:flex; gap:12px; color:var(--txt-muted); }
-        .header-icons i { cursor:pointer; font-size:16px; }
+        .header-icons i { cursor:pointer; font-size:16px; transition:0.2s; }
         .header-icons i:hover { color:var(--txt); }
         .logout-btn { font-size:12px; font-weight:600; color:var(--red); cursor:pointer; display:flex; align-items:center; gap:4px; }
 
@@ -49,7 +47,7 @@
         .sort-icon { font-size:9px; margin-left:4px; color:var(--acc); }
 
         .scroll-area { flex:1; overflow-y:auto; }
-        .row-item { display:flex; align-items:center; padding:10px 0 10px 16px; border-bottom:1px solid var(--border); cursor:pointer; }
+        .row-item { display:flex; align-items:center; padding:10px 0 10px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:0.1s; }
         .row-item:hover { background:var(--pill-bg); }
         .row-pair { width:22%; font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px; }
         .row-pair i { color:var(--txt-muted); cursor:pointer; font-size:12px; }
@@ -67,7 +65,6 @@
 
         .bottom-actions { padding:12px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:11px; color:var(--txt-muted); }
 
-        /* ========= RIGHT PANEL (CHART) ========= */
         .chart-top { background:var(--surface); border-bottom:1px solid var(--border); padding:8px 16px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
         .chart-info { display:flex; align-items:center; gap:8px; }
         .chart-info span { font-size:11px; font-weight:500; color:var(--txt-muted); }
@@ -83,7 +80,6 @@
 
         .chart-container { flex:1; position:relative; overflow:hidden; }
 
-        /* ========= SETTINGS DRAWER (Image 2) ========= */
         .settings-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.3); display:none; justify-content:flex-end; }
         .settings-overlay.open { display:flex; }
         .settings-drawer { background:var(--surface); width:420px; height:100%; padding:20px; overflow-y:auto; border-left:1px solid var(--border); box-shadow:-4px 0 12px rgba(0,0,0,0.05); }
@@ -104,7 +100,6 @@
         .cfg-btn-cancel { padding:6px 16px; background:#e2e8f0; border:none; border-radius:4px; font-weight:600; cursor:pointer; }
         .cfg-btn-close { padding:6px 16px; background:var(--acc); color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer; }
 
-        /* ========= SORTING DROPDOWN ========= */
         .sort-dropdown { position:fixed; background:var(--surface); border:1px solid var(--border); border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0; min-width:150px; z-index:600; }
         .sort-dropdown button { display:block; width:100%; padding:6px 14px; background:none; border:none; text-align:left; font-size:12px; color:var(--txt); cursor:pointer; }
         .sort-dropdown button:hover { background:var(--pill-bg); }
@@ -148,7 +143,7 @@
         </div>
         <div class="scroll-area" id="pairsContainer"></div>
         <div class="bottom-actions">
-            <span>Showing 1 - 10 of <span id="totalCount">0</span></span>
+            <span>Showing 1 - <span id="totalCount">0</span> of <span id="totalCount">0</span></span>
             <span><i class="fas fa-chevron-left" style="cursor:pointer;"></i> <i class="fas fa-chevron-right" style="cursor:pointer;"></i></span>
         </div>
     </div>
@@ -175,7 +170,7 @@
         <div class="chart-container" id="tv_chart_container"></div>
     </div>
 
-    <!-- SETTINGS DRAWER (Image 2 Clone) -->
+    <!-- SETTINGS DRAWER -->
     <div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this) closeSettings()">
         <div class="settings-drawer" onclick="event.stopPropagation()">
             <div class="settings-header">
@@ -237,12 +232,14 @@
     </div>
 
     <script src="https://s3.tradingview.com/tv.js"></script>
-    <script src="Alerts.js"></script>
+    <!-- AGAR Aapke paas Alerts.js hai toh use include kar lein, warna ye comment mein rakhein -->
+    <!-- <script src="Alerts.js"></script> -->
     <script>
-        // --- Firebase Config (Replace with your existing creds if needed) ---
+        // --- FIXED FIREBASE CONFIG (Paths updated as per your screenshot) ---
         firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
         const db = firebase.database();
-        
+
+        // ----- YOUR ORIGINAL PAIRS LIST -----
         const PAIRS = [
             {n:'USOIL'},{n:'US500'},{n:'US100'},{n:'US30'},{n:'GER40'},{n:'UK100'},{n:'JPN225'},
             {n:'EURUSD'},{n:'GBPUSD'},{n:'USDJPY'},{n:'USDCHF'},{n:'USDCAD'},{n:'AUDUSD'},{n:'NZDUSD'},
@@ -252,22 +249,48 @@
             {n:'XAUUSD'},{n:'BTCUSD'},{n:'ETHUSD'}
         ];
 
+        // ----- APP STATES -----
         let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
         let curF = 'all', filteredPairs = [...PAIRS];
         let watchlistSet = new Set();
         let currentChartInterval = "1D";
         let currentSort = { column: null, order: null };
+        let manualTargets = {};
 
-        // --- Data listeners ---
-        db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
-        db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
-        db.ref('marketData').on('value', snap => { MARKET_DATA = snap.val()||{}; render(); });
-        db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); render(); });
+        // ----- FIXED: DATA LISTENERS (Your exact paths) -----
+        db.ref('stockMarketData').on('value', snap => {
+            MARKET_DATA = snap.val() || {};
+            render();
+        });
+        db.ref('techMetrics').on('value', snap => { 
+            techMetrics = snap.val() || {}; 
+            render(); 
+        });
+        db.ref('sentiment').on('value', snap => { 
+            sentimentData = snap.val() || {}; 
+            render(); 
+        });
+        db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; render(); });
+        
+        // NOTE: Apne console mein 'targetList' hai, agar aapka code 'manualTargets' use karta hai toh woh bhi theek hai. 
+        // Isko firebase mein bhi manualTargets rename kar lijiye ga.
+        db.ref('manualTargets').on('value', snap => { manualTargets = snap.val() || {}; render(); });
 
-        // --- Core Rendering ---
+        // ----- FIXED: SORTING LOGIC (Uses your exact keys: longTermTrend & shortTermMomentum) -----
+        function getSortValue(pair, col) {
+            const t = techMetrics[pair] || {}, s = sentimentData[pair] || {};
+            if(col === 'symbol') return pair;
+            if(col === 'sentiment') return (s.bullish_pct || 0) - (s.bearish_pct || 0);
+            if(col === '30d') return t.longTermTrend || 0;
+            if(col === '10d') return t.shortTermMomentum || 0;
+            return 0;
+        }
+
+        // ----- FIXED: RENDER FUNCTION (MentFX Display + Your Data keys) -----
         function render() {
             let list = filteredPairs;
             if(curF !== 'all') list = list.filter(p => { const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
+            
             if (currentSort.column) {
                 list.sort((a,b) => {
                     let va = getSortValue(a.n, currentSort.column), vb = getSortValue(b.n, currentSort.column);
@@ -276,59 +299,40 @@
                 });
             }
             document.getElementById('totalCount').textContent = list.length;
-            
+
             document.getElementById('pairsContainer').innerHTML = list.map(p => {
                 const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {};
                 
-                // Sentiment bar
-                const bullPct = Math.round(s.bullish_pct || 0), bearPct = Math.round(s.bearish_pct || 0);
+                // 1. Sentiment bar (Math same)
+                const bullPct = Math.round(s.bullish_pct || 0);
+                const bearPct = Math.round(s.bearish_pct || 0);
                 const total = bullPct + bearPct || 1;
-                const bw = Math.round((bearPct/total)*100), gw = 100-bw;
+                const bw = Math.round((bearPct/total)*100);
+                const gw = 100 - bw;
                 
-                // 30D change bar
-                const ch30 = t['30d'] != null ? t['30d'] : 0;
-                const ch30_str = (ch30 > 0 ? '+' : '') + ch30.toFixed(1) + '%';
-                const ch30_class = ch30 >= 0 ? 'g' : 'r';
+                // 2. 30D Change bar (Using YOUR original 'longTermTrend' key)
+                const val30 = t.longTermTrend != null ? t.longTermTrend : 0;
+                const str30 = (val30 > 0 ? '+' : '') + val30.toFixed(1) + '%';
+                const cls30 = val30 >= 0 ? 'g' : 'r';
 
-                // 10D change bar
-                const ch10 = t['10d'] != null ? t['10d'] : 0;
-                const ch10_str = (ch10 > 0 ? '+' : '') + ch10.toFixed(1) + '%';
-                const ch10_class = ch10 >= 0 ? 'g' : 'r';
+                // 3. 10D Change bar (Using YOUR original 'shortTermMomentum' key)
+                const val10 = t.shortTermMomentum != null ? t.shortTermMomentum : 0;
+                const str10 = (val10 > 0 ? '+' : '') + val10.toFixed(1) + '%';
+                const cls10 = val10 >= 0 ? 'g' : 'r';
 
-                const star = watchlistSet.has(p.n) ? 'fas fa-star' : 'far fa-star';
+                const star = manualTargets[p.n] ? 'fas fa-star' : 'far fa-star';
 
                 return `<div class="row-item" onclick="openChart('${p.n}')">
                     <div class="row-pair"><i class="${star}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')"></i><span>${p.n}</span></div>
                     <div class="sentiment-box"><div class="sent-progress"><div class="sent-red" style="width:${bw}%">${bearPct}</div><div class="sent-green" style="width:${gw}%">${bullPct}</div></div></div>
-                    <div class="change-box"><div class="change-bar ${ch30_class}">${ch30_str}</div></div>
-                    <div class="change-box-10"><div class="change-bar ${ch10_class}">${ch10_str}</div></div>
+                    <div class="change-box"><div class="change-bar ${cls30}">${str30}</div></div>
+                    <div class="change-box-10"><div class="change-bar ${cls10}">${str10}</div></div>
                 </div>`;
             }).join('');
             updateHeaderSortIcons();
         }
 
-        function getSortValue(pair, col) {
-            const t = techMetrics[pair] || {}, s = sentimentData[pair] || {};
-            if(col === 'symbol') return pair;
-            if(col === 'sentiment') return (s.bullish_pct || 0) - (s.bearish_pct || 0);
-            if(col === '30d') return t['30d'] || 0;
-            if(col === '10d') return t['10d'] || 0;
-            return 0;
-        }
-
-        function updateHeaderSortIcons() {
-            ['sent', '30d', '10d'].forEach(col => {
-                const icon = document.getElementById(col+'-icon');
-                if(!icon) return;
-                if(currentSort.column === col) {
-                    icon.className = currentSort.order === 'asc' ? 'fas fa-sort-up sort-icon' : 'fas fa-sort-down sort-icon';
-                } else {
-                    icon.className = 'fas fa-sort sort-icon';
-                }
-            });
-        }
-
-        // --- Sorting Dropdown Logic ---
+        // ----- DROPDOWN & SORT UI FUNCTIONS -----
         function showSortDropdown(e, col) {
             e.stopPropagation();
             const existing = document.querySelector('.sort-dropdown');
@@ -356,28 +360,57 @@
             setTimeout(() => document.addEventListener('click', (ev) => { if(!d.contains(ev.target)) d.remove(); }, {once:true}), 0);
         }
 
-        // --- Functions ---
-        function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
-        function toggleWatchlist(p) { watchlistSet.has(p) ? watchlistSet.delete(p) : watchlistSet.add(p); db.ref('manualWatchlist').set(Object.fromEntries([...watchlistSet].map(k=>[k,true]))); }
-        function actualScan() { const b=document.querySelector('.action-btn.active-blue'); if(b){ b.textContent='...'; setTimeout(()=>{b.textContent='REFRESH';},1500); } }
+        function updateHeaderSortIcons() {
+            ['sent', '30d', '10d'].forEach(col => {
+                const icon = document.getElementById(col+'-icon');
+                if(!icon) return;
+                if(currentSort.column === col) {
+                    icon.className = currentSort.order === 'asc' ? 'fas fa-sort-up sort-icon' : 'fas fa-sort-down sort-icon';
+                } else {
+                    icon.className = 'fas fa-sort sort-icon';
+                }
+            });
+        }
 
-        // --- Settings & Drawer ---
+        // ----- YOUR ORIGINAL HELPER FUNCTIONS -----
+        function filterPairs(txt) { 
+            filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; 
+            render(); 
+        }
+        
+        function toggleWatchlist(p) { 
+            if(manualTargets[p]){ 
+                delete manualTargets[p]; 
+                db.ref('manualTargets/'+p).remove(); 
+            } else { 
+                manualTargets[p] = true; 
+                db.ref('manualTargets/'+p).set(true); 
+            } 
+            render(); 
+        }
+
+        function actualScan() { 
+            const b=document.querySelector('.action-btn.active-blue'); 
+            if(b){ b.textContent='...'; setTimeout(()=>{b.textContent='REFRESH';},1500); } 
+        }
+
+        // ----- SETTINGS DRAWER -----
         function openSettings() { document.getElementById('settingsOverlay').classList.add('open'); }
         function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
         function selectTime(el) { document.querySelectorAll('#settTime .cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
         function selectDisplay(el) { el.parentElement.querySelectorAll('.cfg-btn').forEach(b=>b.className='cfg-btn'); el.classList.add('active-blue'); }
 
-        // --- Chart Logic ---
+        // ----- CHART LOGIC (Uses your keys for header) -----
         let currentSymbol = null;
         function openChart(sym) {
             currentSymbol = sym;
             document.getElementById('activeSymbol').textContent = sym;
             document.getElementById('tv_chart_container').innerHTML = '';
             
-            // Update price header
             const m = MARKET_DATA[sym] || {}; const t = techMetrics[sym] || {};
-            const pr = m.currentPrice || m.price || 0;
-            const change = t['30d'] || 0;
+            const pr = m.price || m.currentPrice || 0;
+            const change = t.longTermTrend || 0;
+            
             document.getElementById('activePrice').textContent = pr ? pr.toFixed(4) : '--';
             const changeEl = document.getElementById('activeChange');
             changeEl.textContent = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
@@ -385,12 +418,15 @@
 
             const isPSX = typeof psxStockList!=='undefined' && psxStockList.includes(sym);
             new TradingView.widget({ 
-                autosize:true, symbol:isPSX?'KSE:'+sym:sym,
+                autosize:true, 
+                symbol: isPSX ? 'KSE:'+sym : sym,
                 interval: currentChartInterval === '1D' ? 'D' : currentChartInterval.replace('H', '').toLowerCase(),
-                theme:'light', container_id:"tv_chart_container",
+                theme:'light', 
+                container_id:"tv_chart_container",
                 studies: [{id:"MASimple@tv-basicstudies", inputs:{length:20}}, {id:"MASimple@tv-basicstudies", inputs:{length:50}}]
             });
         }
+
         function changeChartInterval(int, el) {
             document.querySelectorAll('.int-btn').forEach(b=>b.className='int-btn');
             el.className = 'int-btn active-blue';
