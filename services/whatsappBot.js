@@ -35,6 +35,52 @@ let sock = null;
 let isConnected = false;
 let pairingCodeRequested = false; // ek socket attempt mein sirf ek baar pairing code maango
 
+// ━━━ RETRY LOGIC WITH EXPONENTIAL BACKOFF ━━━
+let consecutiveRetries = 0;
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [5000, 10000, 20000]; // 5s, 10s, 20s (milliseconds)
+let retryTimer = null;
+let isReconnecting = false;
+
+function calculateBackoffDelay() {
+    if (consecutiveRetries >= RETRY_DELAYS.length) {
+        return RETRY_DELAYS[RETRY_DELAYS.length - 1];
+    }
+    return RETRY_DELAYS[consecutiveRetries];
+}
+
+function resetRetryCounter() {
+    consecutiveRetries = 0;
+    if (retryTimer) clearTimeout(retryTimer);
+    isReconnecting = false;
+}
+
+async function gracefulShutdown(reason) {
+    console.error(`\n❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.error(`❌ CRITICAL: WhatsApp Bot Failed`);
+    console.error(`❌ Reason: ${reason}`);
+    console.error(`❌ Max retries (${MAX_RETRIES}) exceeded. Stopping automatic reconnection.`);
+    console.error(`❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    // Set idle state in Firebase for monitoring
+    try {
+        await admin.database().ref('whatsapp_status').set({
+            status: 'failed',
+            reason: reason,
+            failedAt: Date.now(),
+            message: `Max retries reached after ${MAX_RETRIES} attempts`
+        });
+    } catch (e) {
+        console.error('Failed to update Firebase status:', e.message);
+    }
+    
+    sock = null;
+    isConnected = false;
+    
+    // Optional: Exit process after critical failure
+    // process.exit(1);
+}
+
 const toFirebaseObject = (data) => {
     if (!data) return null;
     return JSON.parse(JSON.stringify(data, (k, v) => {
@@ -97,12 +143,36 @@ async function useFirebaseAuthState() {
     };
 }
 
-async function handleSessionCleanup() {
+async function handleSessionCleanup(reason = 'Unknown error') {
     console.log("⚠️ Session Error. Cleanup...");
     try { await admin.database().ref(DB_PATH).remove(); } catch (e) {}
     sock = null;
     isConnected = false;
-    setTimeout(() => connectToWhatsApp(), 5000);
+    
+    // Check if we should retry or fail
+    if (consecutiveRetries >= MAX_RETRIES) {
+        await gracefulShutdown(reason);
+    } else {
+        scheduleReconnect(reason);
+    }
+}
+
+function scheduleReconnect(reason = 'Connection lost') {
+    if (isReconnecting) return; // Already scheduled
+    
+    isReconnecting = true;
+    const delay = calculateBackoffDelay();
+    const attempt = consecutiveRetries + 1;
+    
+    console.log(`\n⏳ Reconnection scheduled (Attempt ${attempt}/${MAX_RETRIES})`);
+    console.log(`📝 Reason: ${reason}`);
+    console.log(`⏱️ Waiting ${delay / 1000} seconds before retry...\n`);
+    
+    retryTimer = setTimeout(() => {
+        consecutiveRetries++;
+        console.log(`🔄 Retry Attempt ${attempt}/${MAX_RETRIES}...`);
+        connectToWhatsApp();
+    }, delay);
 }
 
 async function sendWhatsAppAlert(messageContent) {
@@ -176,25 +246,41 @@ async function connectToWhatsApp() {
                     const wasRegistered = sock?.authState?.creds?.registered;
                     isConnected = false;
                     sock = null;
+                    
                     if (reason === 405 || reason === DisconnectReason.loggedOut) {
-                        await handleSessionCleanup();
+                        console.log('🚫 Bot logged out manually or session invalidated.');
+                        await handleSessionCleanup('Manual logout or invalid session');
                     } else if (!wasRegistered) {
-                        // Pairing complete hone se pehle hi disconnect ho gaya — jaldi retry karne
-                        // se purana pairing code invalid ho kar naya ban jata tha isse pehle ke
-                        // wo phone mein daala ja sakta. Ab thoda zyada wait karte hain.
-                        console.log(`⏳ Pairing complete hone se pehle disconnect hua (code: ${reason}). 25 sec baad naya pairing code milega.`);
-                        setTimeout(() => connectToWhatsApp(), 25000);
+                        // Pairing complete hone se pehle hi disconnect ho gaya
+                        console.log(`⏳ Pairing complete hone se pehle disconnect hua (code: ${reason}). 25 sec baad retry hoga.`);
+                        scheduleReconnect(`Disconnect during pairing (code: ${reason})`);
                     } else {
-                        setTimeout(() => connectToWhatsApp(), 5000);
+                        // Connection dropped but authenticated - use exponential backoff
+                        console.log(`❌ WhatsApp connection closed (code: ${reason})`);
+                        scheduleReconnect(`Authenticated connection closed (code: ${reason})`);
                     }
                 } else if (connection === 'open') {
+                    // ✅ SUCCESS: Reset retry counter on successful connection
+                    resetRetryCounter();
                     isConnected = true;
                     console.log(`\n========= CONNECTED =========`);
                     console.log(`✅ WhatsApp Bot LIVE!`);
                     console.log(`=============================\n`);
+                    
+                    // Update Firebase status
+                    try {
+                        await admin.database().ref('whatsapp_status').set({
+                            status: 'connected',
+                            connectedAt: Date.now(),
+                            message: 'WhatsApp bot is online'
+                        });
+                    } catch (e) {
+                        console.error('Failed to update Firebase status:', e.message);
+                    }
                 }
             } catch (err) {
                 console.log("❌ connection.update error:", err.message);
+                scheduleReconnect(`connection.update error: ${err.message}`);
             }
         });
 
@@ -205,9 +291,17 @@ async function connectToWhatsApp() {
 
         return sock;
     } catch (error) {
-        setTimeout(() => connectToWhatsApp(), 8000);
+        console.error(`❌ Connection attempt failed: ${error.message}`);
+        
+        if (consecutiveRetries >= MAX_RETRIES) {
+            await gracefulShutdown(`Connection error: ${error.message}`);
+        } else {
+            scheduleReconnect(`Connection error: ${error.message}`);
+        }
     }
 }
 
+// Initial connection
 connectToWhatsApp();
-module.exports = { sendWhatsAppAlert };
+
+module.exports = { sendWhatsAppAlert, resetRetryCounter, gracefulShutdown };
