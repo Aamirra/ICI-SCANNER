@@ -209,17 +209,49 @@
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
-// --- Override alert message to include condition and target price ---
+// Override _alFireAlert to fix message and auto-deactivate
 (function() {
     const originalFire = _alFireAlert;
     _alFireAlert = function(alert, pair) {
-        // If alert has a value and type, generate a descriptive message
+        // 1. Correct message with pair, direction, and price
         if (alert.value != null && alert.type) {
             const direction = alert.type === 'above' ? 'crossed above' : 'crossed below';
-            const customMsg = pair.name + ' ' + direction + ' ' + alert.value;
-            if (!alert.message) alert.message = customMsg;
+            if (!alert.message) alert.message = pair.name + ' ' + direction + ' ' + alert.value;
         }
-        return originalFire(alert, pair);
+
+        // 2. Fire the original alert (toast, Telegram, etc.)
+        originalFire(alert, pair);
+
+        // 3. Auto-deactivate so it doesn't fire again
+        alert.active = false;
+
+        // 4. Save back to storage (attempts multiple methods)
+        try {
+            if (typeof alSaveAlerts === 'function') {
+                const all = alLoadAlerts();
+                const idx = all.findIndex(a => a.id === alert.id);
+                if (idx !== -1) {
+                    all[idx].active = false;
+                    alSaveAlerts(all);
+                }
+            } else if (typeof saveAlerts === 'function') {
+                saveAlerts();   // if it re-saves global array
+            } else {
+                // fallback: update localStorage directly (common key)
+                const key = 'ici_alerts';
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const list = JSON.parse(raw);
+                    const i = list.findIndex(a => a.id === alert.id);
+                    if (i !== -1) {
+                        list[i].active = false;
+                        localStorage.setItem(key, JSON.stringify(list));
+                    }
+                }
+            }
+        } catch(e) {
+            console.warn('Auto-deactivate failed, you may need to remove alert manually', e);
+        }
     };
 })();
 </script>
@@ -241,7 +273,7 @@ let REMOTE_TARGET_LIST = {};
 let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
-window.alertSettings = alertSettings;   // Immediate initialization
+window.alertSettings = alertSettings;   // immediate init for Alerts.js
 let currentChartInterval = "60";
 
 // Real-time last scan time
@@ -376,7 +408,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// Scan trigger
+// Scan trigger with 10-min timeout
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -417,7 +449,7 @@ function actualScan() {
     }, 600000);
 }
 
-// Target setups
+// Target setups from targetList
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
