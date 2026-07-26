@@ -6,7 +6,7 @@ const config = require('./config');
 const { sendWhatsAppAlert } = require('./services/whatsappBot');
 const crypto = require('crypto');
 const { exec } = require('child_process');
-const cron = require('node-cron'); // 🟢 node-cron yahan add kiya hai
+const cron = require('node-cron');
 
 let scannerModule;
 
@@ -281,7 +281,6 @@ Always put the action block FIRST, then your reply.`;
 
                 const symbolToCoinName = {
                     'BTCUSD': 'bitcoin', 'ETHUSD': 'ethereum', 'LTCUSD': 'litecoin', 'BCHUSD': 'bitcoin cash',
-                    // ... (rest of the symbols are kept intact) ...
                     'FXSUSD': 'frax share', 'LQTYUSD': 'liquity', 'MASKUSD': 'mask network'
                 };
 
@@ -385,8 +384,9 @@ Always put the action block FIRST, then your reply.`;
             } else {
                 res.end(JSON.stringify({ status: 'Scan started!' }));
                 scanFn().finally(() => {
-                    admin.database().ref('scanStatus').set({ running: false, completedAt: Date.now() });
-                    admin.database().ref('lastScanTime').set({ time: Date.now() });
+                    const now = Date.now();
+                    admin.database().ref('scanStatus').set({ running: false, completedAt: now });
+                    admin.database().ref('lastScanTime').set({ time: now });
                 });
             }
         } else {
@@ -440,10 +440,19 @@ scannerModule = require('./core/scanner');
 const { restoreState } = require('./pullback/setupScanner');
 function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap => snap.val()); }
 
+async function updateScanTimestamp() {
+    const now = Date.now();
+    await admin.database().ref('scanStatus').set({ running: false, completedAt: now });
+    await admin.database().ref('lastScanTime').set({ time: now });
+}
+
 (async () => {
     await restoreState(firebaseGet);
     if (scannerModule && typeof scannerModule.masterScan === 'function') {
-        scannerModule.masterScan();
+        admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
+        scannerModule.masterScan().finally(() => {
+            updateScanTimestamp();
+        });
         console.log('✅ Initial Master Scanner started');
     } else {
         console.log('⚠️ Scanner function not found – manual scan only');
@@ -454,7 +463,10 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
         console.log('[CRON] 🕒 Running 15-min Crypto Scan...');
         exec('node scrapers/cryptoScanner.js', (error, stdout, stderr) => {
             if (error) console.error(`❌ Crypto Scan Error: ${error.message}`);
-            if (stdout) console.log(`✅ Crypto Scan Done`);
+            if (stdout) {
+                console.log(`✅ Crypto Scan Done`);
+                updateScanTimestamp();
+            }
         });
     });
 
@@ -463,7 +475,10 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
         console.log('[CRON] 🕒 Running 30-min Stock Scan...');
         exec('node scrapers/stockScanner.js', (error, stdout, stderr) => {
             if (error) console.error(`❌ Stock Scan Error: ${error.message}`);
-            if (stdout) console.log(`✅ Stock Scan Done`);
+            if (stdout) {
+                console.log(`✅ Stock Scan Done`);
+                updateScanTimestamp();
+            }
         });
     });
 
@@ -473,9 +488,9 @@ function firebaseGet(p) { return admin.database().ref(p).once('value').then(snap
         if (scannerModule && typeof scannerModule.masterScan === 'function') {
             const scanFn = scannerModule.masterScan;
             if (!scanFn.isBusy || !scanFn.isBusy()) {
+                admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
                 scanFn().finally(() => {
-                    admin.database().ref('scanStatus').set({ running: false, completedAt: Date.now() });
-                    admin.database().ref('lastScanTime').set({ time: Date.now() });
+                    updateScanTimestamp();
                 });
             } else {
                 console.log('⚠️ Master Scan already running, skipped this cycle.');
