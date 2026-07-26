@@ -209,6 +209,21 @@
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
+// --- Override alert message to include condition and target price ---
+(function() {
+    const originalFire = _alFireAlert;
+    _alFireAlert = function(alert, pair) {
+        // If alert has a value and type, generate a descriptive message
+        if (alert.value != null && alert.type) {
+            const direction = alert.type === 'above' ? 'crossed above' : 'crossed below';
+            const customMsg = pair.name + ' ' + direction + ' ' + alert.value;
+            if (!alert.message) alert.message = customMsg;
+        }
+        return originalFire(alert, pair);
+    };
+})();
+</script>
+<script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
@@ -226,7 +241,7 @@ let REMOTE_TARGET_LIST = {};
 let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
-window.alertSettings = alertSettings;   // ✅ Immediate initialization
+window.alertSettings = alertSettings;   // Immediate initialization
 let currentChartInterval = "60";
 
 // Real-time last scan time
