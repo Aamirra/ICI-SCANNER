@@ -384,9 +384,7 @@ Always put the action block FIRST, then your reply.`;
             } else {
                 res.end(JSON.stringify({ status: 'Scan started!' }));
                 scanFn().finally(() => {
-                    const now = Date.now();
-                    admin.database().ref('scanStatus').set({ running: false, completedAt: now });
-                    admin.database().ref('lastScanTime').set({ time: now });
+                    updateScanTimestamp();
                 });
             }
         } else {
@@ -444,6 +442,26 @@ async function updateScanTimestamp() {
     const now = Date.now();
     await admin.database().ref('scanStatus').set({ running: false, completedAt: now });
     await admin.database().ref('lastScanTime').set({ time: now });
+    // This updates the main dashboard timestamp properly!
+    await admin.database().ref('system/lastScan').set({ 
+        timestamp: now, 
+        readable: new Date().toISOString() 
+    });
+    console.log("✅ All Firebase timestamps updated successfully!");
+}
+
+function runSafeMasterScan() {
+    if (scannerModule && typeof scannerModule.masterScan === 'function') {
+        const scanFn = scannerModule.masterScan;
+        if (!scanFn.isBusy || !scanFn.isBusy()) {
+            admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
+            scanFn().finally(() => {
+                updateScanTimestamp();
+            });
+        } else {
+            console.log('⚠️ Master Scan already running, skipped this cycle.');
+        }
+    }
 }
 
 (async () => {
@@ -458,45 +476,23 @@ async function updateScanTimestamp() {
         console.log('⚠️ Scanner function not found – manual scan only');
     }
 
-    // 🟢 1. Crypto Scan: Har 15 minute baad (e.g., 0, 15, 30, 45)
+    // 🟢 1. 15-Min Scan
     cron.schedule('*/15 * * * *', () => {
-        console.log('[CRON] 🕒 Running 15-min Crypto Scan...');
-        exec('node scrapers/cryptoScanner.js', (error, stdout, stderr) => {
-            if (error) console.error(`❌ Crypto Scan Error: ${error.message}`);
-            if (stdout) {
-                console.log(`✅ Crypto Scan Done`);
-                updateScanTimestamp();
-            }
-        });
+        console.log('[CRON] 🕒 Running 15-min Master Scan...');
+        runSafeMasterScan();
     });
 
-    // 🟢 2. Stocks Scan: Har 30 minute baad (e.g., 0, 30)
+    // 🟢 2. 30-Min Scan
     cron.schedule('*/30 * * * *', () => {
-        console.log('[CRON] 🕒 Running 30-min Stock Scan...');
-        exec('node scrapers/stockScanner.js', (error, stdout, stderr) => {
-            if (error) console.error(`❌ Stock Scan Error: ${error.message}`);
-            if (stdout) {
-                console.log(`✅ Stock Scan Done`);
-                updateScanTimestamp();
-            }
-        });
+        console.log('[CRON] 🕒 Running 30-min Master Scan...');
+        runSafeMasterScan();
     });
 
-    // 🟢 3. Forex/Indices/Gold (Master Scan): Har 1 ghante baad (Minute 00 par)
+    // 🟢 3. Hourly Scan
     cron.schedule('0 * * * *', () => {
-        console.log('[CRON] 🕒 Running Hourly Forex/Indices Master Scan...');
-        if (scannerModule && typeof scannerModule.masterScan === 'function') {
-            const scanFn = scannerModule.masterScan;
-            if (!scanFn.isBusy || !scanFn.isBusy()) {
-                admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
-                scanFn().finally(() => {
-                    updateScanTimestamp();
-                });
-            } else {
-                console.log('⚠️ Master Scan already running, skipped this cycle.');
-            }
-        }
+        console.log('[CRON] 🕒 Running Hourly Master Scan...');
+        runSafeMasterScan();
     });
 
-    console.log('⏰ All Automated Scans Scheduled Successfully!');
+    console.log('⏰ All Automated Scans Scheduled Successfully without broken scrapers!');
 })();
