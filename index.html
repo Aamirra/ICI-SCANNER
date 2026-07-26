@@ -226,6 +226,7 @@ let REMOTE_TARGET_LIST = {};
 let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
+window.alertSettings = alertSettings;   // ✅ Immediate initialization
 let currentChartInterval = "60";
 
 // Real-time last scan time
@@ -240,10 +241,10 @@ db.ref('lastScanTime/time').on('value', snap => {
     }
 });
 
-// Alert settings listener + global exposure for Alerts.js
+// Alert settings listener + global exposure
 db.ref('alertSettings').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
-    window.alertSettings = alertSettings;   // <-- Fix for Alerts.js
+    window.alertSettings = alertSettings;
     updateToggleButtons();
 });
 function updateToggleButtons() {
