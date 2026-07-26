@@ -228,7 +228,7 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 
-// 👇 Real-time listener for last scan time (public path)
+// Real-time last scan time
 db.ref('lastScanTime/time').on('value', snap => {
     const timestamp = snap.val();
     const el = document.getElementById('lastScanTime');
@@ -240,8 +240,10 @@ db.ref('lastScanTime/time').on('value', snap => {
     }
 });
 
+// Alert settings listener + global exposure for Alerts.js
 db.ref('alertSettings').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
+    window.alertSettings = alertSettings;   // <-- Fix for Alerts.js
     updateToggleButtons();
 });
 function updateToggleButtons() {
@@ -259,6 +261,7 @@ function toggleAlert(type) {
     const newVal = !(alertSettings[type] ?? true);
     db.ref('alertSettings/' + type).set(newVal);
     alertSettings[type] = newVal;
+    window.alertSettings = alertSettings;
     updateToggleButtons();
 }
 
@@ -357,7 +360,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// Scan trigger – writes to the same public path
+// Scan trigger
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -378,7 +381,6 @@ function actualScan() {
             const now = new Date();
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            // Write to lastScanTime/time (public path)
             db.ref('lastScanTime').set({ time: now.getTime() });
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
@@ -399,7 +401,7 @@ function actualScan() {
     }, 600000);
 }
 
-// Target setups from targetList node
+// Target setups
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
