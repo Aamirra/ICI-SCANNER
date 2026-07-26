@@ -132,7 +132,7 @@
     </div>
     <div style="display:flex; align-items:center; margin-bottom:8px;">
         <span id="scanStatusText" class="scan-status-line"></span>
-        <span id="lastScanTime" class="last-scan-line"></span>
+        <span id="lastScanTime" class="last-scan-line">🕒 Last scan: never</span>
     </div>
     <div class="ai-assistant-panel">
         <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><i class="fas fa-chevron-down" style="font-size:12px;"></i></div>
@@ -228,9 +228,23 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 
-// ✅ Listen to system/lastScan/timestamp (matches backend updateScanTimestamp)
+// 👇 Real-time listener for last scan time (matches backend: system/lastScan/timestamp)
 db.ref('system/lastScan/timestamp').on('value', snap => {
     const timestamp = snap.val();
+    console.log('[lastScan] Firebase update:', timestamp);
+    const el = document.getElementById('lastScanTime');
+    if (timestamp) {
+        const d = new Date(timestamp);
+        el.textContent = '🕒 Last scan: ' + d.toLocaleTimeString();
+    } else {
+        el.textContent = '🕒 Last scan: never';
+    }
+});
+
+// 👇 Ensure the listener fires on page load as well
+db.ref('system/lastScan/timestamp').once('value', snap => {
+    const timestamp = snap.val();
+    console.log('[lastScan] Initial load:', timestamp);
     const el = document.getElementById('lastScanTime');
     if (timestamp) {
         const d = new Date(timestamp);
@@ -273,7 +287,6 @@ db.ref('liveMarketData').on('value', snap => {
     render();
 });
 
-// Listen to targetList for auto setups
 db.ref('targetList').on('value', snap => {
     REMOTE_TARGET_LIST = snap.val() || {};
     if (typeof updateCounts === 'function') updateCounts();
@@ -358,7 +371,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// Scan trigger with backend consistency
+// Scan trigger – completely synced with backend format
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -379,7 +392,7 @@ function actualScan() {
             const now = new Date();
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            // Match backend format: set object { timestamp, readable }
+            // Write to system/lastScan in the same format as backend
             db.ref('system/lastScan').set({
                 timestamp: now.getTime(),
                 readable: now.toISOString()
@@ -403,7 +416,7 @@ function actualScan() {
     }, 600000);
 }
 
-// Auto setups from targetList
+// Target setups from targetList node
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
