@@ -228,23 +228,9 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 
-// 👇 Real-time listener for last scan time (matches backend: system/lastScan/timestamp)
-db.ref('system/lastScan/timestamp').on('value', snap => {
+// 👇 Real-time listener for last scan time (public path)
+db.ref('lastScanTime/time').on('value', snap => {
     const timestamp = snap.val();
-    console.log('[lastScan] Firebase update:', timestamp);
-    const el = document.getElementById('lastScanTime');
-    if (timestamp) {
-        const d = new Date(timestamp);
-        el.textContent = '🕒 Last scan: ' + d.toLocaleTimeString();
-    } else {
-        el.textContent = '🕒 Last scan: never';
-    }
-});
-
-// 👇 Ensure the listener fires on page load as well
-db.ref('system/lastScan/timestamp').once('value', snap => {
-    const timestamp = snap.val();
-    console.log('[lastScan] Initial load:', timestamp);
     const el = document.getElementById('lastScanTime');
     if (timestamp) {
         const d = new Date(timestamp);
@@ -371,7 +357,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// Scan trigger – completely synced with backend format
+// Scan trigger – writes to the same public path
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -392,11 +378,8 @@ function actualScan() {
             const now = new Date();
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            // Write to system/lastScan in the same format as backend
-            db.ref('system/lastScan').set({
-                timestamp: now.getTime(),
-                readable: now.toISOString()
-            });
+            // Write to lastScanTime/time (public path)
+            db.ref('lastScanTime').set({ time: now.getTime() });
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
         } else if (s.running === true) {
