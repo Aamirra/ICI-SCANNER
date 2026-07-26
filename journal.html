@@ -3,177 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ICI Trading Journal</title>
+    <title>Trading Journal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
         [data-theme="dark"] { --bg:#0f172a; --surface:#1e293b; --border:#334155; --txt:#f8fafc; --acc:#3b82f6; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#94a3b8; --pill-bg:#1e293b; }
-        .phone-container { width:100%; max-width:500px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); margin:0 auto; }
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-        .header h2 { font-size:18px; font-weight:700; }
-        .add-btn { background:var(--acc); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer; }
-        .form-section { background:var(--pill-bg); padding:12px; border-radius:12px; margin-bottom:16px; display:none; }
-        .form-section.open { display:block; }
-        .form-row { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-        .form-row label { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:2px; display:block; }
-        .form-row input, .form-row select { flex:1 1 45%; padding:6px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--txt); font-size:12px; outline:none; }
-        .form-row .full { flex:1 1 100%; }
-        .form-actions { display:flex; gap:8px; justify-content:flex-end; }
-        .form-actions button { padding:6px 14px; border-radius:6px; border:none; font-weight:600; cursor:pointer; }
-        .save-btn { background:var(--green); color:#fff; }
-        .cancel-btn { background:var(--red); color:#fff; }
-        .summary-bar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-        .summary-item { background:var(--pill-bg); padding:8px 12px; border-radius:8px; text-align:center; flex:1; min-width:60px; }
-        .summary-item .val { font-size:16px; font-weight:700; }
-        .summary-item .lbl { font-size:10px; color:var(--muted); }
-        .trade-table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:16px; }
-        .trade-table th, .trade-table td { border:1px solid var(--border); padding:4px; text-align:center; }
-        .trade-table th { background:var(--pill-bg); font-weight:600; }
-        .trade-table td { color:var(--txt); }
-        .delete-btn { background:var(--red); color:#fff; border:none; padding:2px 6px; border-radius:4px; cursor:pointer; font-size:10px; }
-        .chart-container { margin-top:12px; }
-        canvas { width:100%; height:200px; background:var(--pill-bg); border-radius:8px; }
+        .phone-container { width:100%; max-width:450px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
+        .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .brand-icon { width:36px; height:36px; background:var(--gold); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
+        .brand-text h1 { font-size:16px; font-weight:700; line-height:1.2; }
+        .brand-text span { font-size:12px; color:var(--muted); }
+        .back-btn { padding:4px 12px; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); text-decoration:none; }
+        .form-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:16px; }
+        .form-group { margin-bottom:10px; }
+        .form-group label { font-size:12px; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; }
+        .form-group input, .form-group select, .form-group textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--pill-bg); color:var(--txt); outline:none; }
+        .form-group textarea { resize:vertical; min-height:60px; }
+        .form-row { display:flex; gap:8px; }
+        .form-row .form-group { flex:1; }
+        .btn { padding:8px 16px; border-radius:8px; border:none; font-weight:600; font-size:13px; cursor:pointer; }
+        .btn-save { background:var(--acc); color:#fff; width:100%; }
+        .btn-delete { background:var(--red); color:#fff; padding:4px 10px; font-size:11px; }
+        .summary-bar { display:flex; justify-content:space-between; background:var(--pill-bg); border-radius:10px; padding:10px; margin-bottom:12px; font-size:11px; }
+        .summary-item { text-align:center; }
+        .summary-item .val { font-weight:700; }
+        .summary-item .lbl { color:var(--muted); }
+        .trade-table { width:100%; border-collapse:collapse; font-size:12px; }
+        .trade-table th { background:var(--pill-bg); padding:6px; text-align:left; font-size:11px; color:var(--muted); }
+        .trade-table td { padding:6px; border-bottom:1px solid var(--border); }
+        .trade-table .pnl-up { color:var(--green); }
+        .trade-table .pnl-down { color:var(--red); }
+        .chart-link { color:var(--acc); text-decoration:underline; cursor:pointer; }
+        canvas { width:100%; height:150px; margin-top:10px; background:var(--pill-bg); border-radius:8px; }
     </style>
 </head>
 <body>
 <div class="phone-container" id="app">
-    <div class="header">
-        <h2>📒 Trading Journal</h2>
-        <button class="add-btn" onclick="toggleForm()">+ Add Trade</button>
+    <div class="header-row">
+        <div class="brand"><div class="brand-icon"><i class="fas fa-book"></i></div><div class="brand-text"><h1>Trading Journal</h1><span>Track your trades</span></div></div>
+        <a href="/" class="back-btn">↩ Back</a>
     </div>
 
     <!-- Add/Edit Trade Form -->
-    <div class="form-section" id="tradeForm">
+    <div class="form-card">
+        <div class="form-group">
+            <label>Pair</label>
+            <input list="pairList" id="pairInput" placeholder="e.g., EURUSD">
+            <datalist id="pairList"></datalist>
+        </div>
         <div class="form-row">
-            <div style="flex:1 1 100%;">
-                <label>Pair (search)</label>
-                <input list="pairList" id="pairSelect" placeholder="Type or select pair" autocomplete="off">
-                <datalist id="pairList"></datalist>
+            <div class="form-group">
+                <label>Date</label>
+                <input type="datetime-local" id="dateInput">
+            </div>
+            <div class="form-group">
+                <label>Direction</label>
+                <select id="dirSelect">
+                    <option value="long">Long</option>
+                    <option value="short">Short</option>
+                </select>
             </div>
         </div>
         <div class="form-row">
-            <div><label>Date</label><input type="date" id="tradeDate"></div>
-            <div><label>Direction</label><select id="direction"><option>Long</option><option>Short</option></select></div>
+            <div class="form-group">
+                <label>Entry</label>
+                <input type="number" step="any" id="entryInput" oninput="calcPNL()">
+            </div>
+            <div class="form-group">
+                <label>Exit</label>
+                <input type="number" step="any" id="exitInput" oninput="calcPNL()">
+            </div>
         </div>
         <div class="form-row">
-            <div><label>Entry Price</label><input type="number" id="entryPrice" step="any"></div>
-            <div><label>Exit Price</label><input type="number" id="exitPrice" step="any"></div>
+            <div class="form-group">
+                <label>Stop Loss</label>
+                <input type="number" step="any" id="stopInput">
+            </div>
+            <div class="form-group">
+                <label>Take Profit</label>
+                <input type="number" step="any" id="tpInput">
+            </div>
         </div>
         <div class="form-row">
-            <div><label>Stop Loss</label><input type="number" id="stopLoss" step="any"></div>
-            <div><label>Take Profit</label><input type="number" id="takeProfit" step="any"></div>
+            <div class="form-group">
+                <label>Position Size</label>
+                <input type="number" step="any" id="sizeInput" value="1" oninput="calcPNL()">
+            </div>
+            <div class="form-group">
+                <label>P&L</label>
+                <input type="text" id="pnlDisplay" readonly style="background:var(--surface);">
+            </div>
         </div>
-        <div class="form-row">
-            <div><label>Position Size</label><input type="number" id="posSize" step="any" placeholder="e.g. 0.1 lots"></div>
-            <div><label>P&L ($)</label><input type="number" id="pnl" step="any" placeholder="Auto-calc if entry/exit given"></div>
+        <div class="form-group">
+            <label>Chart Link (optional)</label>
+            <input type="text" id="chartLinkInput" placeholder="TradingView chart URL">
         </div>
-        <div class="form-row">
-            <div class="full"><label>Chart Link (TradingView)</label><input type="url" id="chartLink" placeholder="https://www.tradingview.com/chart/..."></div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="notesInput"></textarea>
         </div>
-        <div class="form-row">
-            <div class="full"><label>Notes</label><input type="text" id="notes" placeholder="Optional notes..."></div>
-        </div>
-        <div class="form-actions">
-            <button class="cancel-btn" onclick="toggleForm(true)">Cancel</button>
-            <button class="save-btn" onclick="saveTrade()">Save</button>
-        </div>
-        <input type="hidden" id="editingId">
+        <button class="btn btn-save" onclick="saveTrade()">💾 Save Trade</button>
     </div>
 
     <!-- Summary -->
-    <div class="summary-bar" id="summaryBar">
-        <div class="summary-item"><div class="val" id="totalTrades">0</div><div class="lbl">Trades</div></div>
-        <div class="summary-item"><div class="val" id="totalWins">0</div><div class="lbl">Wins</div></div>
-        <div class="summary-item"><div class="val" id="totalLoss">0</div><div class="lbl">Losses</div></div>
-        <div class="summary-item"><div class="val" id="totalBE">0</div><div class="lbl">B/E</div></div>
-        <div class="summary-item"><div class="val" id="winRate">0%</div><div class="lbl">Win Rate</div></div>
-        <div class="summary-item"><div class="val" id="totalPL">0.00</div><div class="lbl">Total P&L</div></div>
-    </div>
+    <div class="summary-bar" id="summaryBar">Loading...</div>
 
     <!-- Trades Table -->
-    <div style="overflow-x:auto;">
-        <table class="trade-table" id="tradeTable">
-            <thead>
-                <tr><th>Date</th><th>Pair</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Size</th><th>P&L</th><th>Result</th><th>Chart</th><th></th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+    <table class="trade-table" id="tradesTable">
+        <thead><tr><th>Pair</th><th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Chart</th><th></th></tr></thead>
+        <tbody id="tradesBody"></tbody>
+    </table>
 
     <!-- Equity Curve -->
-    <div class="chart-container">
-        <canvas id="equityChart"></canvas>
-    </div>
+    <canvas id="equityCanvas"></canvas>
 </div>
 
 <script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
 
-// All pairs (forex, crypto, indices, stocks)
+let trades = [];
+let editingId = null;
+
+// Pair datalist populate (Forex + Crypto + Indices)
 const ALL_PAIRS = [
-    'EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD',
+    'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
     'EURJPY','GBPJPY','AUDJPY','NZDJPY','CADJPY','CHFJPY',
     'EURGBP','EURAUD','EURCAD','EURCHF','GBPAUD','GBPCAD','GBPCHF',
     'AUDCAD','AUDCHF','AUDNZD','NZDCAD','NZDCHF','CADCHF',
-    'XAUUSD','BTCUSD','ETHUSD','LTCUSD','BCHUSD','XRPUSD','ADAUSD',
-    'DOTUSD','LINKUSD','UNIUSD','SOLUSD','MATICUSD','AVAXUSD',
-    'ATOMUSD','FILUSD','VETUSD','ETCUSD','TRXUSD','XLMUSD','ICPUSD','THETAUSD',
-    'XTZUSD','EOSUSD','SANDUSD','MANAUSD','DOGEUSD','SHIBUSD','PEPEUSD','BONKUSD',
-    'FLOKIUSD','WIFUSD','GRTUSD','ENJUSD','CHZUSD','BATUSD','ZRXUSD','OMGUSD',
-    'DASHUSD','ZECUSD','BTGUSD','DCRUSD','XVGUSD','SCUSD','SNXUSD','COMPUSD',
-    'MKRUSD','AAVEUSD','YFIUSD','SUSHIUSD','CRVUSD','RENUSD','KNCUSD','BANDUSD',
-    'NMRUSD','OCEANUSD','FETUSD','AGIXUSD','BNBUSD','CAKEUSD','RUNEUSD','ALGOUSD',
-    'NEARUSD','FLOWUSD','APTUSD','OPUSD','ARBUSD','SUIUSD','INJUSD','TIAUSD','SEIUSD',
-    'BLURUSD','PYTHUSD','JTOUSD','ORDIUSD','1000SATSUSD','BEAMUSD','RNDRUSD','IMXUSD',
-    'MINAUSD','GALAUSD','AXSUSD','APEUSD','ENSUSD','LDOUSD','STXUSD','CFXUSD','KLAYUSD',
-    'FTMUSD','HBARUSD','EGLDUSD','QNTUSD','ARUSD','ZILUSD','KSMUSD','ANTUSD','IOTXUSD',
-    'CELOUSD','ANKRUSD','SKLUSD','SPELLUSD','JOEUSD','GMXUSD','PENDLEUSD','SSVUSD','FXSUSD',
-    'LQTYUSD','MASKUSD','US500','US100','US30','GER40','UK100','JPN225','USOIL'
+    'US500','US100','US30','GER40','UK100','JPN225','XAUUSD','BTCUSD','ETHUSD',
+    'ADAUSD','SOLUSD','DOGEUSD','SHIBUSD','DOTUSD','LINKUSD','MATICUSD',
+    'AVAXUSD','ATOMUSD','FILUSD','UNIUSD','AAVEUSD','SUSHIUSD','CRVUSD'
 ];
+document.getElementById('pairList').innerHTML = ALL_PAIRS.map(p => `<option value="${p}">`).join('');
 
-// Populate datalist
-const pairList = document.getElementById('pairList');
-ALL_PAIRS.forEach(p => {
-    const option = document.createElement('option');
-    option.value = p;
-    pairList.appendChild(option);
-});
-
-// Set today's date
-document.getElementById('tradeDate').value = new Date().toISOString().slice(0,10);
-
-let trades = [];
-
+// Load trades from Firebase
 db.ref('trades').on('value', snap => {
-    const data = snap.val() || {};
-    trades = Object.entries(data).map(([id, t]) => ({ id, ...t })).sort((a,b) => new Date(a.date) - new Date(b.date));
-    renderTable();
-    drawEquityCurve();
+    trades = snap.val() ? Object.entries(snap.val()).map(([id, t]) => ({ id, ...t })) : [];
+    renderTrades();
     updateSummary();
+    drawEquity();
 });
 
-function renderTable() {
-    const tbody = document.querySelector('#tradeTable tbody');
-    tbody.innerHTML = trades.map(t => {
-        const result = t.pnl > 0 ? '✅ Win' : t.pnl < 0 ? '❌ Loss' : '⚪ B/E';
-        const resultClass = t.pnl > 0 ? 'var(--green)' : t.pnl < 0 ? 'var(--red)' : 'var(--muted)';
-        const chartCell = t.chartLink ? `<a href="${t.chartLink}" target="_blank" style="color:var(--acc);font-size:10px;">📈</a>` : '';
+function calcPNL() {
+    const entry = parseFloat(document.getElementById('entryInput').value) || 0;
+    const exit = parseFloat(document.getElementById('exitInput').value) || 0;
+    const size = parseFloat(document.getElementById('sizeInput').value) || 1;
+    const dir = document.getElementById('dirSelect').value;
+    let pnl = 0;
+    if (entry && exit) {
+        if (dir === 'long') pnl = (exit - entry) * size;
+        else pnl = (entry - exit) * size;
+    }
+    document.getElementById('pnlDisplay').value = pnl.toFixed(2);
+}
+
+async function saveTrade() {
+    const pair = document.getElementById('pairInput').value.trim();
+    if (!pair) { alert('Please enter a pair'); return; }
+
+    const trade = {
+        pair,
+        date: document.getElementById('dateInput').value || new Date().toISOString().slice(0,16),
+        direction: document.getElementById('dirSelect').value,
+        entry: parseFloat(document.getElementById('entryInput').value) || 0,
+        exit: parseFloat(document.getElementById('exitInput').value) || 0,
+        stopLoss: parseFloat(document.getElementById('stopInput').value) || null,
+        takeProfit: parseFloat(document.getElementById('tpInput').value) || null,
+        size: parseFloat(document.getElementById('sizeInput').value) || 1,
+        pnl: parseFloat(document.getElementById('pnlDisplay').value) || 0,
+        chartLink: document.getElementById('chartLinkInput').value.trim(),
+        notes: document.getElementById('notesInput').value.trim(),
+        timestamp: Date.now()
+    };
+
+    try {
+        if (editingId) {
+            await db.ref('trades/' + editingId).update(trade);
+        } else {
+            await db.ref('trades').push(trade);
+        }
+        resetForm();
+        showToast('Trade saved successfully!');
+    } catch(e) {
+        alert('Error saving trade: ' + e.message);
+    }
+}
+
+function resetForm() {
+    document.getElementById('pairInput').value = '';
+    document.getElementById('dateInput').value = '';
+    document.getElementById('entryInput').value = '';
+    document.getElementById('exitInput').value = '';
+    document.getElementById('stopInput').value = '';
+    document.getElementById('tpInput').value = '';
+    document.getElementById('pnlDisplay').value = '';
+    document.getElementById('chartLinkInput').value = '';
+    document.getElementById('notesInput').value = '';
+    document.getElementById('dirSelect').value = 'long';
+    document.getElementById('sizeInput').value = '1';
+    editingId = null;
+    document.querySelector('.btn-save').textContent = '💾 Save Trade';
+}
+
+function editTrade(id) {
+    const t = trades.find(tr => tr.id === id);
+    if (!t) return;
+    document.getElementById('pairInput').value = t.pair;
+    document.getElementById('dateInput').value = t.date;
+    document.getElementById('entryInput').value = t.entry;
+    document.getElementById('exitInput').value = t.exit;
+    document.getElementById('stopInput').value = t.stopLoss || '';
+    document.getElementById('tpInput').value = t.takeProfit || '';
+    document.getElementById('sizeInput').value = t.size;
+    document.getElementById('chartLinkInput').value = t.chartLink || '';
+    document.getElementById('notesInput').value = t.notes || '';
+    document.getElementById('dirSelect').value = t.direction;
+    calcPNL();
+    editingId = id;
+    document.querySelector('.btn-save').textContent = '✏️ Update Trade';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteTrade(id) {
+    if (!confirm('Delete this trade?')) return;
+    await db.ref('trades/' + id).remove();
+    showToast('Trade deleted');
+}
+
+function renderTrades() {
+    const tbody = document.getElementById('tradesBody');
+    tbody.innerHTML = trades.sort((a,b) => b.timestamp - a.timestamp).map(t => {
+        const pnlClass = t.pnl >= 0 ? 'pnl-up' : 'pnl-down';
+        const chartHTML = t.chartLink ? `<a href="${t.chartLink}" target="_blank" class="chart-link">📈</a>` : '';
         return `<tr>
-            <td>${t.date || ''}</td>
             <td>${t.pair}</td>
-            <td>${t.direction}</td>
-            <td>${t.entry || ''}</td>
-            <td>${t.exit || ''}</td>
-            <td>${t.size || ''}</td>
-            <td style="color:${t.pnl >= 0 ? 'var(--green)' : 'var(--red)'}">$${t.pnl.toFixed(2)}</td>
-            <td style="color:${resultClass}">${result}</td>
-            <td>${chartCell}</td>
-            <td><button class="delete-btn" onclick="deleteTrade('${t.id}')">X</button></td>
+            <td>${new Date(t.date).toLocaleDateString()}</td>
+            <td>${t.direction.toUpperCase()}</td>
+            <td>${t.entry}</td>
+            <td>${t.exit}</td>
+            <td class="${pnlClass}">${t.pnl.toFixed(2)}</td>
+            <td>${chartHTML}</td>
+            <td>
+                <button class="btn-delete" onclick="editTrade('${t.id}')">✏️</button>
+                <button class="btn-delete" onclick="deleteTrade('${t.id}')">🗑️</button>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -182,97 +262,56 @@ function updateSummary() {
     const total = trades.length;
     const wins = trades.filter(t => t.pnl > 0).length;
     const losses = trades.filter(t => t.pnl < 0).length;
-    const be = total - wins - losses;
-    const totalPL = trades.reduce((sum, t) => sum + t.pnl, 0);
-    document.getElementById('totalTrades').textContent = total;
-    document.getElementById('totalWins').textContent = wins;
-    document.getElementById('totalLoss').textContent = losses;
-    document.getElementById('totalBE').textContent = be;
-    document.getElementById('winRate').textContent = total ? (wins / total * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('totalPL').textContent = totalPL.toFixed(2);
+    const winRate = total ? ((wins/total)*100).toFixed(1) : 0;
+    const totalPnl = trades.reduce((sum, t) => sum + t.pnl, 0).toFixed(2);
+    document.getElementById('summaryBar').innerHTML = `
+        <div class="summary-item"><div class="val">${total}</div><div class="lbl">Trades</div></div>
+        <div class="summary-item"><div class="val" style="color:var(--green)">${wins}</div><div class="lbl">Wins</div></div>
+        <div class="summary-item"><div class="val" style="color:var(--red)">${losses}</div><div class="lbl">Losses</div></div>
+        <div class="summary-item"><div class="val">${winRate}%</div><div class="lbl">Win Rate</div></div>
+        <div class="summary-item"><div class="val" style="color:${totalPnl>=0?'var(--green)':'var(--red)'}">${totalPnl}</div><div class="lbl">P&L</div></div>
+    `;
 }
 
-function drawEquityCurve() {
-    const canvas = document.getElementById('equityChart');
+function drawEquity() {
+    const canvas = document.getElementById('equityCanvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const W = canvas.width = canvas.offsetWidth;
-    const H = canvas.height = 200;
-    ctx.clearRect(0,0,W,H);
+    const width = canvas.width = canvas.offsetWidth;
+    const height = canvas.height = canvas.offsetHeight;
+    ctx.clearRect(0,0,width,height);
+
     if (trades.length < 2) return;
 
-    const points = trades.map(t => t.pnl);
+    const sorted = [...trades].sort((a,b) => a.timestamp - b.timestamp);
     let cum = 0;
-    const cumPoints = points.map(p => cum += p);
-    const maxY = Math.max(...cumPoints, 0);
-    const minY = Math.min(...cumPoints, 0);
-    const range = maxY - minY || 1;
+    const points = sorted.map(t => {
+        cum += t.pnl;
+        return cum;
+    });
+
+    const min = Math.min(...points, 0);
+    const max = Math.max(...points, 1);
+    const range = max - min || 1;
 
     ctx.beginPath();
-    ctx.strokeStyle = '#22c55e';
+    ctx.strokeStyle = '#0062ff';
     ctx.lineWidth = 2;
-    for (let i = 0; i < cumPoints.length; i++) {
-        const x = (i / (cumPoints.length - 1)) * (W - 20) + 10;
-        const y = H - 20 - ((cumPoints[i] - minY) / range) * (H - 40);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    const zeroY = H - 20 - ((0 - minY) / range) * (H - 40);
-    ctx.beginPath();
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1;
-    ctx.moveTo(10, zeroY);
-    ctx.lineTo(W - 10, zeroY);
+    points.forEach((p,i) => {
+        const x = (i / (points.length-1)) * width;
+        const y = height - ((p - min) / range) * height;
+        if (i === 0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+    });
     ctx.stroke();
 }
 
-function toggleForm(cancel = false) {
-    const form = document.getElementById('tradeForm');
-    form.classList.toggle('open');
-    if (cancel || !form.classList.contains('open')) {
-        document.getElementById('editingId').value = '';
-        document.getElementById('pairSelect').value = '';
-        document.getElementById('tradeDate').value = new Date().toISOString().slice(0,10);
-        document.getElementById('direction').value = 'Long';
-        document.getElementById('entryPrice').value = '';
-        document.getElementById('exitPrice').value = '';
-        document.getElementById('stopLoss').value = '';
-        document.getElementById('takeProfit').value = '';
-        document.getElementById('posSize').value = '';
-        document.getElementById('pnl').value = '';
-        document.getElementById('chartLink').value = '';
-        document.getElementById('notes').value = '';
-    }
-}
-
-async function saveTrade() {
-    const id = document.getElementById('editingId').value || db.ref('trades').push().key;
-    const pair = document.getElementById('pairSelect').value.trim();
-    if (!pair) return alert('Please select or type a pair');
-    const date = document.getElementById('tradeDate').value;
-    const direction = document.getElementById('direction').value;
-    const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
-    const exit = parseFloat(document.getElementById('exitPrice').value) || 0;
-    const size = parseFloat(document.getElementById('posSize').value) || 0;
-    let pnl = parseFloat(document.getElementById('pnl').value);
-    if (isNaN(pnl) && entry && exit && size) {
-        pnl = direction === 'Long' ? (exit - entry) * size : (entry - exit) * size;
-    }
-    pnl = pnl || 0;
-    const trade = {
-        pair, date, direction, entry, exit, size, pnl,
-        stopLoss: parseFloat(document.getElementById('stopLoss').value)||0,
-        takeProfit: parseFloat(document.getElementById('takeProfit').value)||0,
-        chartLink: document.getElementById('chartLink').value.trim(),
-        notes: document.getElementById('notes').value
-    };
-    await db.ref(`trades/${id}`).set(trade);
-    toggleForm(true);
-}
-
-async function deleteTrade(id) {
-    if (confirm('Delete this trade?')) await db.ref(`trades/${id}`).remove();
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:8px 16px;border-radius:8px;z-index:9999;font-size:12px;';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
 }
 </script>
 </body>
