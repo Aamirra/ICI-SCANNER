@@ -13,13 +13,15 @@
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
         [data-theme="dark"] { --bg:#0f172a; --surface:#1e293b; --border:#334155; --txt:#f8fafc; --acc:#3b82f6; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#94a3b8; --pill-bg:#1e293b; }
-        .phone-container { width:100%; max-width:450px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
-        .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .phone-container { width:100%; max-width:800px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); display:flex; flex-wrap:wrap; gap:16px; }
+        .header-row { flex-basis:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
         .brand { display:flex; align-items:center; gap:10px; }
         .brand-icon { width:36px; height:36px; background:var(--gold); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
         .brand-text h1 { font-size:16px; font-weight:700; line-height:1.2; }
         .brand-text span { font-size:12px; color:var(--muted); }
         .back-btn { padding:4px 12px; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); text-decoration:none; }
+        .left-panel { flex:1 1 300px; }
+        .right-panel { flex:1 1 350px; display:flex; flex-direction:column; }
         .form-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:16px; }
         .form-group { margin-bottom:10px; }
         .form-group label { font-size:12px; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; }
@@ -34,14 +36,19 @@
         .summary-item { text-align:center; }
         .summary-item .val { font-weight:700; }
         .summary-item .lbl { color:var(--muted); }
+        .trades-scroll { max-height:400px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; }
         .trade-table { width:100%; border-collapse:collapse; font-size:12px; }
-        .trade-table th { background:var(--pill-bg); padding:6px; text-align:left; font-size:11px; color:var(--muted); }
+        .trade-table th { position:sticky; top:0; background:var(--pill-bg); padding:6px; text-align:left; font-size:11px; color:var(--muted); z-index:1; }
         .trade-table td { padding:6px; border-bottom:1px solid var(--border); }
-        .trade-table .pnl-up { color:var(--green); }
-        .trade-table .pnl-down { color:var(--red); }
+        .trade-table .pnl-up { background-color:rgba(34,197,94,0.15); }
+        .trade-table .pnl-down { background-color:rgba(239,68,68,0.15); }
         .chart-link { color:var(--acc); text-decoration:underline; cursor:pointer; }
         canvas { width:100%; height:150px; margin-top:10px; background:var(--pill-bg); border-radius:8px; }
         .suggestion-box { font-size:11px; color:var(--muted); margin-top:4px; }
+        @media (max-width:600px) {
+            .phone-container { flex-direction:column; }
+            .trades-scroll { max-height:300px; }
+        }
     </style>
 </head>
 <body>
@@ -51,69 +58,75 @@
         <a href="/" class="back-btn">↩ Back</a>
     </div>
 
-    <div class="form-card">
-        <div class="form-group">
-            <label>Pair</label>
-            <input list="pairList" id="pairInput" placeholder="e.g., EURUSD" onchange="onPairSelect()" oninput="onPairInput()">
-            <datalist id="pairList"></datalist>
-            <div class="suggestion-box" id="pairSuggestion"></div>
-        </div>
-        <div class="form-row">
+    <!-- Left Column: Form + Summary -->
+    <div class="left-panel">
+        <div class="form-card">
             <div class="form-group">
-                <label>Date</label>
-                <input type="datetime-local" id="dateInput">
+                <label>Pair</label>
+                <input list="pairList" id="pairInput" placeholder="e.g., EURUSD" onchange="onPairSelect()" oninput="onPairInput()">
+                <datalist id="pairList"></datalist>
+                <div class="suggestion-box" id="pairSuggestion"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="datetime-local" id="dateInput">
+                </div>
+                <div class="form-group">
+                    <label>Direction</label>
+                    <select id="dirSelect">
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                    </select>
+                </div>
             </div>
             <div class="form-group">
-                <label>Direction</label>
-                <select id="dirSelect">
-                    <option value="long">Long</option>
-                    <option value="short">Short</option>
-                </select>
+                <label>Entry Price</label>
+                <input type="number" step="any" id="entryInput" oninput="calcRR()">
             </div>
-        </div>
-        <div class="form-group">
-            <label>Entry Price</label>
-            <input type="number" step="any" id="entryInput" oninput="calcRR()">
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Stop Loss</label>
-                <input type="number" step="any" id="stopInput" oninput="calcRR()">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Stop Loss</label>
+                    <input type="number" step="any" id="stopInput" oninput="calcRR()">
+                </div>
+                <div class="form-group">
+                    <label>Take Profit</label>
+                    <input type="number" step="any" id="tpInput" oninput="calcRR()">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Take Profit</label>
-                <input type="number" step="any" id="tpInput" oninput="calcRR()">
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Profit / Loss (manual)</label>
-                <input type="number" step="any" id="pnlInput" placeholder="e.g., 15.50 or -8.25">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Profit / Loss (manual)</label>
+                    <input type="number" step="any" id="pnlInput" placeholder="e.g., 15.50 or -8.25">
+                </div>
+                <div class="form-group">
+                    <label>R:R Ratio</label>
+                    <input type="text" id="rrDisplay" readonly style="background:var(--surface);">
+                </div>
             </div>
             <div class="form-group">
-                <label>R:R Ratio</label>
-                <input type="text" id="rrDisplay" readonly style="background:var(--surface);">
+                <label>Chart Link (optional)</label>
+                <input type="text" id="chartLinkInput" placeholder="TradingView chart URL">
             </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notesInput"></textarea>
+            </div>
+            <button class="btn btn-save" onclick="saveTrade()">💾 Save Trade</button>
         </div>
-        <div class="form-group">
-            <label>Chart Link (optional)</label>
-            <input type="text" id="chartLinkInput" placeholder="TradingView chart URL">
-        </div>
-        <div class="form-group">
-            <label>Notes</label>
-            <textarea id="notesInput"></textarea>
-        </div>
-        <button class="btn btn-save" onclick="saveTrade()">💾 Save Trade</button>
+        <div class="summary-bar" id="summaryBar">Loading...</div>
     </div>
 
-    <div class="summary-bar" id="summaryBar">Loading...</div>
-
-    <table class="trade-table" id="tradesTable">
-        <thead><tr><th>Pair</th><th>Date</th><th>Dir</th><th>Entry</th><th>P&L</th><th>Chart</th><th></th></tr></thead>
-        <tbody id="tradesBody"></tbody>
-    </table>
-
-    <canvas id="equityCanvas"></canvas>
+    <!-- Right Column: Scrollable Trades + Equity Curve -->
+    <div class="right-panel">
+        <div class="trades-scroll" id="tradesScroll">
+            <table class="trade-table" id="tradesTable">
+                <thead><tr><th>Pair</th><th>Date</th><th>Dir</th><th>Entry</th><th>P&L</th><th>Chart</th><th></th></tr></thead>
+                <tbody id="tradesBody"></tbody>
+            </table>
+        </div>
+        <canvas id="equityCanvas"></canvas>
+    </div>
 </div>
 
 <script>
@@ -125,7 +138,6 @@ let editingId = null;
 let liveMarketData = {};
 let marketData = {};
 
-// Load live price data for auto-fill
 db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; });
 db.ref('marketData').on('value', snap => { marketData = snap.val() || {}; });
 
@@ -140,7 +152,6 @@ const ALL_PAIRS = [
 ];
 document.getElementById('pairList').innerHTML = ALL_PAIRS.map(p => `<option value="${p}">`).join('');
 
-// Helper: get current price for a pair from live data
 function getCurrentPrice(pair) {
     const live = liveMarketData[pair];
     if (live && live.price != null) return live.price;
@@ -150,7 +161,6 @@ function getCurrentPrice(pair) {
     return null;
 }
 
-// Auto-fill entry/stop/tp when pair selected
 function onPairInput() {
     const pair = document.getElementById('pairInput').value.trim().toUpperCase();
     const el = document.getElementById('pairSuggestion');
@@ -167,15 +177,13 @@ function onPairSelect() {
     const pair = document.getElementById('pairInput').value.trim().toUpperCase();
     const price = getCurrentPrice(pair);
     if (price != null && !editingId) {
-        // Only auto-fill when creating a new trade
         document.getElementById('entryInput').value = price;
-        document.getElementById('stopInput').value = (price * 0.999).toFixed(5);   // -0.1%
-        document.getElementById('tpInput').value = (price * 1.001).toFixed(5);    // +0.1%
+        document.getElementById('stopInput').value = (price * 0.999).toFixed(5);
+        document.getElementById('tpInput').value = (price * 1.001).toFixed(5);
         calcRR();
     }
 }
 
-// Calculate R:R from entry, stop, tp
 function calcRR() {
     const entry = parseFloat(document.getElementById('entryInput').value) || 0;
     const stop = parseFloat(document.getElementById('stopInput').value) || 0;
@@ -184,20 +192,14 @@ function calcRR() {
     let rr = '';
     if (entry && stop && tp) {
         let risk, reward;
-        if (dir === 'long') {
-            risk = entry - stop;
-            reward = tp - entry;
-        } else {
-            risk = stop - entry;
-            reward = entry - tp;
-        }
+        if (dir === 'long') { risk = entry - stop; reward = tp - entry; }
+        else { risk = stop - entry; reward = entry - tp; }
         if (risk <= 0) rr = 'Invalid (risk <= 0)';
         else rr = '1:' + (reward / risk).toFixed(2);
     }
     document.getElementById('rrDisplay').value = rr;
 }
 
-// Save new or updated trade
 async function saveTrade() {
     const pair = document.getElementById('pairInput').value.trim();
     if (!pair) { alert('Please enter a pair'); return; }
@@ -229,10 +231,9 @@ async function saveTrade() {
     }
 }
 
-// Reset form to defaults (including today's date)
 function resetForm() {
     document.getElementById('pairInput').value = '';
-    document.getElementById('dateInput').value = new Date().toISOString().slice(0,16); // auto today
+    document.getElementById('dateInput').value = new Date().toISOString().slice(0,16);
     document.getElementById('entryInput').value = '';
     document.getElementById('stopInput').value = '';
     document.getElementById('tpInput').value = '';
@@ -246,7 +247,6 @@ function resetForm() {
     document.querySelector('.btn-save').textContent = '💾 Save Trade';
 }
 
-// Fill form with existing trade for editing
 function editTrade(id) {
     const t = trades.find(tr => tr.id === id);
     if (!t) return;
@@ -266,14 +266,12 @@ function editTrade(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Delete trade
 async function deleteTrade(id) {
     if (!confirm('Delete this trade?')) return;
     await db.ref('trades/' + id).remove();
     showToast('Trade deleted');
 }
 
-// Render table, summary, equity
 db.ref('trades').on('value', snap => {
     trades = snap.val() ? Object.entries(snap.val()).map(([id, t]) => ({ id, ...t })) : [];
     renderTrades();
@@ -284,14 +282,14 @@ db.ref('trades').on('value', snap => {
 function renderTrades() {
     const tbody = document.getElementById('tradesBody');
     tbody.innerHTML = trades.sort((a,b) => b.timestamp - a.timestamp).map(t => {
-        const pnlClass = t.pnl >= 0 ? 'pnl-up' : 'pnl-down';
+        const rowClass = t.pnl >= 0 ? 'pnl-up' : 'pnl-down';
         const chartHTML = t.chartLink ? `<a href="${t.chartLink}" target="_blank" class="chart-link">📈</a>` : '';
-        return `<tr>
+        return `<tr class="${rowClass}">
             <td>${t.pair}</td>
             <td>${new Date(t.date).toLocaleDateString()}</td>
             <td>${t.direction.toUpperCase()}</td>
             <td>${t.entry}</td>
-            <td class="${pnlClass}">${t.pnl.toFixed(2)}</td>
+            <td>${t.pnl.toFixed(2)}</td>
             <td>${chartHTML}</td>
             <td>
                 <button class="btn-delete" onclick="editTrade('${t.id}')">✏️</button>
@@ -354,7 +352,6 @@ function showToast(msg) {
     setTimeout(() => toast.remove(), 2000);
 }
 
-// Initialize date field with current datetime
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('dateInput').value = new Date().toISOString().slice(0,16);
 });
