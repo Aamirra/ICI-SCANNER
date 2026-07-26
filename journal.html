@@ -41,6 +41,7 @@
         .trade-table .pnl-down { color:var(--red); }
         .chart-link { color:var(--acc); text-decoration:underline; cursor:pointer; }
         canvas { width:100%; height:150px; margin-top:10px; background:var(--pill-bg); border-radius:8px; }
+        .suggestion-box { font-size:11px; color:var(--muted); margin-top:4px; }
     </style>
 </head>
 <body>
@@ -54,8 +55,9 @@
     <div class="form-card">
         <div class="form-group">
             <label>Pair</label>
-            <input list="pairList" id="pairInput" placeholder="e.g., EURUSD">
+            <input list="pairList" id="pairInput" placeholder="e.g., EURUSD" onchange="onPairSelect()" oninput="onPairInput()">
             <datalist id="pairList"></datalist>
+            <div class="suggestion-box" id="pairSuggestion"></div>
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -72,32 +74,32 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label>Entry</label>
-                <input type="number" step="any" id="entryInput" oninput="calcPNL()">
+                <label>Entry Price</label>
+                <input type="number" step="any" id="entryInput" oninput="calcRR()">
             </div>
             <div class="form-group">
-                <label>Exit</label>
-                <input type="number" step="any" id="exitInput" oninput="calcPNL()">
+                <label>Exit Price</label>
+                <input type="number" step="any" id="exitInput">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label>Stop Loss</label>
-                <input type="number" step="any" id="stopInput">
+                <input type="number" step="any" id="stopInput" oninput="calcRR()">
             </div>
             <div class="form-group">
                 <label>Take Profit</label>
-                <input type="number" step="any" id="tpInput">
+                <input type="number" step="any" id="tpInput" oninput="calcRR()">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label>Position Size</label>
-                <input type="number" step="any" id="sizeInput" value="1" oninput="calcPNL()">
+                <label>Profit / Loss (manual)</label>
+                <input type="number" step="any" id="pnlInput" placeholder="e.g., 15.50 or -8.25">
             </div>
             <div class="form-group">
-                <label>P&L</label>
-                <input type="text" id="pnlDisplay" readonly style="background:var(--surface);">
+                <label>R:R Ratio</label>
+                <input type="text" id="rrDisplay" readonly style="background:var(--surface);">
             </div>
         </div>
         <div class="form-group">
@@ -130,8 +132,18 @@ const db = firebase.database();
 
 let trades = [];
 let editingId = null;
+let liveMarketData = {};
+let marketData = {};
 
-// Pair datalist populate (Forex + Crypto + Indices)
+// Load live price data for auto-fill
+db.ref('liveMarketData').on('value', snap => {
+    liveMarketData = snap.val() || {};
+});
+db.ref('marketData').on('value', snap => {
+    marketData = snap.val() || {};
+});
+
+// Pair datalist
 const ALL_PAIRS = [
     'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
     'EURJPY','GBPJPY','AUDJPY','NZDJPY','CADJPY','CHFJPY',
@@ -143,7 +155,7 @@ const ALL_PAIRS = [
 ];
 document.getElementById('pairList').innerHTML = ALL_PAIRS.map(p => `<option value="${p}">`).join('');
 
-// Load trades from Firebase
+// Load trades
 db.ref('trades').on('value', snap => {
     trades = snap.val() ? Object.entries(snap.val()).map(([id, t]) => ({ id, ...t })) : [];
     renderTrades();
@@ -151,17 +163,59 @@ db.ref('trades').on('value', snap => {
     drawEquity();
 });
 
-function calcPNL() {
-    const entry = parseFloat(document.getElementById('entryInput').value) || 0;
-    const exit = parseFloat(document.getElementById('exitInput').value) || 0;
-    const size = parseFloat(document.getElementById('sizeInput').value) || 1;
-    const dir = document.getElementById('dirSelect').value;
-    let pnl = 0;
-    if (entry && exit) {
-        if (dir === 'long') pnl = (exit - entry) * size;
-        else pnl = (entry - exit) * size;
+function getCurrentPrice(pair) {
+    // try liveMarketData first, then marketData
+    const live = liveMarketData[pair];
+    if (live && live.price != null) return live.price;
+    const mkt = marketData[pair];
+    if (mkt && mkt.currentPrice != null) return mkt.currentPrice;
+    if (mkt && mkt.price != null) return mkt.price;
+    return null;
+}
+
+function onPairInput() {
+    const pair = document.getElementById('pairInput').value.trim().toUpperCase();
+    const el = document.getElementById('pairSuggestion');
+    if (pair.length < 2) { el.textContent = ''; return; }
+    const price = getCurrentPrice(pair);
+    if (price != null) {
+        el.textContent = 'Live: ' + price.toFixed(5) + ' (click to fill)';
+    } else {
+        el.textContent = '';
     }
-    document.getElementById('pnlDisplay').value = pnl.toFixed(2);
+}
+
+function onPairSelect() {
+    const pair = document.getElementById('pairInput').value.trim().toUpperCase();
+    const price = getCurrentPrice(pair);
+    if (price != null && !editingId) { // only auto-fill if not editing
+        document.getElementById('entryInput').value = price;
+        document.getElementById('exitInput').value = price;
+        document.getElementById('stopInput').value = (price * 0.999).toFixed(5); // 0.1% below
+        document.getElementById('tpInput').value = (price * 1.001).toFixed(5);   // 0.1% above
+        calcRR();
+    }
+}
+
+function calcRR() {
+    const entry = parseFloat(document.getElementById('entryInput').value) || 0;
+    const stop = parseFloat(document.getElementById('stopInput').value) || 0;
+    const tp = parseFloat(document.getElementById('tpInput').value) || 0;
+    const dir = document.getElementById('dirSelect').value;
+    let rr = '';
+    if (entry && stop && tp) {
+        let risk, reward;
+        if (dir === 'long') {
+            risk = entry - stop;
+            reward = tp - entry;
+        } else {
+            risk = stop - entry;
+            reward = entry - tp;
+        }
+        if (risk <= 0) rr = 'Invalid (risk <= 0)';
+        else rr = '1:' + (reward / risk).toFixed(2);
+    }
+    document.getElementById('rrDisplay').value = rr;
 }
 
 async function saveTrade() {
@@ -176,8 +230,8 @@ async function saveTrade() {
         exit: parseFloat(document.getElementById('exitInput').value) || 0,
         stopLoss: parseFloat(document.getElementById('stopInput').value) || null,
         takeProfit: parseFloat(document.getElementById('tpInput').value) || null,
-        size: parseFloat(document.getElementById('sizeInput').value) || 1,
-        pnl: parseFloat(document.getElementById('pnlDisplay').value) || 0,
+        pnl: parseFloat(document.getElementById('pnlInput').value) || 0,
+        rr: document.getElementById('rrDisplay').value,
         chartLink: document.getElementById('chartLinkInput').value.trim(),
         notes: document.getElementById('notesInput').value.trim(),
         timestamp: Date.now()
@@ -203,11 +257,12 @@ function resetForm() {
     document.getElementById('exitInput').value = '';
     document.getElementById('stopInput').value = '';
     document.getElementById('tpInput').value = '';
-    document.getElementById('pnlDisplay').value = '';
+    document.getElementById('pnlInput').value = '';
+    document.getElementById('rrDisplay').value = '';
     document.getElementById('chartLinkInput').value = '';
     document.getElementById('notesInput').value = '';
     document.getElementById('dirSelect').value = 'long';
-    document.getElementById('sizeInput').value = '1';
+    document.getElementById('pairSuggestion').textContent = '';
     editingId = null;
     document.querySelector('.btn-save').textContent = '💾 Save Trade';
 }
@@ -221,11 +276,12 @@ function editTrade(id) {
     document.getElementById('exitInput').value = t.exit;
     document.getElementById('stopInput').value = t.stopLoss || '';
     document.getElementById('tpInput').value = t.takeProfit || '';
-    document.getElementById('sizeInput').value = t.size;
+    document.getElementById('pnlInput').value = t.pnl || 0;
+    document.getElementById('rrDisplay').value = t.rr || '';
     document.getElementById('chartLinkInput').value = t.chartLink || '';
     document.getElementById('notesInput').value = t.notes || '';
     document.getElementById('dirSelect').value = t.direction;
-    calcPNL();
+    calcRR();
     editingId = id;
     document.querySelector('.btn-save').textContent = '✏️ Update Trade';
     window.scrollTo({ top: 0, behavior: 'smooth' });
