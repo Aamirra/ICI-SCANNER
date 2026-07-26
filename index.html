@@ -276,6 +276,16 @@ let alertSettings = { telegram: true, whatsapp: true };
 window.alertSettings = alertSettings;   // immediate init for Alerts.js
 let currentChartInterval = "60";
 
+// --- Debounced Render ---
+let renderTimer = null;
+function renderDebounced() {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => {
+        render();
+        renderTimer = null;
+    }, 300);
+}
+
 // Real-time last scan time
 db.ref('lastScanTime/time').on('value', snap => {
     const timestamp = snap.val();
@@ -321,13 +331,13 @@ db.ref('liveMarketData').on('value', snap => {
         }));
         checkAllAlerts(arr);
     }
-    render();
+    renderDebounced();
 });
 
 db.ref('targetList').on('value', snap => {
     REMOTE_TARGET_LIST = snap.val() || {};
     if (typeof updateCounts === 'function') updateCounts();
-    if (typeof render === 'function') render();
+    renderDebounced();
 });
 
 function toggleTheme() {
@@ -643,9 +653,9 @@ function update4hButton() {
     update4hButton();
 })();
 
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; render(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; updateCounts(); render(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; renderDebounced(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; renderDebounced(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; updateCounts(); renderDebounced(); });
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
@@ -654,7 +664,7 @@ db.ref('marketData').on('value', snap => {
         }));
         checkAllAlerts(arr);
     }
-    render();
+    renderDebounced();
 });
 
 (function(){
