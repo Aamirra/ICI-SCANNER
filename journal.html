@@ -51,7 +51,6 @@
         <a href="/" class="back-btn">↩ Back</a>
     </div>
 
-    <!-- Add/Edit Trade Form -->
     <div class="form-card">
         <div class="form-group">
             <label>Pair</label>
@@ -72,15 +71,9 @@
                 </select>
             </div>
         </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Entry Price</label>
-                <input type="number" step="any" id="entryInput" oninput="calcRR()">
-            </div>
-            <div class="form-group">
-                <label>Exit Price</label>
-                <input type="number" step="any" id="exitInput">
-            </div>
+        <div class="form-group">
+            <label>Entry Price</label>
+            <input type="number" step="any" id="entryInput" oninput="calcRR()">
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -113,16 +106,13 @@
         <button class="btn btn-save" onclick="saveTrade()">💾 Save Trade</button>
     </div>
 
-    <!-- Summary -->
     <div class="summary-bar" id="summaryBar">Loading...</div>
 
-    <!-- Trades Table -->
     <table class="trade-table" id="tradesTable">
-        <thead><tr><th>Pair</th><th>Date</th><th>Dir</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Chart</th><th></th></tr></thead>
+        <thead><tr><th>Pair</th><th>Date</th><th>Dir</th><th>Entry</th><th>P&L</th><th>Chart</th><th></th></tr></thead>
         <tbody id="tradesBody"></tbody>
     </table>
 
-    <!-- Equity Curve -->
     <canvas id="equityCanvas"></canvas>
 </div>
 
@@ -136,14 +126,9 @@ let liveMarketData = {};
 let marketData = {};
 
 // Load live price data for auto-fill
-db.ref('liveMarketData').on('value', snap => {
-    liveMarketData = snap.val() || {};
-});
-db.ref('marketData').on('value', snap => {
-    marketData = snap.val() || {};
-});
+db.ref('liveMarketData').on('value', snap => { liveMarketData = snap.val() || {}; });
+db.ref('marketData').on('value', snap => { marketData = snap.val() || {}; });
 
-// Pair datalist
 const ALL_PAIRS = [
     'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF',
     'EURJPY','GBPJPY','AUDJPY','NZDJPY','CADJPY','CHFJPY',
@@ -155,16 +140,8 @@ const ALL_PAIRS = [
 ];
 document.getElementById('pairList').innerHTML = ALL_PAIRS.map(p => `<option value="${p}">`).join('');
 
-// Load trades
-db.ref('trades').on('value', snap => {
-    trades = snap.val() ? Object.entries(snap.val()).map(([id, t]) => ({ id, ...t })) : [];
-    renderTrades();
-    updateSummary();
-    drawEquity();
-});
-
+// Helper: get current price for a pair from live data
 function getCurrentPrice(pair) {
-    // try liveMarketData first, then marketData
     const live = liveMarketData[pair];
     if (live && live.price != null) return live.price;
     const mkt = marketData[pair];
@@ -173,6 +150,7 @@ function getCurrentPrice(pair) {
     return null;
 }
 
+// Auto-fill entry/stop/tp when pair selected
 function onPairInput() {
     const pair = document.getElementById('pairInput').value.trim().toUpperCase();
     const el = document.getElementById('pairSuggestion');
@@ -188,15 +166,16 @@ function onPairInput() {
 function onPairSelect() {
     const pair = document.getElementById('pairInput').value.trim().toUpperCase();
     const price = getCurrentPrice(pair);
-    if (price != null && !editingId) { // only auto-fill if not editing
+    if (price != null && !editingId) {
+        // Only auto-fill when creating a new trade
         document.getElementById('entryInput').value = price;
-        document.getElementById('exitInput').value = price;
-        document.getElementById('stopInput').value = (price * 0.999).toFixed(5); // 0.1% below
-        document.getElementById('tpInput').value = (price * 1.001).toFixed(5);   // 0.1% above
+        document.getElementById('stopInput').value = (price * 0.999).toFixed(5);   // -0.1%
+        document.getElementById('tpInput').value = (price * 1.001).toFixed(5);    // +0.1%
         calcRR();
     }
 }
 
+// Calculate R:R from entry, stop, tp
 function calcRR() {
     const entry = parseFloat(document.getElementById('entryInput').value) || 0;
     const stop = parseFloat(document.getElementById('stopInput').value) || 0;
@@ -218,6 +197,7 @@ function calcRR() {
     document.getElementById('rrDisplay').value = rr;
 }
 
+// Save new or updated trade
 async function saveTrade() {
     const pair = document.getElementById('pairInput').value.trim();
     if (!pair) { alert('Please enter a pair'); return; }
@@ -227,7 +207,6 @@ async function saveTrade() {
         date: document.getElementById('dateInput').value || new Date().toISOString().slice(0,16),
         direction: document.getElementById('dirSelect').value,
         entry: parseFloat(document.getElementById('entryInput').value) || 0,
-        exit: parseFloat(document.getElementById('exitInput').value) || 0,
         stopLoss: parseFloat(document.getElementById('stopInput').value) || null,
         takeProfit: parseFloat(document.getElementById('tpInput').value) || null,
         pnl: parseFloat(document.getElementById('pnlInput').value) || 0,
@@ -250,11 +229,11 @@ async function saveTrade() {
     }
 }
 
+// Reset form to defaults (including today's date)
 function resetForm() {
     document.getElementById('pairInput').value = '';
-    document.getElementById('dateInput').value = '';
+    document.getElementById('dateInput').value = new Date().toISOString().slice(0,16); // auto today
     document.getElementById('entryInput').value = '';
-    document.getElementById('exitInput').value = '';
     document.getElementById('stopInput').value = '';
     document.getElementById('tpInput').value = '';
     document.getElementById('pnlInput').value = '';
@@ -267,13 +246,13 @@ function resetForm() {
     document.querySelector('.btn-save').textContent = '💾 Save Trade';
 }
 
+// Fill form with existing trade for editing
 function editTrade(id) {
     const t = trades.find(tr => tr.id === id);
     if (!t) return;
     document.getElementById('pairInput').value = t.pair;
     document.getElementById('dateInput').value = t.date;
     document.getElementById('entryInput').value = t.entry;
-    document.getElementById('exitInput').value = t.exit;
     document.getElementById('stopInput').value = t.stopLoss || '';
     document.getElementById('tpInput').value = t.takeProfit || '';
     document.getElementById('pnlInput').value = t.pnl || 0;
@@ -287,11 +266,20 @@ function editTrade(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Delete trade
 async function deleteTrade(id) {
     if (!confirm('Delete this trade?')) return;
     await db.ref('trades/' + id).remove();
     showToast('Trade deleted');
 }
+
+// Render table, summary, equity
+db.ref('trades').on('value', snap => {
+    trades = snap.val() ? Object.entries(snap.val()).map(([id, t]) => ({ id, ...t })) : [];
+    renderTrades();
+    updateSummary();
+    drawEquity();
+});
 
 function renderTrades() {
     const tbody = document.getElementById('tradesBody');
@@ -303,7 +291,6 @@ function renderTrades() {
             <td>${new Date(t.date).toLocaleDateString()}</td>
             <td>${t.direction.toUpperCase()}</td>
             <td>${t.entry}</td>
-            <td>${t.exit}</td>
             <td class="${pnlClass}">${t.pnl.toFixed(2)}</td>
             <td>${chartHTML}</td>
             <td>
@@ -341,10 +328,7 @@ function drawEquity() {
 
     const sorted = [...trades].sort((a,b) => a.timestamp - b.timestamp);
     let cum = 0;
-    const points = sorted.map(t => {
-        cum += t.pnl;
-        return cum;
-    });
+    const points = sorted.map(t => { cum += t.pnl; return cum; });
 
     const min = Math.min(...points, 0);
     const max = Math.max(...points, 1);
@@ -369,6 +353,11 @@ function showToast(msg) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
 }
+
+// Initialize date field with current datetime
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('dateInput').value = new Date().toISOString().slice(0,16);
+});
 </script>
 </body>
 </html>
