@@ -228,8 +228,8 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 
-// ---- REAL-TIME LAST SCAN TIME (system/lastScan) ----
-db.ref('system/lastScan').on('value', snap => {
+// ✅ Listen to system/lastScan/timestamp (matches backend updateScanTimestamp)
+db.ref('system/lastScan/timestamp').on('value', snap => {
     const timestamp = snap.val();
     const el = document.getElementById('lastScanTime');
     if (timestamp) {
@@ -273,6 +273,7 @@ db.ref('liveMarketData').on('value', snap => {
     render();
 });
 
+// Listen to targetList for auto setups
 db.ref('targetList').on('value', snap => {
     REMOTE_TARGET_LIST = snap.val() || {};
     if (typeof updateCounts === 'function') updateCounts();
@@ -357,6 +358,7 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
+// Scan trigger with backend consistency
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -374,10 +376,14 @@ function actualScan() {
         if (s.running === false && !resolved) {
             resolved = true;
             statusRef.off('value', listener);
-            const now = new Date(s.completedAt || Date.now());
+            const now = new Date();
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            db.ref('system/lastScan').set(now.getTime());
+            // Match backend format: set object { timestamp, readable }
+            db.ref('system/lastScan').set({
+                timestamp: now.getTime(),
+                readable: now.toISOString()
+            });
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
         } else if (s.running === true) {
@@ -397,6 +403,7 @@ function actualScan() {
     }, 600000);
 }
 
+// Auto setups from targetList
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
