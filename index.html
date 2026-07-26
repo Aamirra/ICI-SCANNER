@@ -227,21 +227,18 @@ let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, cur
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
-let lastScanTimestamp = null;
 
-db.ref('lastScanTime/time').on('value', snap => {
-    lastScanTimestamp = snap.val();
-    updateLastScanDisplay();
-});
-function updateLastScanDisplay() {
+// ----- REAL-TIME LAST SCAN TIME (system/lastScan) -----
+db.ref('system/lastScan').on('value', snap => {
+    const timestamp = snap.val();   // expects millisecond timestamp directly
     const el = document.getElementById('lastScanTime');
-    if (lastScanTimestamp) {
-        const d = new Date(lastScanTimestamp);
+    if (timestamp) {
+        const d = new Date(timestamp);
         el.textContent = '🕒 Last scan: ' + d.toLocaleTimeString();
     } else {
         el.textContent = '🕒 Last scan: never';
     }
-}
+});
 
 db.ref('alertSettings').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
@@ -276,7 +273,7 @@ db.ref('liveMarketData').on('value', snap => {
     render();
 });
 
-// 🔥 NAYA CODE: targetList ko real-time listen karna
+// Listen to remote target list
 db.ref('targetList').on('value', snap => {
     REMOTE_TARGET_LIST = snap.val() || {};
     console.log('[targetList] Real-time update:', Object.keys(REMOTE_TARGET_LIST).length, 'pairs');
@@ -383,7 +380,7 @@ function actualScan() {
             const now = new Date(s.completedAt || Date.now());
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            db.ref('lastScanTime').set({ time: now.getTime() });
+            db.ref('system/lastScan').set(now.getTime());
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
         } else if (s.running === true) {
@@ -404,15 +401,12 @@ function actualScan() {
     }, 600000);
 }
 
-// ---- 🔥 UPDATED: getUniqueAutoSetups - Ab REMOTE_TARGET_LIST se data leta hai ----
+// ---- getUniqueAutoSetups from REMOTE_TARGET_LIST ----
 function getUniqueAutoSetups() {
     const pairMap = new Map();
-    
-    // REMOTE_TARGET_LIST se data populate karna
     for (const pair in REMOTE_TARGET_LIST) {
         const item = REMOTE_TARGET_LIST[pair];
         if (item && item.dir && item.phase) {
-            // Priority based on phase
             const prio = {
                 'alert_triggered': 4,
                 'wait_h1_reclaim': 3,
@@ -427,7 +421,6 @@ function getUniqueAutoSetups() {
             });
         }
     }
-    
     return pairMap;
 }
 
@@ -629,7 +622,6 @@ db.ref('marketData').on('value', snap => {
     }
 })();
 updateToggleButtons();
-updateLastScanDisplay();
 </script>
 </body>
 </html>
