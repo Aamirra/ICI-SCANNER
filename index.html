@@ -64,7 +64,6 @@
         body.desktop-mode .chart-box { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
         
-        /* Multi-Chart Grid CSS */
         .chart-grid { display: grid; gap: 4px; width: 100%; flex: 1; min-height: 0; background: var(--border); padding: 4px; }
         .layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
         .layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
@@ -78,7 +77,6 @@
         .layout-btn { padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); border-radius: 6px; cursor: pointer; color: var(--txt); }
         .layout-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
         
-        /* Slot Selector */
         .slot-selector { display: flex; gap: 4px; align-items: center; margin: 0 10px; }
         .slot-btn { padding: 4px 8px; font-size: 11px; font-weight: 600; border: 2px solid transparent; border-radius: 4px; background: var(--pill-bg); cursor: pointer; color: var(--txt); }
         .slot-btn.active-slot { border-color: var(--green); color: var(--green); }
@@ -93,6 +91,7 @@
         .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        .countdown-display { font-size:11px; font-weight:600; margin-left:8px; color:var(--gold); white-space:nowrap; }
         .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
         .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
         .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
@@ -205,6 +204,7 @@
         <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
         <button class="chart-interval-btn" data-interval="D" onclick="changeChartInterval('D', this)">1D</button>
         <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
+        <span id="countdownDisplay" class="countdown-display"></span>
     </div>
     
     <!-- Multi-Chart Layout Controls + Slot Selector -->
@@ -324,6 +324,42 @@ function renderDebounced() {
         render();
         renderTimer = null;
     }, 300);
+}
+
+// ── Countdown Timer ──
+let countdownInterval = null;
+
+function updateCountdown() {
+    const intervalStr = chartIntervals[activeChartSlot-1];
+    let ms = 0;
+    if (intervalStr === 'D') {
+        const now = new Date();
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+        ms = end - now;
+    } else if (intervalStr === 'W') {
+        const now = new Date();
+        const day = now.getUTCDay();
+        const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7;
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilMonday));
+        ms = end - now;
+    } else {
+        const minutes = parseInt(intervalStr) || 60;
+        const periodMs = minutes * 60 * 1000;
+        const elapsed = Date.now() % periodMs;
+        ms = periodMs - elapsed;
+    }
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const text = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+    document.getElementById('countdownDisplay').textContent = '⏳ ' + text;
+}
+
+function startCountdownTimer() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
 }
 
 db.ref('lastScanTime/time').on('value', snap => {
@@ -630,29 +666,24 @@ function render() {
 
 // ==================== MULTI-CHART LOGIC ====================
 
-// Set the active slot (1-4) when clicking a slot button
 function activateChartSlot(slot) {
     activeChartSlot = slot;
-    // Update slot button styles
     for (let i = 1; i <= 4; i++) {
         const btn = document.getElementById('slotBtn' + i);
         if (i === slot) btn.classList.add('active-slot');
         else btn.classList.remove('active-slot');
     }
-    // Update pair name to reflect active slot
     updateChartPairName();
-    // Highlight interval button for that slot's interval
     highlightIntervalButton(chartIntervals[slot-1]);
+    startCountdownTimer(); // restart timer with new slot's interval
 }
 
-// Update the displayed pair name based on active slot
 function updateChartPairName() {
     const idx = chartIndices[activeChartSlot-1];
     const pair = chartPairs[idx] || 'Select a pair';
     document.getElementById('chartPairName').textContent = (currentChartLayout > 1 ? `[Slot ${activeChartSlot}] ` : '') + pair;
 }
 
-// Highlight correct interval button for a given interval value
 function highlightIntervalButton(interval) {
     document.querySelectorAll('.chart-interval-btn').forEach(btn => {
         if (btn.dataset.interval === interval) btn.classList.add('active');
@@ -660,7 +691,6 @@ function highlightIntervalButton(interval) {
     });
 }
 
-// Called when user clicks a pair in the list – only affect active slot
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
     let index = chartPairs.indexOf(pairName);
@@ -668,11 +698,10 @@ function openChartForPair(pairName) {
     chartIndices[activeChartSlot-1] = index;
     updateChartPairName();
     drawChart(activeChartSlot);
-    // Ensure chart overlay is visible
     document.getElementById('chartOverlay').style.display = 'flex';
+    startCountdownTimer(); // ensure timer starts when a chart is opened
 }
 
-// Navigation arrows: move only active slot
 function movePair(step) {
     const idx = chartIndices[activeChartSlot-1];
     const total = chartPairs.length;
@@ -682,14 +711,13 @@ function movePair(step) {
     drawChart(activeChartSlot);
 }
 
-// Change interval for active slot only
 function changeChartInterval(interval, btn) {
     chartIntervals[activeChartSlot-1] = interval;
     highlightIntervalButton(interval);
     drawChart(activeChartSlot);
+    startCountdownTimer(); // restart timer for new interval
 }
 
-// Set layout (1-4) and redraw all active slots
 function setChartLayout(count) {
     currentChartLayout = count;
     document.querySelectorAll('.layout-btn').forEach((b, idx) => {
@@ -703,15 +731,12 @@ function setChartLayout(count) {
         if (i <= count) box.classList.add('active');
         else box.classList.remove('active');
     }
-    // Redraw all active slots
     redrawAllActive();
-    // Update slot button visibility based on layout count (show only needed buttons)
     for (let i = 1; i <= 4; i++) {
         const btn = document.getElementById('slotBtn' + i);
         if (i <= count) btn.style.display = 'inline-block';
         else btn.style.display = 'none';
     }
-    // Ensure active slot is within range
     if (activeChartSlot > count) {
         activeChartSlot = 1;
         for (let i = 1; i <= 4; i++) {
@@ -722,22 +747,21 @@ function setChartLayout(count) {
         updateChartPairName();
         highlightIntervalButton(chartIntervals[0]);
     }
+    startCountdownTimer(); // restart timer after layout change
 }
 
-// Redraw all visible chart slots based on stored indices and intervals
 function redrawAllActive() {
     for (let i = 1; i <= currentChartLayout; i++) {
         drawChart(i);
     }
 }
 
-// Draw a single chart slot with its stored pair and interval
 function drawChart(slot) {
     const containerId = 'tv_chart_' + slot;
     const container = document.getElementById(containerId);
-    container.innerHTML = ''; // clear previous widget
+    container.innerHTML = '';
     const idx = chartIndices[slot-1];
-    if (!chartPairs[idx]) return; // no pair assigned yet
+    if (!chartPairs[idx]) return;
     const symbol = chartPairs[idx];
     const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
     new TradingView.widget({
@@ -757,6 +781,7 @@ function drawChart(slot) {
 
 function closeChart() {
     if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none';
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 
 function toggle4H() {
