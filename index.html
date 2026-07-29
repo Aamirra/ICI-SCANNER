@@ -61,11 +61,27 @@
         body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
         body.desktop-mode .phone-container { max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
         body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
-        body.desktop-mode #tv_chart_container { min-height:0; }
+        body.desktop-mode .chart-box { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
-        body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
-        body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
+        
+        /* Multi-Chart Grid CSS */
+        .chart-grid { display: grid; gap: 4px; width: 100%; flex: 1; min-height: 0; background: var(--border); padding: 4px; }
+        .layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+        .layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+        .layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .layout-3 .chart-box:nth-child(3) { grid-column: span 2; }
+        .layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); }
+        .chart-box.active { display: block; }
+        
+        .layout-controls { display: flex; gap: 6px; padding: 6px 10px; align-items: center; justify-content: center; background: var(--surface); border-bottom: 1px solid var(--border); }
+        .layout-btn { padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); border-radius: 6px; cursor: pointer; color: var(--txt); }
+        .layout-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+
+        body.desktop-mode .chart-box:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
+        body.desktop-mode .chart-box:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
+        body.desktop-mode .chart-box:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
+        
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
         .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
@@ -185,7 +201,23 @@
         <button class="chart-interval-btn" data-interval="D" onclick="changeChartInterval('D', this)">1D</button>
         <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
     </div>
-    <div id="tv_chart_container" style="flex:1"></div>
+    
+    <!-- Multi-Chart Layout Controls -->
+    <div class="layout-controls">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
+        <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
+        <button class="layout-btn" onclick="setChartLayout(2)">2</button>
+        <button class="layout-btn" onclick="setChartLayout(3)">3</button>
+        <button class="layout-btn" onclick="setChartLayout(4)">4</button>
+    </div>
+    
+    <!-- Grid Container for Charts -->
+    <div id="chart-grid" class="chart-grid layout-1">
+        <div id="tv_chart_1" class="chart-box active"></div>
+        <div id="tv_chart_2" class="chart-box"></div>
+        <div id="tv_chart_3" class="chart-box"></div>
+        <div id="tv_chart_4" class="chart-box"></div>
+    </div>
 </div>
 
 <div class="approval-overlay" id="approvalOverlay">
@@ -213,19 +245,12 @@
 (function() {
     const originalFire = _alFireAlert;
     _alFireAlert = function(alert, pair) {
-        // 1. Correct message with pair, direction, and price
         if (alert.value != null && alert.type) {
             const direction = alert.type === 'above' ? 'crossed above' : 'crossed below';
             if (!alert.message) alert.message = pair.name + ' ' + direction + ' ' + alert.value;
         }
-
-        // 2. Fire the original alert (toast, Telegram, etc.)
         originalFire(alert, pair);
-
-        // 3. Auto-deactivate so it doesn't fire again
         alert.active = false;
-
-        // 4. Save back to storage (attempts multiple methods)
         try {
             if (typeof alSaveAlerts === 'function') {
                 const all = alLoadAlerts();
@@ -235,9 +260,8 @@
                     alSaveAlerts(all);
                 }
             } else if (typeof saveAlerts === 'function') {
-                saveAlerts();   // if it re-saves global array
+                saveAlerts();
             } else {
-                // fallback: update localStorage directly (common key)
                 const key = 'ici_alerts';
                 const raw = localStorage.getItem(key);
                 if (raw) {
@@ -250,7 +274,7 @@
                 }
             }
         } catch(e) {
-            console.warn('Auto-deactivate failed, you may need to remove alert manually', e);
+            console.warn('Auto-deactivate failed', e);
         }
     };
 })();
@@ -273,10 +297,11 @@ let REMOTE_TARGET_LIST = {};
 let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
-window.alertSettings = alertSettings;   // immediate init for Alerts.js
 let currentChartInterval = "60";
+let currentChartLayout = 1; // Default layout
 
-// --- Debounced Render ---
+window.alertSettings = alertSettings;
+
 let renderTimer = null;
 function renderDebounced() {
     if (renderTimer) clearTimeout(renderTimer);
@@ -286,7 +311,6 @@ function renderDebounced() {
     }, 300);
 }
 
-// Real-time last scan time
 db.ref('lastScanTime/time').on('value', snap => {
     const timestamp = snap.val();
     const el = document.getElementById('lastScanTime');
@@ -298,7 +322,6 @@ db.ref('lastScanTime/time').on('value', snap => {
     }
 });
 
-// Alert settings listener + global exposure
 db.ref('alertSettings').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
@@ -418,7 +441,6 @@ function rejectAction() {
     window.__pendingAction = null;
 }
 
-// Scan trigger with 10-min timeout
 function actualScan() {
     const btn = document.querySelector('.scan-btn');
     const statusEl = document.getElementById('scanStatusText');
@@ -459,18 +481,12 @@ function actualScan() {
     }, 600000);
 }
 
-// Target setups from targetList
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
         const item = REMOTE_TARGET_LIST[pair];
         if (item && item.dir && item.phase) {
-            const prio = {
-                'alert_triggered': 4,
-                'wait_h1_reclaim': 3,
-                'wait_h1_dip': 2,
-                'wait_h1_push': 2
-            };
+            const prio = { 'alert_triggered': 4, 'wait_h1_reclaim': 3, 'wait_h1_dip': 2, 'wait_h1_push': 2 };
             pairMap.set(pair, {
                 dir: item.dir,
                 phase: item.phase,
@@ -596,6 +612,26 @@ function render() {
     updateCounts();
 }
 
+// Multi-Chart Setting Logic
+function setChartLayout(count) {
+    currentChartLayout = count;
+    document.querySelectorAll('.layout-btn').forEach((b, idx) => {
+        if (idx === count - 1) b.classList.add('active');
+        else b.classList.remove('active');
+    });
+    const grid = document.getElementById('chart-grid');
+    grid.className = 'chart-grid layout-' + count;
+    for(let i=1; i<=4; i++) {
+        const box = document.getElementById('tv_chart_'+i);
+        if(i <= count) box.classList.add('active');
+        else box.classList.remove('active');
+    }
+    // Agar chart already khula hua hai, toh update karein
+    if (document.getElementById('chartOverlay').style.display === 'flex') {
+        openChart(chartIdx);
+    }
+}
+
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
     chartIdx = chartPairs.indexOf(pairName);
@@ -608,27 +644,40 @@ function changeChartInterval(interval, btn) {
     btn.classList.add('active');
     openChart(chartIdx);
 }
+
+// Multi-Chart Rendering Logic
 function openChart(idx) {
     chartIdx = idx;
-    const symbol = chartPairs[idx];
-    document.getElementById('chartPairName').textContent = symbol;
+    const baseSymbol = chartPairs[idx];
+    document.getElementById('chartPairName').textContent = baseSymbol + (currentChartLayout > 1 ? ' (+ Multi)' : '');
     document.getElementById('chartOverlay').style.display = 'flex';
-    document.getElementById('tv_chart_container').innerHTML = '';
-    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
-    new TradingView.widget({
-        autosize: true,
-        symbol: isPSX ? 'KSE:' + symbol : symbol,
-        interval: currentChartInterval,
-        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-        container_id: "tv_chart_container",
-        overrides: { "volumePaneSize": "0" },
-        studies: [
-            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
-            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
-            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
-        ]
-    });
+    
+    for (let i = 1; i <= 4; i++) {
+        const containerId = 'tv_chart_' + i;
+        document.getElementById(containerId).innerHTML = ''; // Clear old chart
+        
+        if (i <= currentChartLayout) {
+            let offsetIdx = (idx + (i - 1)) % chartPairs.length;
+            let sym = chartPairs[offsetIdx];
+            const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(sym);
+            
+            new TradingView.widget({
+                autosize: true,
+                symbol: isPSX ? 'KSE:' + sym : sym,
+                interval: currentChartInterval,
+                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+                container_id: containerId,
+                overrides: { "volumePaneSize": "0" },
+                studies: [
+                    { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
+                    { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
+                    { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
+                ]
+            });
+        }
+    }
 }
+
 function movePair(step) {
     if (chartIdx + step >= 0 && chartIdx + step < chartPairs.length) openChart(chartIdx + step);
 }
