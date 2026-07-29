@@ -71,7 +71,7 @@
         .layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
         .layout-3 .chart-box:nth-child(3) { grid-column: span 2; }
         .layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); }
+        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); cursor: pointer; }
         .chart-box.active { display: block; }
         
         .layout-controls { display: flex; gap: 6px; padding: 6px 10px; align-items: center; justify-content: center; background: var(--surface); border-bottom: 1px solid var(--border); }
@@ -213,10 +213,10 @@
     
     <!-- Grid Container for Charts -->
     <div id="chart-grid" class="chart-grid layout-1">
-        <div id="tv_chart_1" class="chart-box active"></div>
-        <div id="tv_chart_2" class="chart-box"></div>
-        <div id="tv_chart_3" class="chart-box"></div>
-        <div id="tv_chart_4" class="chart-box"></div>
+        <div id="tv_chart_1" class="chart-box active" onclick="activateChartSlot(1)"></div>
+        <div id="tv_chart_2" class="chart-box" onclick="activateChartSlot(2)"></div>
+        <div id="tv_chart_3" class="chart-box" onclick="activateChartSlot(3)"></div>
+        <div id="tv_chart_4" class="chart-box" onclick="activateChartSlot(4)"></div>
     </div>
 </div>
 
@@ -294,11 +294,14 @@ const PAIRS = [
 
 let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
 let REMOTE_TARGET_LIST = {};
-let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
+let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
-let currentChartLayout = 1; // Default layout
+let currentChartLayout = 1;
+let activeChartSlot = 1;                      // 1-4
+let chartIndices = [0, 0, 0, 0];             // pair index for each slot
+let chartIntervals = ['60','60','60','60'];  // interval per slot
 
 window.alertSettings = alertSettings;
 
@@ -549,6 +552,7 @@ function render() {
         filtered = currentPairs.filter(p => validTargets.has(p.n));
     else filtered = currentPairs;
     currentDisplayPairs = filtered.map(p => p.n);
+    chartPairs = filtered.map(p => p.n); // sync chartPairs with current filter
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
         const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {}, m = MARKET_DATA[p.n] || {};
@@ -612,7 +616,62 @@ function render() {
     updateCounts();
 }
 
-// Multi-Chart Setting Logic
+// ==================== MULTI-CHART LOGIC ====================
+
+// Set the active slot (1-4) when clicking on a chart box
+function activateChartSlot(slot) {
+    activeChartSlot = slot;
+    // Update pair name to reflect active slot
+    updateChartPairName();
+    // Highlight interval button for that slot's interval
+    highlightIntervalButton(chartIntervals[slot-1]);
+}
+
+// Update the displayed pair name based on active slot
+function updateChartPairName() {
+    const idx = chartIndices[activeChartSlot-1];
+    const pair = chartPairs[idx] || 'Select a pair';
+    document.getElementById('chartPairName').textContent = (currentChartLayout > 1 ? `[Slot ${activeChartSlot}] ` : '') + pair;
+}
+
+// Highlight correct interval button for a given interval value
+function highlightIntervalButton(interval) {
+    document.querySelectorAll('.chart-interval-btn').forEach(btn => {
+        if (btn.dataset.interval === interval) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+}
+
+// Called when user clicks a pair in the list – only affect active slot
+function openChartForPair(pairName) {
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
+    let index = chartPairs.indexOf(pairName);
+    if (index === -1) index = 0;
+    chartIndices[activeChartSlot-1] = index;
+    updateChartPairName();
+    drawChart(activeChartSlot);
+    // Ensure chart overlay is visible
+    document.getElementById('chartOverlay').style.display = 'flex';
+}
+
+// Navigation arrows: move only active slot
+function movePair(step) {
+    const idx = chartIndices[activeChartSlot-1];
+    const total = chartPairs.length;
+    const newIdx = (idx + step + total) % total;
+    chartIndices[activeChartSlot-1] = newIdx;
+    updateChartPairName();
+    drawChart(activeChartSlot);
+}
+
+// Change interval for active slot only
+function changeChartInterval(interval, btn) {
+    chartIntervals[activeChartSlot-1] = interval;
+    highlightIntervalButton(interval);
+    drawChart(activeChartSlot);
+}
+
+// Set layout (1-4) and redraw all active slots
 function setChartLayout(count) {
     currentChartLayout = count;
     document.querySelectorAll('.layout-btn').forEach((b, idx) => {
@@ -621,66 +680,46 @@ function setChartLayout(count) {
     });
     const grid = document.getElementById('chart-grid');
     grid.className = 'chart-grid layout-' + count;
-    for(let i=1; i<=4; i++) {
-        const box = document.getElementById('tv_chart_'+i);
-        if(i <= count) box.classList.add('active');
+    for (let i = 1; i <= 4; i++) {
+        const box = document.getElementById('tv_chart_' + i);
+        if (i <= count) box.classList.add('active');
         else box.classList.remove('active');
     }
-    // Agar chart already khula hua hai, toh update karein
-    if (document.getElementById('chartOverlay').style.display === 'flex') {
-        openChart(chartIdx);
+    // Redraw all active slots
+    redrawAllActive();
+}
+
+// Redraw all visible chart slots based on stored indices and intervals
+function redrawAllActive() {
+    for (let i = 1; i <= currentChartLayout; i++) {
+        drawChart(i);
     }
 }
 
-function openChartForPair(pairName) {
-    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
-    chartIdx = chartPairs.indexOf(pairName);
-    if (chartIdx === -1) chartIdx = 0;
-    openChart(chartIdx);
-}
-function changeChartInterval(interval, btn) {
-    currentChartInterval = interval;
-    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    openChart(chartIdx);
-}
-
-// Multi-Chart Rendering Logic
-function openChart(idx) {
-    chartIdx = idx;
-    const baseSymbol = chartPairs[idx];
-    document.getElementById('chartPairName').textContent = baseSymbol + (currentChartLayout > 1 ? ' (+ Multi)' : '');
-    document.getElementById('chartOverlay').style.display = 'flex';
-    
-    for (let i = 1; i <= 4; i++) {
-        const containerId = 'tv_chart_' + i;
-        document.getElementById(containerId).innerHTML = ''; // Clear old chart
-        
-        if (i <= currentChartLayout) {
-            let offsetIdx = (idx + (i - 1)) % chartPairs.length;
-            let sym = chartPairs[offsetIdx];
-            const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(sym);
-            
-            new TradingView.widget({
-                autosize: true,
-                symbol: isPSX ? 'KSE:' + sym : sym,
-                interval: currentChartInterval,
-                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-                container_id: containerId,
-                overrides: { "volumePaneSize": "0" },
-                studies: [
-                    { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
-                    { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
-                    { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
-                ]
-            });
-        }
-    }
+// Draw a single chart slot with its stored pair and interval
+function drawChart(slot) {
+    const containerId = 'tv_chart_' + slot;
+    const container = document.getElementById(containerId);
+    container.innerHTML = ''; // clear previous widget
+    const idx = chartIndices[slot-1];
+    if (!chartPairs[idx]) return; // no pair assigned yet
+    const symbol = chartPairs[idx];
+    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
+    new TradingView.widget({
+        autosize: true,
+        symbol: isPSX ? 'KSE:' + symbol : symbol,
+        interval: chartIntervals[slot-1],
+        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+        container_id: containerId,
+        overrides: { "volumePaneSize": "0" },
+        studies: [
+            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
+            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
+            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
+        ]
+    });
 }
 
-function movePair(step) {
-    if (chartIdx + step >= 0 && chartIdx + step < chartPairs.length) openChart(chartIdx + step);
-}
 function closeChart() {
     if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none';
 }
