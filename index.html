@@ -71,12 +71,17 @@
         .layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
         .layout-3 .chart-box:nth-child(3) { grid-column: span 2; }
         .layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); cursor: pointer; }
+        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); }
         .chart-box.active { display: block; }
         
         .layout-controls { display: flex; gap: 6px; padding: 6px 10px; align-items: center; justify-content: center; background: var(--surface); border-bottom: 1px solid var(--border); }
         .layout-btn { padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); border-radius: 6px; cursor: pointer; color: var(--txt); }
         .layout-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        
+        /* Slot Selector */
+        .slot-selector { display: flex; gap: 4px; align-items: center; margin: 0 10px; }
+        .slot-btn { padding: 4px 8px; font-size: 11px; font-weight: 600; border: 2px solid transparent; border-radius: 4px; background: var(--pill-bg); cursor: pointer; color: var(--txt); }
+        .slot-btn.active-slot { border-color: var(--green); color: var(--green); }
 
         body.desktop-mode .chart-box:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
         body.desktop-mode .chart-box:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
@@ -202,21 +207,28 @@
         <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
     </div>
     
-    <!-- Multi-Chart Layout Controls -->
+    <!-- Multi-Chart Layout Controls + Slot Selector -->
     <div class="layout-controls">
         <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
         <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
         <button class="layout-btn" onclick="setChartLayout(2)">2</button>
         <button class="layout-btn" onclick="setChartLayout(3)">3</button>
         <button class="layout-btn" onclick="setChartLayout(4)">4</button>
+        <span class="slot-selector">
+            <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:6px;">Slot:</span>
+            <button class="slot-btn active-slot" id="slotBtn1" onclick="activateChartSlot(1)">1</button>
+            <button class="slot-btn" id="slotBtn2" onclick="activateChartSlot(2)">2</button>
+            <button class="slot-btn" id="slotBtn3" onclick="activateChartSlot(3)">3</button>
+            <button class="slot-btn" id="slotBtn4" onclick="activateChartSlot(4)">4</button>
+        </span>
     </div>
     
     <!-- Grid Container for Charts -->
     <div id="chart-grid" class="chart-grid layout-1">
-        <div id="tv_chart_1" class="chart-box active" onclick="activateChartSlot(1)"></div>
-        <div id="tv_chart_2" class="chart-box" onclick="activateChartSlot(2)"></div>
-        <div id="tv_chart_3" class="chart-box" onclick="activateChartSlot(3)"></div>
-        <div id="tv_chart_4" class="chart-box" onclick="activateChartSlot(4)"></div>
+        <div id="tv_chart_1" class="chart-box active"></div>
+        <div id="tv_chart_2" class="chart-box"></div>
+        <div id="tv_chart_3" class="chart-box"></div>
+        <div id="tv_chart_4" class="chart-box"></div>
     </div>
 </div>
 
@@ -618,9 +630,15 @@ function render() {
 
 // ==================== MULTI-CHART LOGIC ====================
 
-// Set the active slot (1-4) when clicking on a chart box
+// Set the active slot (1-4) when clicking a slot button
 function activateChartSlot(slot) {
     activeChartSlot = slot;
+    // Update slot button styles
+    for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById('slotBtn' + i);
+        if (i === slot) btn.classList.add('active-slot');
+        else btn.classList.remove('active-slot');
+    }
     // Update pair name to reflect active slot
     updateChartPairName();
     // Highlight interval button for that slot's interval
@@ -687,6 +705,23 @@ function setChartLayout(count) {
     }
     // Redraw all active slots
     redrawAllActive();
+    // Update slot button visibility based on layout count (show only needed buttons)
+    for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById('slotBtn' + i);
+        if (i <= count) btn.style.display = 'inline-block';
+        else btn.style.display = 'none';
+    }
+    // Ensure active slot is within range
+    if (activeChartSlot > count) {
+        activeChartSlot = 1;
+        for (let i = 1; i <= 4; i++) {
+            const btn = document.getElementById('slotBtn' + i);
+            if (i === 1) btn.classList.add('active-slot');
+            else btn.classList.remove('active-slot');
+        }
+        updateChartPairName();
+        highlightIntervalButton(chartIntervals[0]);
+    }
 }
 
 // Redraw all visible chart slots based on stored indices and intervals
