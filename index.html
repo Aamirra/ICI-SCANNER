@@ -586,7 +586,11 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
+// ── RENDER (with crash guard) ──
 function render() {
+    // DO NOT update the pair list if chart overlay is open (prevents mobile crash)
+    if (document.getElementById('chartOverlay').style.display === 'flex') return;
+
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
     const validTargets = new Set(getUniqueAutoSetups().keys());
@@ -675,7 +679,7 @@ function activateChartSlot(slot) {
     }
     updateChartPairName();
     highlightIntervalButton(chartIntervals[slot-1]);
-    startCountdownTimer(); // restart timer with new slot's interval
+    startCountdownTimer();
 }
 
 function updateChartPairName() {
@@ -699,7 +703,7 @@ function openChartForPair(pairName) {
     updateChartPairName();
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
-    startCountdownTimer(); // ensure timer starts when a chart is opened
+    startCountdownTimer();
 }
 
 function movePair(step) {
@@ -715,10 +719,10 @@ function changeChartInterval(interval, btn) {
     chartIntervals[activeChartSlot-1] = interval;
     highlightIntervalButton(interval);
     drawChart(activeChartSlot);
-    startCountdownTimer(); // restart timer for new interval
+    startCountdownTimer();
 }
 
-function setChartLayout(count) {
+async function setChartLayout(count) {
     currentChartLayout = count;
     document.querySelectorAll('.layout-btn').forEach((b, idx) => {
         if (idx === count - 1) b.classList.add('active');
@@ -731,7 +735,8 @@ function setChartLayout(count) {
         if (i <= count) box.classList.add('active');
         else box.classList.remove('active');
     }
-    redrawAllActive();
+    // Staggered redraw to prevent crash
+    await redrawAllActiveStaggered();
     for (let i = 1; i <= 4; i++) {
         const btn = document.getElementById('slotBtn' + i);
         if (i <= count) btn.style.display = 'inline-block';
@@ -747,12 +752,15 @@ function setChartLayout(count) {
         updateChartPairName();
         highlightIntervalButton(chartIntervals[0]);
     }
-    startCountdownTimer(); // restart timer after layout change
+    startCountdownTimer();
 }
 
-function redrawAllActive() {
+async function redrawAllActiveStaggered() {
     for (let i = 1; i <= currentChartLayout; i++) {
         drawChart(i);
+        if (i < currentChartLayout) {
+            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+        }
     }
 }
 
