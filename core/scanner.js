@@ -473,6 +473,8 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const currentPrice = cls[cls.length - 1];
                         if (ema20) {
                             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+                            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
+                            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
                             if (tf === '1h') {
                                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
                                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
@@ -518,6 +520,8 @@ async function fetchIndexCandlesAndStore(p, tf) {
         const currentPrice = cls[cls.length - 1];
         if (ema20) {
             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
+            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
             if (tf === '1h') {
                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
@@ -559,6 +563,8 @@ async function fetchTF_Yahoo(p, tf) {
         const currentPrice = cls[cls.length - 1];
         if (ema20) {
             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
+            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
             if (tf === '1h') {
                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
