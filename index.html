@@ -92,40 +92,6 @@
         .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
         .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
         .countdown-display { font-size:11px; font-weight:600; margin-left:8px; color:var(--gold); white-space:nowrap; }
-        .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
-        .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
-        .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
-        .ai-body.collapsed { max-height: 0; }
-        .error-list-embedded { padding: 4px 12px; border-bottom: 1px solid var(--border); display: none; }
-        .error-list-embedded.has-errors { display: block; }
-        .error-item { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
-        .chat-section { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
-        .chat-messages-embedded { max-height: 120px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
-        .chat-message-embedded { margin-bottom: 6px; }
-        .chat-message-embedded.user { text-align: right; }
-        .chat-message-embedded.assistant { text-align: left; }
-        .chat-message-embedded span { display: inline-block; padding: 4px 8px; border-radius: 10px; max-width: 85%; word-wrap: break-word; }
-        .chat-message-embedded.user span { background: var(--acc); color: #fff; }
-        .chat-message-embedded.assistant span { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
-        .chat-input-embedded { display: flex; gap: 6px; }
-        .chat-input-embedded input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--pill-bg); color: var(--txt); outline: none; }
-        .chat-input-embedded button { padding: 6px 10px; background: var(--acc); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .pending-code-changes { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; margin-bottom: 12px; padding: 8px 12px; font-size: 12px; display: none; }
-        .pending-code-changes.visible { display: block; }
-        .pending-header { font-weight: 600; color: var(--gold); margin-bottom: 6px; }
-        .pending-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
-        .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
-        .btn-approve { background: var(--green); }
-        .btn-reject { background: var(--red); }
-        .approval-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; }
-        .approval-overlay.open { display:flex; }
-        .approval-box { background:var(--surface); border-radius:16px; padding:20px; max-width:360px; width:90%; color:var(--txt); }
-        .approval-box h3 { margin:0 0 8px; font-size:16px; }
-        .approval-box p { font-size:13px; color:var(--muted); margin-bottom:16px; }
-        .approval-btns { display:flex; gap:8px; justify-content:flex-end; }
-        .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
-        .approve-btn { background:var(--green); color:#fff; }
-        .reject-btn { background:var(--red); color:#fff; }
         .scan-status-line { font-size:11px; color: var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color: var(--gold); margin-left:auto; }
 
@@ -186,27 +152,6 @@
     <div style="display:flex; align-items:center; margin-bottom:8px;">
         <span id="scanStatusText" class="scan-status-line"></span>
         <span id="lastScanTime" class="last-scan-line">🕒 Last scan: never</span>
-    </div>
-    <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()"><span>AI Assistant</span><i class="fas fa-chevron-down" style="font-size:12px;"></i></div>
-        <div class="ai-body" id="aiBody">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding: 4px 12px; border-bottom:1px solid var(--border);">
-                <span style="font-weight:600;color:var(--muted);font-size:11px;">Errors</span>
-                <button onclick="clearErrors()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Clear</button>
-            </div>
-            <div class="error-list-embedded" id="errorListEmbedded"></div>
-            <div class="chat-section">
-                <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
-                <div class="chat-input-embedded">
-                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendOpenRouterChat()">
-                    <button onclick="sendOpenRouterChat()">Send</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="pending-code-changes" id="pendingCodePanel">
-        <div class="pending-header">Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
-        <div id="pendingCodeList"></div>
     </div>
     <div class="sync-info" onclick="openTargetModal()">
         Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ></span>
@@ -310,17 +255,6 @@
         <div id="tv_chart_2" class="chart-box"></div>
         <div id="tv_chart_3" class="chart-box"></div>
         <div id="tv_chart_4" class="chart-box"></div>
-    </div>
-</div>
-
-<div class="approval-overlay" id="approvalOverlay">
-    <div class="approval-box">
-        <h3>AI Action Approval</h3>
-        <p id="approvalMessage"></p>
-        <div class="approval-btns">
-            <button class="reject-btn" onclick="rejectAction()">Reject</button>
-            <button class="approve-btn" onclick="approveAction()">Approve</button>
-        </div>
     </div>
 </div>
 
@@ -531,63 +465,6 @@ function setFilter(f) { curF = f; render(); }
 function filterPairs(txt) {
     filteredPairs = txt ? PAIRS.filter(p => p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS];
     render();
-}
-
-function toggleAIAssistant() { document.getElementById('aiBody').classList.toggle('collapsed'); }
-function clearErrors() { if (confirm('Sare errors delete kar dein?')) { db.ref('errorLog').remove(); } }
-async function sendOpenRouterChat() {
-    const input = document.getElementById('chatInputEmbedded');
-    const md = document.getElementById('chatMessagesEmbedded');
-    const txt = input.value.trim();
-    if (!txt) return;
-    md.innerHTML += `<div class="chat-message-embedded user"><span>${txt}</span></div>`;
-    input.value = '';
-    md.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
-    try {
-        const res = await fetch('/api/chat', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ message: txt })
-        });
-        const data = await res.json();
-        const le = document.getElementById('loadingMsg'); if (le) le.remove();
-        if (!res.ok) md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X ${data.error||''}</span></div>`;
-        else {
-            const r = data.response || '';
-            const m = r.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
-            let dt = r;
-            if (m) {
-                dt = r.replace(m[0], '').trim();
-                try {
-                    const p = JSON.parse(m[2]);
-                    document.getElementById('approvalMessage').textContent = 'AI wants: ' + m[1] + ' ' + m[2];
-                    document.getElementById('approvalOverlay').classList.add('open');
-                    window.__pendingAction = { type: m[1], params: p };
-                } catch(e){}
-            }
-            if (dt) md.innerHTML += `<div class="chat-message-embedded assistant"><span>${dt}</span></div>`;
-        }
-    } catch(e) {
-        const le = document.getElementById('loadingMsg'); if (le) le.remove();
-        md.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">X Network error</span></div>`;
-    }
-}
-async function approveAction() {
-    const act = window.__pendingAction; if (!act) return;
-    document.getElementById('approvalOverlay').classList.remove('open');
-    try {
-        const res = await fetch('/api/execute-action', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ action: act.type, params: act.params })
-        });
-        const r = await res.json();
-        const md = document.getElementById('chatMessagesEmbedded');
-        md.innerHTML += `<div class="chat-message-embedded assistant"><span>${r.success ? 'OK ' : 'X '}${r.message}</span></div>`;
-    } catch(e) {}
-    window.__pendingAction = null;
-}
-function rejectAction() {
-    document.getElementById('approvalOverlay').classList.remove('open');
-    window.__pendingAction = null;
 }
 
 function actualScan() {
@@ -891,7 +768,6 @@ function clearColFilter() {
 
 // ── RENDER (FIXED: render always except when chart is open in mobile) ──
 function render() {
-    // Only block rendering if we are in mobile mode and chart overlay is open (fullscreen)
     const isDesktop = document.body.classList.contains('desktop-mode');
     if (!isDesktop && document.getElementById('chartOverlay').style.display === 'flex') {
         return;
@@ -913,7 +789,7 @@ function render() {
     filtered = applyColumnSortAndFilter(filtered);
 
     currentDisplayPairs = filtered.map(p => p.n);
-    chartPairs = filtered.map(p => p.n); // sync chartPairs with current filter
+    chartPairs = filtered.map(p => p.n);
 
     renderHeader();
 
@@ -925,8 +801,8 @@ function render() {
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
         let cells = `<div class="col-pair-fixed">
-    <span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}
-</div>`;
+            <span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}
+        </div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += `<div class="col-add-btn" style="visibility:hidden;"></div>`;
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
@@ -1068,7 +944,6 @@ function drawChart(slot) {
 function closeChart() {
     if (!document.body.classList.contains('desktop-mode')) {
         document.getElementById('chartOverlay').style.display = 'none';
-        // Force re-render after closing chart in mobile
         render();
     }
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
@@ -1116,7 +991,6 @@ db.ref('marketData').on('value', snap => {
         document.getElementById('chartOverlay').style.display = 'flex';
         document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
     }
-    // Ensure initial render after all listeners set
     setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
