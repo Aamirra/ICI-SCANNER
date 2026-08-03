@@ -346,7 +346,7 @@ let chartIntervals = ['60','60','60','60'];
 window.alertSettings = alertSettings;
 
 let starredPairs = JSON.parse(localStorage.getItem('ici_starred') || '[]');
-let activeChartPair = null; // ⭐ Highlighted pair
+let activeChartPair = null;
 
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
@@ -591,13 +591,29 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
+// ⚡ NEW getColumnValue – uses live price & scanner’s EMA for all timeframes
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
     const s = sentimentData[pairName] || {};
     const m = MARKET_DATA[pairName] || {};
     const lm = liveMarketData[pairName] || {};
-    if (col.type === 'tf_alignment') return ['1h','4h','1day','1week'].map(tf => m[tf] || lm[tf] || '');
+    if (col.type === 'tf_alignment') {
+        const livePrice = lm.price || lm.currentPrice;
+        // 1h
+        const ema20_1h = m.ema20 || m['1h_ema20'];
+        const sig1h = (livePrice != null && ema20_1h != null) ? (livePrice > ema20_1h ? 'bull' : 'bear') : (m['1h'] || '');
+        // 4h
+        const ema20_4h = m['4h_ema20'];
+        const sig4h = (livePrice != null && ema20_4h != null) ? (livePrice > ema20_4h ? 'bull' : 'bear') : (m['4h'] || '');
+        // 1day
+        const ema20_1d = m['1day_ema20'];
+        const sig1d = (livePrice != null && ema20_1d != null) ? (livePrice > ema20_1d ? 'bull' : 'bear') : (m['1day'] || '');
+        // 1week
+        const ema20_1w = m['1week_ema20'];
+        const sig1w = (livePrice != null && ema20_1w != null) ? (livePrice > ema20_1w ? 'bull' : 'bear') : (m['1week'] || '');
+        return [sig1h, sig4h, sig1d, sig1w];
+    }
     if (col.type === 'sentiment') {
         const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
         return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
