@@ -13,7 +13,7 @@
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
         [data-theme="dark"] { --bg:#0f172a; --surface:#1e293b; --border:#334155; --txt:#f8fafc; --acc:#3b82f6; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#94a3b8; --pill-bg:#1e293b; }
-        .phone-container { width:100%; max-width:none; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
+        .phone-container { width:100%; max-width:450px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
         .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
         .brand { display:flex; align-items:center; gap:10px; }
         .brand-icon { width:36px; height:36px; background:var(--acc); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
@@ -37,13 +37,13 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
 
-        /* ── Column layout with horizontal scroll ── */
-        .screener-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -16px; padding:0 16px; }
-        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:max-content; min-width:100%; }
+        /* ── Auto‑adjust columns, no scroll ── */
+        .screener-wrap { overflow-x:visible; }
+        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
         .col-header-cell {
-            flex: none;
-            min-width: 70px;
-            padding: 0 4px;
+            flex: 1 1 0%;
+            min-width: 50px;
+            padding: 0 2px;
             font-size:10px;
             font-weight:700;
             color:var(--muted);
@@ -52,7 +52,7 @@
             display:flex;
             align-items:center;
             justify-content:center;
-            gap:3px;
+            gap:2px;
             cursor:pointer;
             -webkit-user-select:none;
             user-select:none;
@@ -60,34 +60,9 @@
             text-overflow:ellipsis;
             white-space:nowrap;
         }
-        .col-pair-fixed.col-header-cell {
-            position:sticky;
-            left:0;
-            z-index:3;
-            background:var(--surface);
-            min-width:80px;
-            flex:none;
-            justify-content:flex-start;
-            cursor:default;
-            padding-left:4px;
-        }
-        .col-bell-fixed.col-header-cell {
-            position:sticky;
-            right:0;
-            z-index:3;
-            background:var(--surface);
-            min-width:34px;
-            flex:none;
-            cursor:default;
-        }
-        .col-add-btn {
-            min-width:30px;
-            flex:none;
-            text-align:center;
-            cursor:pointer;
-            color:var(--acc);
-            font-size:16px;
-        }
+        .col-pair-fixed.col-header-cell { flex: 1 1 0%; min-width:70px; justify-content:flex-start; cursor:default; padding-left:4px; }
+        .col-bell-fixed.col-header-cell { flex: none; min-width:30px; cursor:default; }
+        .col-add-btn { min-width:24px; flex:none; text-align:center; cursor:pointer; color:var(--acc); font-size:16px; }
         .item-main {
             display:flex;
             align-items:center;
@@ -96,41 +71,20 @@
             -webkit-user-select:none;
             user-select:none;
             touch-action:pan-y;
-            width:max-content;
-            min-width:100%;
+            width:100%;
         }
         .col-cell {
-            flex: none;
-            min-width: 70px;
-            padding: 0 4px;
+            flex: 1 1 0%;
+            min-width: 50px;
+            padding: 0 2px;
             text-align:center;
             font-size:12px;
             overflow:hidden;
             text-overflow:ellipsis;
             white-space:nowrap;
         }
-        .col-pair-fixed {
-            position:sticky;
-            left:0;
-            z-index:2;
-            background:var(--surface);
-            min-width:80px;
-            flex:none;
-            display:flex;
-            align-items:center;
-            padding-right:6px;
-        }
-        .col-bell-fixed {
-            position:sticky;
-            right:0;
-            z-index:2;
-            background:var(--surface);
-            min-width:34px;
-            flex:none;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }
+        .col-pair-fixed { flex: 1 1 0%; min-width:70px; display:flex; align-items:center; padding-right:4px; }
+        .col-bell-fixed { flex: none; min-width:30px; display:flex; align-items:center; justify-content:center; }
 
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
@@ -770,7 +724,6 @@ function applyColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
     col.filterMin = document.getElementById('filterMinInput').value === '' ? null : parseFloat(document.getElementById('filterMinInput').value);
     col.filterMax = document.getElementById('filterMaxInput').value === '' ? null : parseFloat(document.getElementById('filterMaxInput').value);
-    // auto-sort descending by this column
     sortColumn = filterTargetId;
     sortDir = 'desc';
     saveColumns(); closeColFilterModal(); render();
@@ -825,7 +778,7 @@ function render() {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="phase-row" style="position:sticky;left:0;"><span style="color:var(--muted);">Phase:</span><span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span></div>`;
+                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span><span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span></div>`;
             }
         }
         row += '</div>';
