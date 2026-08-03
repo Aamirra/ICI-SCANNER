@@ -13,7 +13,7 @@
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
         [data-theme="dark"] { --bg:#0f172a; --surface:#1e293b; --border:#334155; --txt:#f8fafc; --acc:#3b82f6; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#94a3b8; --pill-bg:#1e293b; }
-        .phone-container { width:100%; max-width:450px; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
+        .phone-container { width:100%; max-width:none; background:var(--surface); border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.05); padding:16px; border:1px solid var(--border); }
         .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
         .brand { display:flex; align-items:center; gap:10px; }
         .brand-icon { width:36px; height:36px; background:var(--acc); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:bold; }
@@ -37,11 +37,12 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
 
+        /* ── Column layout with horizontal scroll ── */
         .screener-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -16px; padding:0 16px; }
-        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
+        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:max-content; min-width:100%; }
         .col-header-cell {
-            flex: 1 1 0%;
-            min-width: 0;
+            flex: none;
+            min-width: 70px;
             padding: 0 4px;
             font-size:10px;
             font-weight:700;
@@ -95,11 +96,12 @@
             -webkit-user-select:none;
             user-select:none;
             touch-action:pan-y;
-            width:100%;
+            width:max-content;
+            min-width:100%;
         }
         .col-cell {
-            flex: 1 1 0%;
-            min-width: 0;
+            flex: none;
+            min-width: 70px;
             padding: 0 4px;
             text-align:center;
             font-size:12px;
@@ -325,37 +327,27 @@
 </div>
 
 <script>
-if (typeof getBellHtml !== 'function') {
-    window.getBellHtml = function(pair) { return ''; };
-}
-if (typeof openAlertDialog !== 'function') {
-    window.openAlertDialog = function(pair) { alert('Alert dialog: ' + pair); };
-}
-if (typeof openAlertsList !== 'function') {
-    window.openAlertsList = function() { alert('Alerts list not available'); };
-}
+if (typeof getBellHtml !== 'function') window.getBellHtml = p=>'';
+if (typeof openAlertDialog !== 'function') window.openAlertDialog = p=>alert('Alert: '+p);
+if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Alerts list');
 </script>
-
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
 (function() {
-    const originalFire = _alFireAlert;
+    const orig = _alFireAlert;
     _alFireAlert = function(alert, pair) {
         if (alert.value != null && alert.type) {
-            const direction = alert.type === 'above' ? 'crossed above' : 'crossed below';
-            if (!alert.message) alert.message = pair.name + ' ' + direction + ' ' + alert.value;
+            const dir = alert.type === 'above' ? 'crossed above' : 'crossed below';
+            if (!alert.message) alert.message = pair.name + ' ' + dir + ' ' + alert.value;
         }
-        originalFire(alert, pair);
+        orig(alert, pair);
         alert.active = false;
         try {
             if (typeof alSaveAlerts === 'function') {
                 const all = alLoadAlerts();
                 const idx = all.findIndex(a => a.id === alert.id);
-                if (idx !== -1) {
-                    all[idx].active = false;
-                    alSaveAlerts(all);
-                }
+                if (idx !== -1) { all[idx].active = false; alSaveAlerts(all); }
             } else if (typeof saveAlerts === 'function') {
                 saveAlerts();
             } else {
@@ -364,10 +356,7 @@ if (typeof openAlertsList !== 'function') {
                 if (raw) {
                     const list = JSON.parse(raw);
                     const i = list.findIndex(a => a.id === alert.id);
-                    if (i !== -1) {
-                        list[i].active = false;
-                        localStorage.setItem(key, JSON.stringify(list));
-                    }
+                    if (i !== -1) { list[i].active = false; localStorage.setItem(key, JSON.stringify(list)); }
                 }
             }
         } catch(e) {}
@@ -395,7 +384,7 @@ let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 let currentChartLayout = 1;
 let activeChartSlot = 1;
-let chartIndices = [0, 0, 0, 0];
+let chartIndices = [0,0,0,0];
 let chartIntervals = ['60','60','60','60'];
 
 window.alertSettings = alertSettings;
@@ -404,11 +393,8 @@ let starredPairs = JSON.parse(localStorage.getItem('ici_starred') || '[]');
 
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
-    if (idx > -1) {
-        starredPairs.splice(idx, 1);
-    } else {
-        starredPairs.push(pair);
-    }
+    if (idx > -1) starredPairs.splice(idx, 1);
+    else starredPairs.push(pair);
     localStorage.setItem('ici_starred', JSON.stringify(starredPairs));
     render();
 }
@@ -436,15 +422,13 @@ function updateCountdown() {
     } else {
         const minutes = parseInt(intervalStr) || 60;
         const periodMs = minutes * 60 * 1000;
-        const elapsed = Date.now() % periodMs;
-        ms = periodMs - elapsed;
+        ms = periodMs - (Date.now() % periodMs);
     }
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
-    const text = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
-    document.getElementById('countdownDisplay').textContent = '⏳ ' + text;
+    document.getElementById('countdownDisplay').textContent = '⏳ ' + (h>0?`${h}h `:'') + `${m}m ${s}s`;
 }
 function startCountdownTimer() {
     if (countdownInterval) clearInterval(countdownInterval);
@@ -455,11 +439,7 @@ function startCountdownTimer() {
 db.ref('lastScanTime/time').on('value', snap => {
     const el = document.getElementById('lastScanTime');
     const ts = snap.val();
-    if (ts) {
-        el.textContent = '🕒 Last scan: ' + new Date(ts).toLocaleTimeString();
-    } else {
-        el.textContent = '🕒 Last scan: never';
-    }
+    el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
 });
 
 db.ref('alertSettings').on('value', snap => {
@@ -468,20 +448,20 @@ db.ref('alertSettings').on('value', snap => {
     updateToggleButtons();
 });
 function updateToggleButtons() {
-    const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if (tgBtn) {
-        tgBtn.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF';
-        tgBtn.className = 'alert-toggle ' + (alertSettings.telegram ? 'active' : 'inactive');
+    const tg = document.getElementById('tgToggle'), wa = document.getElementById('waToggle');
+    if (tg) {
+        tg.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF';
+        tg.className = 'alert-toggle ' + (alertSettings.telegram ? 'active' : 'inactive');
     }
-    if (waBtn) {
-        waBtn.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF';
-        waBtn.className = 'alert-toggle ' + (alertSettings.whatsapp ? 'active' : 'inactive');
+    if (wa) {
+        wa.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF';
+        wa.className = 'alert-toggle ' + (alertSettings.whatsapp ? 'active' : 'inactive');
     }
 }
 function toggleAlert(type) {
-    const newVal = !(alertSettings[type] ?? true);
-    db.ref('alertSettings/' + type).set(newVal);
-    alertSettings[type] = newVal;
+    const val = !alertSettings[type];
+    db.ref('alertSettings/' + type).set(val);
+    alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
 }
@@ -489,10 +469,9 @@ function toggleAlert(type) {
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const arr = Object.entries(liveMarketData).map(([n,d]) => ({
+        checkAllAlerts(Object.entries(liveMarketData).map(([n,d])=>({
             name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
-        }));
-        checkAllAlerts(arr);
+        })));
     }
     renderDebounced();
 });
@@ -529,59 +508,52 @@ function actualScan() {
     btn.textContent = '⏳ Scanning...';
     btn.disabled = true;
     statusEl.textContent = 'Scan started (may take 2‑3 min)...';
-    fetch('/scan').catch(() => {});
-    const statusRef = db.ref('scanStatus');
-    let resolved = false;
-    const listener = statusRef.on('value', snap => {
+    fetch('/scan').catch(()=>{});
+    const ref = db.ref('scanStatus');
+    let done = false;
+    const listener = ref.on('value', snap => {
         const s = snap.val();
         if (!s) return;
-        if (s.running === false && !resolved) {
-            resolved = true;
-            statusRef.off('value', listener);
-            const now = new Date();
+        if (!s.running && !done) {
+            done = true;
+            ref.off('value', listener);
             btn.textContent = '✅ Done';
             btn.disabled = false;
-            db.ref('lastScanTime').set({ time: now.getTime() });
-            statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
-            setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
-        } else if (s.running === true) {
-            statusEl.textContent = '🔄 Scanning in progress... (started ' + (s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?') + ')';
+            db.ref('lastScanTime').set({ time: Date.now() });
+            statusEl.textContent = '✅ Scan completed at ' + new Date().toLocaleTimeString();
+            setTimeout(() => btn.textContent = 'Scan', 4000);
+        } else if (s.running) {
+            statusEl.textContent = '🔄 Scanning... (started ' + (s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?') + ')';
         }
     });
     setTimeout(() => {
-        if (!resolved) {
-            statusRef.off('value', listener);
+        if (!done) {
+            ref.off('value', listener);
             btn.textContent = 'Scan';
             btn.disabled = false;
-            statusEl.textContent = '⚠️ Scan timeout (>10 min) – check backend';
-            resolved = true;
+            statusEl.textContent = '⚠️ Scan timeout (>10 min)';
         }
     }, 600000);
 }
 
 function getUniqueAutoSetups() {
-    const pairMap = new Map();
+    const map = new Map();
     for (const pair in REMOTE_TARGET_LIST) {
         const item = REMOTE_TARGET_LIST[pair];
         if (item && item.dir && item.phase) {
-            const prio = { 'alert_triggered': 4, 'wait_h1_reclaim': 3, 'wait_h1_dip': 2, 'wait_h1_push': 2 };
-            pairMap.set(pair, {
-                dir: item.dir,
-                phase: item.phase,
-                priority: prio[item.phase] || 1,
-                timestamp: item.timestamp || null
-            });
+            const prio = { alert_triggered:4, wait_h1_reclaim:3, wait_h1_dip:2, wait_h1_push:2 };
+            map.set(pair, { dir:item.dir, phase:item.phase, priority:prio[item.phase]||1, timestamp:item.timestamp||null });
         }
     }
-    return pairMap;
+    return map;
 }
 
 function updateCounts() {
-    let b = 0, r = 0;
+    let b=0,r=0;
     PAIRS.forEach(p => {
         const d = MARKET_DATA[p.n] || {};
-        if (['4h','1day','1week'].every(tf => d[tf] === 'bull')) b++;
-        if (['4h','1day','1week'].every(tf => d[tf] === 'bear')) r++;
+        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
+        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
     });
     document.getElementById('bc').textContent = b;
     document.getElementById('rc').textContent = r;
@@ -614,14 +586,14 @@ function openTargetModal() {
 
 // ── Columns ──
 const COLUMN_TYPES = {
-    tf_alignment: { label:'TF Alignment',      kind:'dots', filterable:false },
-    sentiment:    { label:'Sentiment',         kind:'bar',  filterable:false },
-    change_200:   { label:'200 Candle Change', kind:'pct',  field:'longTermTrend',    filterable:true },
-    change_10:    { label:'10 Candle Change',  kind:'pct',  field:'shortTermMomentum',filterable:true },
-    change_1h:    { label:'1H Momentum',       kind:'pct',  field:'microMomentum',    filterable:true },
-    vol_7d:       { label:'Vol 7D Avg',        kind:'num',  field:'volume7dAvg',      filterable:true },
-    dollar_vol:   { label:'$ Volume 1D',       kind:'num',  field:'dollarVolume1d',   filterable:true },
-    price:        { label:'Price',             kind:'num',  field:'price',            filterable:true }
+    tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
+    sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
+    change_200:   { label:'200 Candle Change', kind:'pct', field:'longTermTrend', filterable:true },
+    change_10:    { label:'10 Candle Change',  kind:'pct', field:'shortTermMomentum', filterable:true },
+    change_1h:    { label:'1H Momentum',       kind:'pct', field:'microMomentum', filterable:true },
+    vol_7d:       { label:'Vol 7D Avg',        kind:'num', field:'volume7dAvg', filterable:true },
+    dollar_vol:   { label:'$ Volume 1D',       kind:'num', field:'dollarVolume1d', filterable:true },
+    price:        { label:'Price',             kind:'num', field:'price', filterable:true }
 };
 
 let columnDefs = [];
@@ -630,9 +602,9 @@ let colMenuTargetId = null, filterTargetId = null;
 
 function defaultColumns() {
     return [
-        { id:'c_tf',   type:'tf_alignment', label:'1H/4H/1D/1W' },
-        { id:'c_sent', type:'sentiment',    label:'Sentiment' },
-        { id:'c_200',  type:'change_200',   label:'200C', style:'colored', filterMin:null, filterMax:null }
+        { id:'c_tf', type:'tf_alignment', label:'1H/4H/1D/1W' },
+        { id:'c_sent', type:'sentiment', label:'Sentiment' },
+        { id:'c_200', type:'change_200', label:'200C', style:'colored', filterMin:null, filterMax:null }
     ];
 }
 function loadColumns() {
@@ -651,9 +623,7 @@ function getColumnValue(pairName, col) {
     const s = sentimentData[pairName] || {};
     const m = MARKET_DATA[pairName] || {};
     const lm = liveMarketData[pairName] || {};
-    if (col.type === 'tf_alignment') {
-        return ['1h','4h','1day','1week'].map(tf => m[tf] || (lm[tf] || ''));
-    }
+    if (col.type === 'tf_alignment') return ['1h','4h','1day','1week'].map(tf => m[tf] || lm[tf] || '');
     if (col.type === 'sentiment') {
         const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
         return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
@@ -686,8 +656,7 @@ function applyColumnSortAndFilter(list) {
         if (col) {
             out = [...out].sort((a,b) => {
                 const va = sortValueFor(a.n, col), vb = sortValueFor(b.n, col);
-                const na = va == null ? -Infinity : va, nb = vb == null ? -Infinity : vb;
-                return sortDir === 'desc' ? nb - na : na - nb;
+                return sortDir === 'desc' ? (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va) : (va == null ? -Infinity : va) - (vb == null ? -Infinity : vb);
             });
         }
     }
@@ -698,11 +667,11 @@ function renderHeader() {
     let html = '<div class="col-pair-fixed col-header-cell">Pair</div>';
     columnDefs.forEach(col => {
         const type = COLUMN_TYPES[col.type];
-        let arrow = sortColumn === col.id ? `<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : '';
-        let badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge" style="background:var(--gold);color:#fff;border-radius:8px;font-size:8px;font-weight:700;padding:1px 4px;">F</span>' : '';
+        const arrow = sortColumn === col.id ? `<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : '';
+        const badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge" style="background:var(--gold);color:#fff;border-radius:8px;font-size:8px;font-weight:700;padding:1px 4px;">F</span>' : '';
         html += `<div class="col-header-cell" onclick="openColMenu('${col.id}')">${col.label || type.label}${arrow}${badge}</div>`;
     });
-    html += `<div class="col-add-btn" onclick="openColEditModal(null)"><i class="fas fa-plus-circle"></i></div>`;
+    html += '<div class="col-add-btn" onclick="openColEditModal(null)"><i class="fas fa-plus-circle"></i></div>';
     html += '<div class="col-bell-fixed col-header-cell"><i class="fas fa-bell"></i></div>';
     document.getElementById('tableHeaderRow').innerHTML = html;
 }
@@ -711,13 +680,13 @@ function renderColumnCell(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const val = getColumnValue(pairName, col);
     if (col.type === 'tf_alignment') {
-        const dots = val.map(sig => `<span class="trend-dot" style="background:${sig === 'bull' ? 'var(--green)' : (sig === 'bear' ? 'var(--red)' : '#cbd5e1')}"></span>`).join('');
+        const dots = val.map(sig => `<span class="trend-dot" style="background:${sig==='bull'?'var(--green)':(sig==='bear'?'var(--red)':'#cbd5e1')}"></span>`).join('');
         return `<div class="col-cell dots-container">${dots}</div>`;
     }
     if (col.type === 'sentiment') {
         return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
     }
-    if (val == null) return `<div class="col-cell" style="color:var(--muted)">--</div>`;
+    if (val == null) return '<div class="col-cell" style="color:var(--muted)">--</div>';
     if (type.kind === 'pct') {
         const cls = col.style === 'mono' ? '' : (val >= 0 ? 'up' : 'down');
         return `<div class="col-cell change-val ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</div>`;
@@ -797,14 +766,11 @@ function openColFilterModal(colId) {
 }
 function closeColFilterModal() { document.getElementById('colFilterModal').classList.remove('open'); }
 
-// ⚡ Filter apply hone par automatic sort
 function applyColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
-    const minV = document.getElementById('filterMinInput').value;
-    const maxV = document.getElementById('filterMaxInput').value;
-    col.filterMin = minV === '' ? null : parseFloat(minV);
-    col.filterMax = maxV === '' ? null : parseFloat(maxV);
-    // Us column ko sort column bana do (descending)
+    col.filterMin = document.getElementById('filterMinInput').value === '' ? null : parseFloat(document.getElementById('filterMinInput').value);
+    col.filterMax = document.getElementById('filterMaxInput').value === '' ? null : parseFloat(document.getElementById('filterMaxInput').value);
+    // auto-sort descending by this column
     sortColumn = filterTargetId;
     sortDir = 'desc';
     saveColumns(); closeColFilterModal(); render();
@@ -813,18 +779,13 @@ function applyColFilter() {
 function clearColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
     col.filterMin = null; col.filterMax = null;
-    // Agar ab koi bhi filter nahi bacha to sort bhi hata do
-    const anyFilter = columnDefs.some(c => c.filterMin != null || c.filterMax != null);
-    if (!anyFilter) sortColumn = null;
+    if (!columnDefs.some(c => c.filterMin != null || c.filterMax != null)) sortColumn = null;
     saveColumns(); closeColFilterModal(); render();
 }
 
 // ── Render ──
 function render() {
-    const isDesktop = document.body.classList.contains('desktop-mode');
-    if (!isDesktop && document.getElementById('chartOverlay').style.display === 'flex') {
-        return;
-    }
+    if (!document.body.classList.contains('desktop-mode') && document.getElementById('chartOverlay').style.display === 'flex') return;
 
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -835,10 +796,8 @@ function render() {
             const d = MARKET_DATA[p.n] || {};
             return ['4h','1day','1week'].every(tf => d[tf] === curF);
         });
-    else if (curF === 'target')
-        filtered = currentPairs.filter(p => validTargets.has(p.n));
-    else if (curF === 'trades')
-        filtered = currentPairs.filter(p => starredPairs.includes(p.n));
+    else if (curF === 'target') filtered = currentPairs.filter(p => validTargets.has(p.n));
+    else if (curF === 'trades') filtered = currentPairs.filter(p => starredPairs.includes(p.n));
     else filtered = currentPairs;
 
     filtered = applyColumnSortAndFilter(filtered);
@@ -848,9 +807,8 @@ function render() {
     renderHeader();
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const m = MARKET_DATA[p.n] || {};
         const lm = liveMarketData && liveMarketData[p.n];
-        const mktPrice = (m.price || m.currentPrice);
+        const mktPrice = (MARKET_DATA[p.n] || {}).price || (MARKET_DATA[p.n] || {}).currentPrice;
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
@@ -859,7 +817,7 @@ function render() {
 
         let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}</div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
-        cells += `<div class="col-add-btn" style="visibility:hidden;"></div>`;
+        cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
 
         let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
@@ -877,18 +835,15 @@ function render() {
 }
 
 // Chart functions unchanged
-function activateChartSlot(slot) {
-    activeChartSlot = slot;
-    for (let i=1;i<=4;i++) {
-        document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===slot);
-    }
+function activateChartSlot(s) {
+    activeChartSlot = s;
+    for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
     updateChartPairName();
-    highlightIntervalButton(chartIntervals[slot-1]);
+    highlightIntervalButton(chartIntervals[s-1]);
     startCountdownTimer();
 }
 function updateChartPairName() {
-    const idx = chartIndices[activeChartSlot-1];
-    document.getElementById('chartPairName').textContent = (currentChartLayout>1?`[Slot ${activeChartSlot}] `:'') + (chartPairs[idx]||'Select a pair');
+    document.getElementById('chartPairName').textContent = (currentChartLayout>1?`[Slot ${activeChartSlot}] `:'') + (chartPairs[chartIndices[activeChartSlot-1]]||'Select a pair');
 }
 function highlightIntervalButton(interval) {
     document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.toggle('active', b.dataset.interval===interval));
@@ -896,17 +851,16 @@ function highlightIntervalButton(interval) {
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
     let idx = chartPairs.indexOf(pairName);
-    if (idx===-1) idx=0;
-    chartIndices[activeChartSlot-1]=idx;
+    if (idx===-1) idx = 0;
+    chartIndices[activeChartSlot-1] = idx;
     updateChartPairName();
     drawChart(activeChartSlot);
-    document.getElementById('chartOverlay').style.display='flex';
+    document.getElementById('chartOverlay').style.display = 'flex';
     startCountdownTimer();
 }
 function movePair(step) {
-    const idx = chartIndices[activeChartSlot-1];
     const total = chartPairs.length;
-    chartIndices[activeChartSlot-1] = (idx+step+total)%total;
+    chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     drawChart(activeChartSlot);
 }
@@ -917,20 +871,14 @@ function changeChartInterval(interval, btn) {
     startCountdownTimer();
 }
 async function setChartLayout(count) {
-    currentChartLayout=count;
-    document.querySelectorAll('.layout-btn').forEach((b,i)=>b.classList.toggle('active', i===count-1));
-    const grid=document.getElementById('chart-grid');
-    grid.className='chart-grid layout-'+count;
-    for(let i=1;i<=4;i++) {
-        document.getElementById('tv_chart_'+i).classList.toggle('active', i<=count);
-    }
-    for(let i=1;i<=count;i++) { drawChart(i); if(i<count) await new Promise(r=>setTimeout(r,100)); }
-    for(let i=1;i<=4;i++) {
-        const btn=document.getElementById('slotBtn'+i);
-        btn.style.display=i<=count?'inline-block':'none';
-    }
-    if(activeChartSlot>count) {
-        activeChartSlot=1;
+    currentChartLayout = count;
+    document.querySelectorAll('.layout-btn').forEach((b,i) => b.classList.toggle('active', i===count-1));
+    document.getElementById('chart-grid').className = 'chart-grid layout-'+count;
+    for (let i=1;i<=4;i++) document.getElementById('tv_chart_'+i).classList.toggle('active', i<=count);
+    for (let i=1;i<=count;i++) { drawChart(i); if (i<count) await new Promise(r=>setTimeout(r,100)); }
+    for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).style.display = i<=count ? 'inline-block' : 'none';
+    if (activeChartSlot > count) {
+        activeChartSlot = 1;
         document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('active-slot'));
         document.getElementById('slotBtn1').classList.add('active-slot');
         updateChartPairName();
@@ -939,69 +887,67 @@ async function setChartLayout(count) {
     startCountdownTimer();
 }
 function drawChart(slot) {
-    const container=document.getElementById('tv_chart_'+slot);
-    container.innerHTML='';
-    const idx=chartIndices[slot-1];
-    if(!chartPairs[idx]) return;
-    const symbol=chartPairs[idx];
+    const container = document.getElementById('tv_chart_'+slot);
+    container.innerHTML = '';
+    const idx = chartIndices[slot-1];
+    if (!chartPairs[idx]) return;
     new TradingView.widget({
         autosize:true,
-        symbol: (typeof psxStockList!=='undefined'&&psxStockList.includes(symbol))?'KSE:'+symbol:symbol,
+        symbol: (typeof psxStockList!=='undefined' && psxStockList.includes(chartPairs[idx])) ? 'KSE:'+chartPairs[idx] : chartPairs[idx],
         interval: chartIntervals[slot-1],
         theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id:'tv_chart_'+slot,
-        overrides:{volumePaneSize:"0"},
-        studies:[
-            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
-            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies",inputs:{length:50}}
+        container_id: 'tv_chart_'+slot,
+        overrides: { volumePaneSize: "0" },
+        studies: [
+            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
+            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
+            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
         ]
     });
 }
 function closeChart() {
-    if(!document.body.classList.contains('desktop-mode')) {
-        document.getElementById('chartOverlay').style.display='none';
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
         render();
     }
-    if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 function toggle4H() {
-    show4H=!show4H;
-    localStorage.setItem('show4H',show4H);
-    document.getElementById('toggle4hBtn').textContent=show4H?'4H ON':'4H OFF';
-    document.getElementById('toggle4hBtn').classList.toggle('active',show4H);
+    show4H = !show4H;
+    localStorage.setItem('show4H', show4H);
+    document.getElementById('toggle4hBtn').textContent = show4H ? '4H ON' : '4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active', show4H);
     render();
 }
 (function(){
-    const saved=localStorage.getItem('show4H');
-    show4H=saved!=='false';
-    document.getElementById('toggle4hBtn').textContent=show4H?'4H ON':'4H OFF';
-    document.getElementById('toggle4hBtn').classList.toggle('active',show4H);
+    show4H = localStorage.getItem('show4H') !== 'false';
+    document.getElementById('toggle4hBtn').textContent = show4H ? '4H ON' : '4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active', show4H);
 })();
 
-db.ref('technicalMetrics').on('value', snap => { techMetrics=snap.val()||{}; renderDebounced(); });
-db.ref('sentiment').on('value', snap => { sentimentData=snap.val()||{}; renderDebounced(); });
-db.ref('pb_state').on('value', snap => { PB_STATE=snap.val()||{}; updateCounts(); renderDebounced(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; renderDebounced(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; renderDebounced(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); renderDebounced(); });
 db.ref('marketData').on('value', snap => {
-    MARKET_DATA=snap.val()||{};
-    if(typeof checkAllAlerts==='function') {
+    MARKET_DATA = snap.val()||{};
+    if (typeof checkAllAlerts === 'function') {
         checkAllAlerts(Object.entries(MARKET_DATA).map(([n,d])=>({name:n,currentPrice:d.currentPrice,ema20:d.ema20,sentiment:d.sentiment,sma20:d.sma20,sma50:d.sma50})));
     }
     renderDebounced();
 });
 
 (function(){
-    const saved=localStorage.getItem('ici-theme');
-    if(saved) {
-        document.documentElement.setAttribute('data-theme',saved);
-        document.querySelector('#themeBtn i').className=saved==='dark'?'fas fa-sun':'fas fa-moon';
+    const savedTheme = localStorage.getItem('ici-theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('#themeBtn i').className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     }
-    if(localStorage.getItem('desktop-mode')==='desktop') {
+    if (localStorage.getItem('desktop-mode') === 'desktop') {
         document.body.classList.add('desktop-mode');
-        document.getElementById('chartOverlay').style.display='flex';
-        document.querySelector('#desktopBtn i').className='fas fa-mobile-alt';
+        document.getElementById('chartOverlay').style.display = 'flex';
+        document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
     }
-    setTimeout(()=>render(),200);
+    setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
 </script>
