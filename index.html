@@ -331,7 +331,6 @@ const PAIRS = [
 ];
 
 let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
-let REMOTE_TARGET_LIST = {};
 let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
@@ -430,9 +429,10 @@ db.ref('liveMarketData').on('value', snap => {
     renderDebounced();
 });
 
-db.ref('targetList').on('value', snap => {
-    REMOTE_TARGET_LIST = snap.val() || {};
-    if (typeof updateCounts === 'function') updateCounts();
+// pb_state listener (yehi target list ka source hai)
+db.ref('pb_state').on('value', snap => {
+    PB_STATE = snap.val() || {};
+    updateCounts();
     renderDebounced();
 });
 
@@ -490,16 +490,31 @@ function actualScan() {
     }, 600000);
 }
 
+// ⭐ New function: parse pb_state keys for alert_triggered setups
 function getUniqueAutoSetups() {
-    const map = new Map();
-    for (const pair in REMOTE_TARGET_LIST) {
-        const item = REMOTE_TARGET_LIST[pair];
-        if (item && item.dir && item.phase) {
-            const prio = { alert_triggered:4, wait_h1_reclaim:3, wait_h1_dip:2, wait_h1_push:2 };
-            map.set(pair, { dir:item.dir, phase:item.phase, priority:prio[item.phase]||1, timestamp:item.timestamp||null });
+    const pairMap = new Map();
+    if (!PB_STATE) return pairMap;
+    for (const key in PB_STATE) {
+        const state = PB_STATE[key];
+        if (state && state.h1Phase === 'alert_triggered') {
+            // key format: PAIR_TIMEFRAME_DIRECTION, e.g., ZECUSD_4h_bull
+            const parts = key.split('_');
+            if (parts.length >= 3) {
+                const direction = parts[parts.length - 1];
+                if (direction !== 'bull' && direction !== 'bear') continue;
+                const pair = parts.slice(0, parts.length - 2).join('_');
+                if (!pairMap.has(pair)) {
+                    pairMap.set(pair, {
+                        dir: direction,
+                        phase: 'alert_triggered',
+                        priority: 4,
+                        timestamp: null
+                    });
+                }
+            }
         }
     }
-    return map;
+    return pairMap;
 }
 
 function updateCounts() {
@@ -736,7 +751,7 @@ function clearColFilter() {
     saveColumns(); closeColFilterModal(); render();
 }
 
-// ── Render (price display removed) ──
+// ── Render ──
 function render() {
     if (!document.body.classList.contains('desktop-mode') && document.getElementById('chartOverlay').style.display === 'flex') return;
 
@@ -763,7 +778,6 @@ function render() {
         const isStarred = starredPairs.includes(p.n);
         const starIcon = `<i class="${isStarred ? 'fas' : 'far'} fa-star" style="color:var(--gold); cursor:pointer; margin-right:4px; font-size:14px;" onclick="event.stopPropagation(); toggleStar('${p.n}')"></i>`;
 
-        // Only pair name, no price
         let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span></div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
