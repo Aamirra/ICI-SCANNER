@@ -919,10 +919,6 @@ function render() {
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
         const m = MARKET_DATA[p.n] || {};
-        const isBull = ['4h','1day','1week'].every(tf => m[tf] === 'bull'),
-              isBear = ['4h','1day','1week'].every(tf => m[tf] === 'bear');
-        const star = isBull ? 'B' : (isBear ? 'S' : 'N'),
-              starColor = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : '#cbd5e1');
         const lm = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
