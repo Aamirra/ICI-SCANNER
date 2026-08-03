@@ -36,89 +36,153 @@
         .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
-        .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
-        .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
-        .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; -webkit-user-select:none; user-select:none; touch-action: pan-y; }
-        .item-main:active { background:var(--pill-bg); }
-        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .screener-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -16px; padding:0 16px; }
+        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
+        .col-header-cell {
+            flex: 1 1 0%;
+            min-width: 0;
+            padding: 0 4px;
+            font-size:10px;
+            font-weight:700;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:0.3px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:3px;
+            cursor:pointer;
+            -webkit-user-select:none;
+            user-select:none;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        .col-pair-fixed.col-header-cell {
+            position:sticky;
+            left:0;
+            z-index:3;
+            background:var(--surface);
+            min-width:80px;
+            flex:none;
+            justify-content:flex-start;
+            cursor:default;
+            padding-left:4px;
+        }
+        .col-bell-fixed.col-header-cell {
+            position:sticky;
+            right:0;
+            z-index:3;
+            background:var(--surface);
+            min-width:34px;
+            flex:none;
+            cursor:default;
+        }
+        .col-add-btn {
+            min-width:30px;
+            flex:none;
+            text-align:center;
+            cursor:pointer;
+            color:var(--acc);
+            font-size:16px;
+        }
+        .item-main {
+            display:flex;
+            align-items:center;
+            padding:12px 0 6px 0;
+            cursor:pointer;
+            -webkit-user-select:none;
+            user-select:none;
+            touch-action:pan-y;
+            width:100%;
+        }
+        .col-cell {
+            flex: 1 1 0%;
+            min-width: 0;
+            padding: 0 4px;
+            text-align:center;
+            font-size:12px;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        .col-pair-fixed {
+            position:sticky;
+            left:0;
+            z-index:2;
+            background:var(--surface);
+            min-width:80px;
+            flex:none;
+            display:flex;
+            align-items:center;
+            padding-right:6px;
+        }
+        .col-bell-fixed {
+            position:sticky;
+            right:0;
+            z-index:2;
+            background:var(--surface);
+            min-width:34px;
+            flex:none;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
-        .trend-dot.g { background:var(--green); } .trend-dot.r { background:var(--red); }
-        .sentiment-wrapper { padding:0 4px; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
-        .sent-red { background:var(--red); } .sent-green { background:var(--green); }
+        .sent-red { background:var(--red); }
+        .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
-        .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
-        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
-        .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
-        .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
-        .compact-metric .val { font-weight:600; color:var(--txt); }
-        .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
-        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
-        .modal.open { display:flex; }
-        .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
+        .change-val.up { color:var(--green); }
+        .change-val.down { color:var(--red); }
+
+        .item-row { border-bottom:1px solid var(--border); }
+        .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
+
         body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
         body.desktop-mode .phone-container { max-width:none; width:640px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
         body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
         body.desktop-mode .chart-box { min-height:0; }
         body.desktop-mode #chartCloseBtn { display:none !important; }
-        
-        .chart-grid { display: grid; gap: 4px; width: 100%; flex: 1; min-height: 0; background: var(--border); padding: 4px; }
-        .layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-        .layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-        .layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-        .layout-3 .chart-box:nth-child(3) { grid-column: span 2; }
-        .layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-        .chart-box { min-height: 0; min-width: 0; display: none; background: var(--bg); }
-        .chart-box.active { display: block; }
-        
-        .layout-controls { display: flex; gap: 6px; padding: 6px 10px; align-items: center; justify-content: center; background: var(--surface); border-bottom: 1px solid var(--border); }
-        .layout-btn { padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); border-radius: 6px; cursor: pointer; color: var(--txt); }
-        .layout-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
-        
-        .slot-selector { display: flex; gap: 4px; align-items: center; margin: 0 10px; }
-        .slot-btn { padding: 4px 8px; font-size: 11px; font-weight: 600; border: 2px solid transparent; border-radius: 4px; background: var(--pill-bg); cursor: pointer; color: var(--txt); }
-        .slot-btn.active-slot { border-color: var(--green); color: var(--green); }
 
+        .chart-grid { display:grid; gap:4px; width:100%; flex:1; min-height:0; background:var(--border); padding:4px; }
+        .layout-1 { grid-template-columns:1fr; grid-template-rows:1fr; }
+        .layout-2 { grid-template-columns:1fr 1fr; grid-template-rows:1fr; }
+        .layout-3 { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+        .layout-3 .chart-box:nth-child(3) { grid-column:span 2; }
+        .layout-4 { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+        .chart-box { min-height:0; min-width:0; display:none; background:var(--bg); }
+        .chart-box.active { display:block; }
+        .layout-controls { display:flex; gap:6px; padding:6px 10px; align-items:center; justify-content:center; background:var(--surface); border-bottom:1px solid var(--border); }
+        .layout-btn { padding:4px 12px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); border-radius:6px; cursor:pointer; color:var(--txt); }
+        .layout-btn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+        .slot-selector { display:flex; gap:4px; align-items:center; margin:0 10px; }
+        .slot-btn { padding:4px 8px; font-size:11px; font-weight:600; border:2px solid transparent; border-radius:4px; background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .slot-btn.active-slot { border-color:var(--green); color:var(--green); }
         body.desktop-mode .chart-box:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
         body.desktop-mode .chart-box:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
         body.desktop-mode .chart-box:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
-        
         .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
         .toggle-4h.active { background:var(--acc); color:#fff; }
-        .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
-        .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
-        .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
-        .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        .chart-interval-selector { display:flex; gap:6px; align-items:center; }
+        .chart-interval-btn { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); cursor:pointer; }
+        .chart-interval-btn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
         .countdown-display { font-size:11px; font-weight:600; margin-left:8px; color:var(--gold); white-space:nowrap; }
-        .scan-status-line { font-size:11px; color: var(--muted); margin-left:8px; }
-        .last-scan-line { font-size:11px; color: var(--gold); margin-left:auto; }
+        .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
+        .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        /* ── Customizable column screener ── */
-        .screener-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -16px; padding:0 16px; }
-        .header-row-table { display:flex; align-items:center; min-width:max-content; padding-bottom:8px; border-bottom:1px solid var(--border); }
-        .col-header-cell { min-width:88px; padding:0 6px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; justify-content:center; gap:3px; cursor:pointer; flex-shrink:0; -webkit-user-select:none; user-select:none; }
-        .col-header-cell:active { color:var(--acc); }
-        .col-pair-fixed.col-header-cell { position:sticky; left:0; z-index:3; background:var(--surface); min-width:110px; justify-content:flex-start; cursor:default; }
-        .col-bell-fixed.col-header-cell { position:sticky; right:0; z-index:3; background:var(--surface); min-width:34px; cursor:default; }
-        .col-add-btn { min-width:30px; text-align:center; cursor:pointer; color:var(--acc); font-size:16px; flex-shrink:0; }
-        .sort-arrow { font-size:8px; color:var(--acc); }
-        .filter-badge { background:var(--gold); color:#fff; border-radius:8px; font-size:8px; font-weight:700; padding:1px 4px; }
-        .item-main { min-width:max-content; justify-content:flex-start !important; }
-        .col-pair-fixed { position:sticky; left:0; z-index:2; background:var(--surface); min-width:110px; display:flex; align-items:center; padding-right:6px; }
-        .col-bell-fixed { position:sticky; right:0; z-index:2; background:var(--surface); min-width:34px; display:flex; align-items:center; justify-content:center; }
-        .col-cell { min-width:88px; padding:0 6px; text-align:center; flex-shrink:0; font-size:12px; }
-        body.desktop-mode .header-row-table, body.desktop-mode .item-main { min-width:100%; }
-        body.desktop-mode .col-cell, body.desktop-mode .col-header-cell:not(.col-pair-fixed):not(.col-bell-fixed) { flex:1 1 88px; }
-
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
+        .modal.open { display:flex; }
+        .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
         .sheet-overlay.open { display:flex; }
         .sheet-box { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:450px; padding:8px 0; color:var(--txt); }
         .sheet-item { padding:14px 20px; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
         .sheet-item:last-child { border-bottom:none; color:var(--red); }
         .sheet-item:active { background:var(--pill-bg); }
-
         .form-group { margin-bottom:12px; }
         .form-label { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; display:block; }
         .form-select, .form-input { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; background:var(--pill-bg); color:var(--txt); font-size:14px; outline:none; }
@@ -171,12 +235,10 @@
     </div>
 </div>
 
-<!-- Column context menu (bottom sheet) -->
 <div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
     <div class="sheet-box" id="colMenuBox"></div>
 </div>
 
-<!-- Add / Edit column modal -->
 <div class="modal" id="colEditModal" onclick="if(event.target===this) closeColEditModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:16px;" id="colEditTitle">Add Column</h3>
@@ -202,7 +264,6 @@
     </div>
 </div>
 
-<!-- Column filter modal -->
 <div class="modal" id="colFilterModal" onclick="if(event.target===this) closeColFilterModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:16px;">Filter Column</h3>
@@ -233,7 +294,6 @@
         <span id="countdownDisplay" class="countdown-display"></span>
     </div>
     
-    <!-- Multi-Chart Layout Controls + Slot Selector -->
     <div class="layout-controls">
         <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
         <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
@@ -249,7 +309,6 @@
         </span>
     </div>
     
-    <!-- Grid Container for Charts -->
     <div id="chart-grid" class="chart-grid layout-1">
         <div id="tv_chart_1" class="chart-box active"></div>
         <div id="tv_chart_2" class="chart-box"></div>
@@ -265,9 +324,7 @@
     </div>
 </div>
 
-<!-- Alerts.js optional fallback -->
 <script>
-// Fallback if Alerts.js not loaded - prevent crashes
 if (typeof getBellHtml !== 'function') {
     window.getBellHtml = function(pair) { return ''; };
 }
@@ -280,10 +337,8 @@ if (typeof openAlertsList !== 'function') {
 </script>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
-<!-- Alerts.js - comment out if not present, fallback above will cover -->
 <script src="Alerts.js"></script>
 <script>
-// Override _alFireAlert to fix message and auto-deactivate
 (function() {
     const originalFire = _alFireAlert;
     _alFireAlert = function(alert, pair) {
@@ -315,9 +370,7 @@ if (typeof openAlertsList !== 'function') {
                     }
                 }
             }
-        } catch(e) {
-            console.warn('Auto-deactivate failed', e);
-        }
+        } catch(e) {}
     };
 })();
 </script>
@@ -341,24 +394,32 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
 let currentChartLayout = 1;
-let activeChartSlot = 1;                      // 1-4
-let chartIndices = [0, 0, 0, 0];             // pair index for each slot
-let chartIntervals = ['60','60','60','60'];  // interval per slot
+let activeChartSlot = 1;
+let chartIndices = [0, 0, 0, 0];
+let chartIntervals = ['60','60','60','60'];
 
 window.alertSettings = alertSettings;
+
+let starredPairs = JSON.parse(localStorage.getItem('ici_starred') || '[]');
+
+function toggleStar(pair) {
+    const idx = starredPairs.indexOf(pair);
+    if (idx > -1) {
+        starredPairs.splice(idx, 1);
+    } else {
+        starredPairs.push(pair);
+    }
+    localStorage.setItem('ici_starred', JSON.stringify(starredPairs));
+    render();
+}
 
 let renderTimer = null;
 function renderDebounced() {
     if (renderTimer) clearTimeout(renderTimer);
-    renderTimer = setTimeout(() => {
-        render();
-        renderTimer = null;
-    }, 300);
+    renderTimer = setTimeout(() => { render(); renderTimer = null; }, 300);
 }
 
-// ── Countdown Timer ──
 let countdownInterval = null;
-
 function updateCountdown() {
     const intervalStr = chartIntervals[activeChartSlot-1];
     let ms = 0;
@@ -385,7 +446,6 @@ function updateCountdown() {
     const text = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
     document.getElementById('countdownDisplay').textContent = '⏳ ' + text;
 }
-
 function startCountdownTimer() {
     if (countdownInterval) clearInterval(countdownInterval);
     updateCountdown();
@@ -393,11 +453,10 @@ function startCountdownTimer() {
 }
 
 db.ref('lastScanTime/time').on('value', snap => {
-    const timestamp = snap.val();
     const el = document.getElementById('lastScanTime');
-    if (timestamp) {
-        const d = new Date(timestamp);
-        el.textContent = '🕒 Last scan: ' + d.toLocaleTimeString();
+    const ts = snap.val();
+    if (ts) {
+        el.textContent = '🕒 Last scan: ' + new Date(ts).toLocaleTimeString();
     } else {
         el.textContent = '🕒 Last scan: never';
     }
@@ -410,11 +469,11 @@ db.ref('alertSettings').on('value', snap => {
 });
 function updateToggleButtons() {
     const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if(tgBtn) {
+    if (tgBtn) {
         tgBtn.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF';
         tgBtn.className = 'alert-toggle ' + (alertSettings.telegram ? 'active' : 'inactive');
     }
-    if(waBtn) {
+    if (waBtn) {
         waBtn.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF';
         waBtn.className = 'alert-toggle ' + (alertSettings.whatsapp ? 'active' : 'inactive');
     }
@@ -445,19 +504,16 @@ db.ref('targetList').on('value', snap => {
 });
 
 function toggleTheme() {
-    const h=document.documentElement, isDark=h.getAttribute('data-theme')==='dark';
-    h.setAttribute('data-theme', isDark?'light':'dark');
-    const icon = document.querySelector('#themeBtn i');
-    icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+    const h = document.documentElement, isDark = h.getAttribute('data-theme') === 'dark';
+    h.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.querySelector('#themeBtn i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
     localStorage.setItem('ici-theme', h.getAttribute('data-theme'));
 }
 function toggleDesktopMode() {
     const isDesktop = document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
-    const icon = document.querySelector('#desktopBtn i');
-    icon.className = isDesktop ? 'fas fa-mobile-alt' : 'fas fa-desktop';
+    document.querySelector('#desktopBtn i').className = isDesktop ? 'fas fa-mobile-alt' : 'fas fa-desktop';
     localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
-    // Force re-render to update visibility
     render();
 }
 
@@ -473,9 +529,7 @@ function actualScan() {
     btn.textContent = '⏳ Scanning...';
     btn.disabled = true;
     statusEl.textContent = 'Scan started (may take 2‑3 min)...';
-
     fetch('/scan').catch(() => {});
-
     const statusRef = db.ref('scanStatus');
     let resolved = false;
     const listener = statusRef.on('value', snap => {
@@ -491,11 +545,9 @@ function actualScan() {
             statusEl.textContent = '✅ Scan completed at ' + now.toLocaleTimeString();
             setTimeout(() => { btn.textContent = 'Scan'; }, 4000);
         } else if (s.running === true) {
-            const startTime = s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?';
-            statusEl.textContent = '🔄 Scanning in progress... (started ' + startTime + ')';
+            statusEl.textContent = '🔄 Scanning in progress... (started ' + (s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?') + ')';
         }
     });
-
     setTimeout(() => {
         if (!resolved) {
             statusRef.off('value', listener);
@@ -525,11 +577,11 @@ function getUniqueAutoSetups() {
 }
 
 function updateCounts() {
-    let b=0, r=0;
+    let b = 0, r = 0;
     PAIRS.forEach(p => {
         const d = MARKET_DATA[p.n] || {};
-        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
-        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
+        if (['4h','1day','1week'].every(tf => d[tf] === 'bull')) b++;
+        if (['4h','1day','1week'].every(tf => d[tf] === 'bear')) r++;
     });
     document.getElementById('bc').textContent = b;
     document.getElementById('rc').textContent = r;
@@ -537,14 +589,13 @@ function updateCounts() {
     const u = getUniqueAutoSetups().size;
     document.getElementById('targetCount2').textContent = u;
     document.getElementById('targetCount').textContent = u;
-    document.getElementById('tradesCount').textContent = u;
+    document.getElementById('tradesCount').textContent = starredPairs.length;
 }
 
 function openTargetModal() {
     const setups = getUniqueAutoSetups();
     if (setups.size === 0) {
-        document.getElementById('targetContent').innerHTML =
-            '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
+        document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active setups</div>';
     } else {
         let html = '';
         for (const [pair, info] of setups) {
@@ -561,8 +612,7 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-// ==================== CUSTOM COLUMN SYSTEM ====================
-
+// ── Columns ──
 const COLUMN_TYPES = {
     tf_alignment: { label:'TF Alignment',      kind:'dots', filterable:false },
     sentiment:    { label:'Sentiment',         kind:'bar',  filterable:false },
@@ -649,7 +699,7 @@ function renderHeader() {
     columnDefs.forEach(col => {
         const type = COLUMN_TYPES[col.type];
         let arrow = sortColumn === col.id ? `<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : '';
-        let badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge">F</span>' : '';
+        let badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge" style="background:var(--gold);color:#fff;border-radius:8px;font-size:8px;font-weight:700;padding:1px 4px;">F</span>' : '';
         html += `<div class="col-header-cell" onclick="openColMenu('${col.id}')">${col.label || type.label}${arrow}${badge}</div>`;
     });
     html += `<div class="col-add-btn" onclick="openColEditModal(null)"><i class="fas fa-plus-circle"></i></div>`;
@@ -676,7 +726,6 @@ function renderColumnCell(pairName, col) {
     return `<div class="col-cell">${typeof val === 'number' ? val.toLocaleString() : val}</div>`;
 }
 
-// ── Column menu (bottom sheet: sort / edit / filter / delete) ──
 function openColMenu(colId) {
     colMenuTargetId = colId;
     const col = columnDefs.find(c => c.id === colId);
@@ -692,17 +741,13 @@ function openColMenu(colId) {
     document.getElementById('colMenuSheet').classList.add('open');
 }
 function closeColMenu() { document.getElementById('colMenuSheet').classList.remove('open'); }
-function sortByColumn(dir) {
-    sortColumn = colMenuTargetId; sortDir = dir;
-    closeColMenu(); render();
-}
+function sortByColumn(dir) { sortColumn = colMenuTargetId; sortDir = dir; closeColMenu(); render(); }
 function deleteColumn(colId) {
     columnDefs = columnDefs.filter(c => c.id !== colId);
     if (sortColumn === colId) sortColumn = null;
     saveColumns(); closeColMenu(); render();
 }
 
-// ── Add / Edit column modal ──
 function openColEditModal(colId) {
     closeColMenu();
     const isEdit = !!colId;
@@ -742,7 +787,6 @@ function saveColumnFromModal() {
     saveColumns(); closeColEditModal(); render();
 }
 
-// ── Filter modal ──
 function openColFilterModal(colId) {
     closeColMenu();
     filterTargetId = colId;
@@ -752,21 +796,30 @@ function openColFilterModal(colId) {
     document.getElementById('colFilterModal').classList.add('open');
 }
 function closeColFilterModal() { document.getElementById('colFilterModal').classList.remove('open'); }
+
+// ⚡ Filter apply hone par automatic sort
 function applyColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
     const minV = document.getElementById('filterMinInput').value;
     const maxV = document.getElementById('filterMaxInput').value;
     col.filterMin = minV === '' ? null : parseFloat(minV);
     col.filterMax = maxV === '' ? null : parseFloat(maxV);
-    saveColumns(); closeColFilterModal(); render();
-}
-function clearColFilter() {
-    const col = columnDefs.find(c => c.id === filterTargetId);
-    col.filterMin = null; col.filterMax = null;
+    // Us column ko sort column bana do (descending)
+    sortColumn = filterTargetId;
+    sortDir = 'desc';
     saveColumns(); closeColFilterModal(); render();
 }
 
-// ── RENDER (FIXED: render always except when chart is open in mobile) ──
+function clearColFilter() {
+    const col = columnDefs.find(c => c.id === filterTargetId);
+    col.filterMin = null; col.filterMax = null;
+    // Agar ab koi bhi filter nahi bacha to sort bhi hata do
+    const anyFilter = columnDefs.some(c => c.filterMin != null || c.filterMax != null);
+    if (!anyFilter) sortColumn = null;
+    saveColumns(); closeColFilterModal(); render();
+}
+
+// ── Render ──
 function render() {
     const isDesktop = document.body.classList.contains('desktop-mode');
     if (!isDesktop && document.getElementById('chartOverlay').style.display === 'flex') {
@@ -782,12 +835,13 @@ function render() {
             const d = MARKET_DATA[p.n] || {};
             return ['4h','1day','1week'].every(tf => d[tf] === curF);
         });
-    else if (curF === 'target' || curF === 'trades')
+    else if (curF === 'target')
         filtered = currentPairs.filter(p => validTargets.has(p.n));
+    else if (curF === 'trades')
+        filtered = currentPairs.filter(p => starredPairs.includes(p.n));
     else filtered = currentPairs;
 
     filtered = applyColumnSortAndFilter(filtered);
-
     currentDisplayPairs = filtered.map(p => p.n);
     chartPairs = filtered.map(p => p.n);
 
@@ -800,21 +854,20 @@ function render() {
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        let cells = `<div class="col-pair-fixed">
-            <span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}
-        </div>`;
+        const isStarred = starredPairs.includes(p.n);
+        const starIcon = `<i class="${isStarred ? 'fas' : 'far'} fa-star" style="color:var(--gold); cursor:pointer; margin-right:4px; font-size:14px;" onclick="event.stopPropagation(); toggleStar('${p.n}')"></i>`;
+
+        let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}</div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += `<div class="col-add-btn" style="visibility:hidden;"></div>`;
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
-        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
 
+        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="phase-row" style="position:sticky;left:0;"><span style="color:var(--muted);">Phase:</span>
-                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span>
-                </div>`;
+                row += `<div class="phase-row" style="position:sticky;left:0;"><span style="color:var(--muted);">Phase:</span><span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span></div>`;
             }
         }
         row += '</div>';
@@ -823,175 +876,132 @@ function render() {
     updateCounts();
 }
 
-// ==================== MULTI-CHART LOGIC ====================
-
+// Chart functions unchanged
 function activateChartSlot(slot) {
     activeChartSlot = slot;
-    for (let i = 1; i <= 4; i++) {
-        const btn = document.getElementById('slotBtn' + i);
-        if (i === slot) btn.classList.add('active-slot');
-        else btn.classList.remove('active-slot');
+    for (let i=1;i<=4;i++) {
+        document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===slot);
     }
     updateChartPairName();
     highlightIntervalButton(chartIntervals[slot-1]);
     startCountdownTimer();
 }
-
 function updateChartPairName() {
     const idx = chartIndices[activeChartSlot-1];
-    const pair = chartPairs[idx] || 'Select a pair';
-    document.getElementById('chartPairName').textContent = (currentChartLayout > 1 ? `[Slot ${activeChartSlot}] ` : '') + pair;
+    document.getElementById('chartPairName').textContent = (currentChartLayout>1?`[Slot ${activeChartSlot}] `:'') + (chartPairs[idx]||'Select a pair');
 }
-
 function highlightIntervalButton(interval) {
-    document.querySelectorAll('.chart-interval-btn').forEach(btn => {
-        if (btn.dataset.interval === interval) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
+    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.toggle('active', b.dataset.interval===interval));
 }
-
 function openChartForPair(pairName) {
-    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p => p.n);
-    let index = chartPairs.indexOf(pairName);
-    if (index === -1) index = 0;
-    chartIndices[activeChartSlot-1] = index;
+    chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
+    let idx = chartPairs.indexOf(pairName);
+    if (idx===-1) idx=0;
+    chartIndices[activeChartSlot-1]=idx;
     updateChartPairName();
     drawChart(activeChartSlot);
-    document.getElementById('chartOverlay').style.display = 'flex';
+    document.getElementById('chartOverlay').style.display='flex';
     startCountdownTimer();
 }
-
 function movePair(step) {
     const idx = chartIndices[activeChartSlot-1];
     const total = chartPairs.length;
-    const newIdx = (idx + step + total) % total;
-    chartIndices[activeChartSlot-1] = newIdx;
+    chartIndices[activeChartSlot-1] = (idx+step+total)%total;
     updateChartPairName();
     drawChart(activeChartSlot);
 }
-
 function changeChartInterval(interval, btn) {
     chartIntervals[activeChartSlot-1] = interval;
     highlightIntervalButton(interval);
     drawChart(activeChartSlot);
     startCountdownTimer();
 }
-
 async function setChartLayout(count) {
-    currentChartLayout = count;
-    document.querySelectorAll('.layout-btn').forEach((b, idx) => {
-        if (idx === count - 1) b.classList.add('active');
-        else b.classList.remove('active');
-    });
-    const grid = document.getElementById('chart-grid');
-    grid.className = 'chart-grid layout-' + count;
-    for (let i = 1; i <= 4; i++) {
-        const box = document.getElementById('tv_chart_' + i);
-        if (i <= count) box.classList.add('active');
-        else box.classList.remove('active');
+    currentChartLayout=count;
+    document.querySelectorAll('.layout-btn').forEach((b,i)=>b.classList.toggle('active', i===count-1));
+    const grid=document.getElementById('chart-grid');
+    grid.className='chart-grid layout-'+count;
+    for(let i=1;i<=4;i++) {
+        document.getElementById('tv_chart_'+i).classList.toggle('active', i<=count);
     }
-    await redrawAllActiveStaggered();
-    for (let i = 1; i <= 4; i++) {
-        const btn = document.getElementById('slotBtn' + i);
-        if (i <= count) btn.style.display = 'inline-block';
-        else btn.style.display = 'none';
+    for(let i=1;i<=count;i++) { drawChart(i); if(i<count) await new Promise(r=>setTimeout(r,100)); }
+    for(let i=1;i<=4;i++) {
+        const btn=document.getElementById('slotBtn'+i);
+        btn.style.display=i<=count?'inline-block':'none';
     }
-    if (activeChartSlot > count) {
-        activeChartSlot = 1;
-        for (let i = 1; i <= 4; i++) {
-            const btn = document.getElementById('slotBtn' + i);
-            if (i === 1) btn.classList.add('active-slot');
-            else btn.classList.remove('active-slot');
-        }
+    if(activeChartSlot>count) {
+        activeChartSlot=1;
+        document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('active-slot'));
+        document.getElementById('slotBtn1').classList.add('active-slot');
         updateChartPairName();
         highlightIntervalButton(chartIntervals[0]);
     }
     startCountdownTimer();
 }
-
-async function redrawAllActiveStaggered() {
-    for (let i = 1; i <= currentChartLayout; i++) {
-        drawChart(i);
-        if (i < currentChartLayout) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
-}
-
 function drawChart(slot) {
-    const containerId = 'tv_chart_' + slot;
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    const idx = chartIndices[slot-1];
-    if (!chartPairs[idx]) return;
-    const symbol = chartPairs[idx];
-    const isPSX = typeof psxStockList !== 'undefined' && psxStockList.includes(symbol);
+    const container=document.getElementById('tv_chart_'+slot);
+    container.innerHTML='';
+    const idx=chartIndices[slot-1];
+    if(!chartPairs[idx]) return;
+    const symbol=chartPairs[idx];
     new TradingView.widget({
-        autosize: true,
-        symbol: isPSX ? 'KSE:' + symbol : symbol,
+        autosize:true,
+        symbol: (typeof psxStockList!=='undefined'&&psxStockList.includes(symbol))?'KSE:'+symbol:symbol,
         interval: chartIntervals[slot-1],
-        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-        container_id: containerId,
-        overrides: { "volumePaneSize": "0" },
-        studies: [
-            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
-            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
-            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
+        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id:'tv_chart_'+slot,
+        overrides:{volumePaneSize:"0"},
+        studies:[
+            {id:"MAExp@tv-basicstudies",inputs:{length:10}},
+            {id:"MAExp@tv-basicstudies",inputs:{length:20}},
+            {id:"MASimple@tv-basicstudies",inputs:{length:50}}
         ]
     });
 }
-
 function closeChart() {
-    if (!document.body.classList.contains('desktop-mode')) {
-        document.getElementById('chartOverlay').style.display = 'none';
+    if(!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display='none';
         render();
     }
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
 }
-
 function toggle4H() {
-    show4H = !show4H;
-    localStorage.setItem('show4H', show4H ? 'true' : 'false');
-    update4hButton();
+    show4H=!show4H;
+    localStorage.setItem('show4H',show4H);
+    document.getElementById('toggle4hBtn').textContent=show4H?'4H ON':'4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active',show4H);
     render();
 }
-function update4hButton() {
-    const btn = document.getElementById('toggle4hBtn');
-    if (show4H) { btn.textContent = '4H ON'; btn.classList.add('active'); }
-    else { btn.textContent = '4H OFF'; btn.classList.remove('active'); }
-}
 (function(){
-    const saved = localStorage.getItem('show4H');
-    show4H = saved === 'false' ? false : true;
-    update4hButton();
+    const saved=localStorage.getItem('show4H');
+    show4H=saved!=='false';
+    document.getElementById('toggle4hBtn').textContent=show4H?'4H ON':'4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active',show4H);
 })();
 
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val() || {}; renderDebounced(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val() || {}; renderDebounced(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val() || {}; updateCounts(); renderDebounced(); });
+db.ref('technicalMetrics').on('value', snap => { techMetrics=snap.val()||{}; renderDebounced(); });
+db.ref('sentiment').on('value', snap => { sentimentData=snap.val()||{}; renderDebounced(); });
+db.ref('pb_state').on('value', snap => { PB_STATE=snap.val()||{}; updateCounts(); renderDebounced(); });
 db.ref('marketData').on('value', snap => {
-    MARKET_DATA = snap.val() || {};
-    if (typeof checkAllAlerts === 'function') {
-        const arr = Object.entries(MARKET_DATA).map(([n,d]) => ({
-            name:n, currentPrice:d.currentPrice, ema20:d.ema20, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
-        }));
-        checkAllAlerts(arr);
+    MARKET_DATA=snap.val()||{};
+    if(typeof checkAllAlerts==='function') {
+        checkAllAlerts(Object.entries(MARKET_DATA).map(([n,d])=>({name:n,currentPrice:d.currentPrice,ema20:d.ema20,sentiment:d.sentiment,sma20:d.sma20,sma50:d.sma50})));
     }
     renderDebounced();
 });
 
 (function(){
-    const saved = localStorage.getItem('ici-theme');
-    if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('#themeBtn i').className = saved === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    const saved=localStorage.getItem('ici-theme');
+    if(saved) {
+        document.documentElement.setAttribute('data-theme',saved);
+        document.querySelector('#themeBtn i').className=saved==='dark'?'fas fa-sun':'fas fa-moon';
     }
-    if (localStorage.getItem('desktop-mode') === 'desktop') {
+    if(localStorage.getItem('desktop-mode')==='desktop') {
         document.body.classList.add('desktop-mode');
-        document.getElementById('chartOverlay').style.display = 'flex';
-        document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
+        document.getElementById('chartOverlay').style.display='flex';
+        document.querySelector('#desktopBtn i').className='fas fa-mobile-alt';
     }
-    setTimeout(() => render(), 200);
+    setTimeout(()=>render(),200);
 })();
 updateToggleButtons();
 </script>
