@@ -331,7 +331,22 @@
     </div>
 </div>
 
+<!-- Alerts.js optional fallback -->
+<script>
+// Fallback if Alerts.js not loaded - prevent crashes
+if (typeof getBellHtml !== 'function') {
+    window.getBellHtml = function(pair) { return ''; };
+}
+if (typeof openAlertDialog !== 'function') {
+    window.openAlertDialog = function(pair) { alert('Alert dialog: ' + pair); };
+}
+if (typeof openAlertsList !== 'function') {
+    window.openAlertsList = function() { alert('Alerts list not available'); };
+}
+</script>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
+<!-- Alerts.js - comment out if not present, fallback above will cover -->
 <script src="Alerts.js"></script>
 <script>
 // Override _alFireAlert to fix message and auto-deactivate
@@ -508,6 +523,8 @@ function toggleDesktopMode() {
     const icon = document.querySelector('#desktopBtn i');
     icon.className = isDesktop ? 'fas fa-mobile-alt' : 'fas fa-desktop';
     localStorage.setItem('desktop-mode', isDesktop ? 'desktop' : 'mobile');
+    // Force re-render to update visibility
+    render();
 }
 
 function setFilter(f) { curF = f; render(); }
@@ -872,10 +889,13 @@ function clearColFilter() {
     saveColumns(); closeColFilterModal(); render();
 }
 
-// ── RENDER (with crash guard) ──
+// ── RENDER (FIXED: render always except when chart is open in mobile) ──
 function render() {
-    // DO NOT update the pair list if chart overlay is open (prevents mobile crash)
-    if (document.getElementById('chartOverlay').style.display === 'flex') return;
+    // Only block rendering if we are in mobile mode and chart overlay is open (fullscreen)
+    const isDesktop = document.body.classList.contains('desktop-mode');
+    if (!isDesktop && document.getElementById('chartOverlay').style.display === 'flex') {
+        return;
+    }
 
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
@@ -1000,7 +1020,6 @@ async function setChartLayout(count) {
         if (i <= count) box.classList.add('active');
         else box.classList.remove('active');
     }
-    // Staggered redraw to prevent crash
     await redrawAllActiveStaggered();
     for (let i = 1; i <= 4; i++) {
         const btn = document.getElementById('slotBtn' + i);
@@ -1024,7 +1043,7 @@ async function redrawAllActiveStaggered() {
     for (let i = 1; i <= currentChartLayout; i++) {
         drawChart(i);
         if (i < currentChartLayout) {
-            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
 }
@@ -1053,7 +1072,11 @@ function drawChart(slot) {
 }
 
 function closeChart() {
-    if (!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display = 'none';
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+        // Force re-render after closing chart in mobile
+        render();
+    }
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
 
@@ -1099,6 +1122,8 @@ db.ref('marketData').on('value', snap => {
         document.getElementById('chartOverlay').style.display = 'flex';
         document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
     }
+    // Ensure initial render after all listeners set
+    setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
 </script>
