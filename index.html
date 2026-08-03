@@ -37,7 +37,7 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
 
-        /* ── Auto‑adjust columns, no scroll ── */
+        /* Auto‑adjust columns, no scroll */
         .screener-wrap { overflow-x:visible; }
         .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
         .col-header-cell {
@@ -736,7 +736,7 @@ function clearColFilter() {
     saveColumns(); closeColFilterModal(); render();
 }
 
-// ── Render ──
+// ── Render (price display removed) ──
 function render() {
     if (!document.body.classList.contains('desktop-mode') && document.getElementById('chartOverlay').style.display === 'flex') return;
 
@@ -760,15 +760,11 @@ function render() {
     renderHeader();
 
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const lm = liveMarketData && liveMarketData[p.n];
-        const mktPrice = (MARKET_DATA[p.n] || {}).price || (MARKET_DATA[p.n] || {}).currentPrice;
-        const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
-        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
-
         const isStarred = starredPairs.includes(p.n);
         const starIcon = `<i class="${isStarred ? 'fas' : 'far'} fa-star" style="color:var(--gold); cursor:pointer; margin-right:4px; font-size:14px;" onclick="event.stopPropagation(); toggleStar('${p.n}')"></i>`;
 
-        let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}</div>`;
+        // Only pair name, no price
+        let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span></div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
