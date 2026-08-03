@@ -934,8 +934,7 @@ function render() {
         </div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += `<div class="col-add-btn" style="visibility:hidden;"></div>`;
-        cells += `<div class="col-bell-fixed">${getBellHtml(p.n)}</div>`;
-
+        cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
         let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
 
         if (curF === 'target' || curF === 'trades') {
