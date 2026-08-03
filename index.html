@@ -86,6 +86,9 @@
         .col-pair-fixed { flex: 1 1 0%; min-width:70px; display:flex; align-items:center; padding-right:4px; }
         .col-bell-fixed { flex: none; min-width:30px; display:flex; align-items:center; justify-content:center; }
 
+        /* Highlighted row */
+        .highlighted-row { background: rgba(0,98,255,0.08); }
+
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
@@ -343,6 +346,7 @@ let chartIntervals = ['60','60','60','60'];
 window.alertSettings = alertSettings;
 
 let starredPairs = JSON.parse(localStorage.getItem('ici_starred') || '[]');
+let activeChartPair = null; // ⭐ Highlighted pair
 
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
@@ -489,7 +493,6 @@ function actualScan() {
     }, 600000);
 }
 
-// ⭐ Fixed: real phases from scanner
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     if (!PB_STATE) return pairMap;
@@ -785,7 +788,7 @@ function render() {
         cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
 
-        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
+        let row = `<div class="item-row ${p.n === activeChartPair ? 'highlighted-row' : ''}"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
@@ -799,7 +802,7 @@ function render() {
     updateCounts();
 }
 
-// Chart functions unchanged
+// ── Chart functions (with highlight) ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -821,13 +824,17 @@ function openChartForPair(pairName) {
     updateChartPairName();
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
+    activeChartPair = pairName; // ⭐ set highlight
+    render(); // update dashboard highlight
     startCountdownTimer();
 }
 function movePair(step) {
     const total = chartPairs.length;
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
+    activeChartPair = chartPairs[chartIndices[activeChartSlot-1]]; // update highlighted pair
     drawChart(activeChartSlot);
+    render();
 }
 function changeChartInterval(interval, btn) {
     chartIntervals[activeChartSlot-1] = interval;
@@ -873,6 +880,11 @@ function drawChart(slot) {
 function closeChart() {
     if (!document.body.classList.contains('desktop-mode')) {
         document.getElementById('chartOverlay').style.display = 'none';
+        activeChartPair = null; // ⭐ clear highlight
+        render();
+    } else {
+        // In desktop mode, closing doesn't hide but we can clear highlight
+        activeChartPair = null;
         render();
     }
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
