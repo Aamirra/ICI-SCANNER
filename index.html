@@ -128,6 +128,37 @@
         .reject-btn { background:var(--red); color:#fff; }
         .scan-status-line { font-size:11px; color: var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color: var(--gold); margin-left:auto; }
+
+        /* ── Customizable column screener ── */
+        .screener-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -16px; padding:0 16px; }
+        .header-row-table { display:flex; align-items:center; min-width:max-content; padding-bottom:8px; border-bottom:1px solid var(--border); }
+        .col-header-cell { min-width:88px; padding:0 6px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; justify-content:center; gap:3px; cursor:pointer; flex-shrink:0; -webkit-user-select:none; user-select:none; }
+        .col-header-cell:active { color:var(--acc); }
+        .col-pair-fixed.col-header-cell { position:sticky; left:0; z-index:3; background:var(--surface); min-width:110px; justify-content:flex-start; cursor:default; }
+        .col-bell-fixed.col-header-cell { position:sticky; right:0; z-index:3; background:var(--surface); min-width:34px; cursor:default; }
+        .col-add-btn { min-width:30px; text-align:center; cursor:pointer; color:var(--acc); font-size:16px; flex-shrink:0; }
+        .sort-arrow { font-size:8px; color:var(--acc); }
+        .filter-badge { background:var(--gold); color:#fff; border-radius:8px; font-size:8px; font-weight:700; padding:1px 4px; }
+        .item-main { min-width:max-content; justify-content:flex-start !important; }
+        .col-pair-fixed { position:sticky; left:0; z-index:2; background:var(--surface); min-width:110px; display:flex; align-items:center; padding-right:6px; }
+        .col-bell-fixed { position:sticky; right:0; z-index:2; background:var(--surface); min-width:34px; display:flex; align-items:center; justify-content:center; }
+        .col-cell { min-width:88px; padding:0 6px; text-align:center; flex-shrink:0; font-size:12px; }
+
+        .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
+        .sheet-overlay.open { display:flex; }
+        .sheet-box { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:450px; padding:8px 0; color:var(--txt); }
+        .sheet-item { padding:14px 20px; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+        .sheet-item:last-child { border-bottom:none; color:var(--red); }
+        .sheet-item:active { background:var(--pill-bg); }
+
+        .form-group { margin-bottom:12px; }
+        .form-label { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; display:block; }
+        .form-select, .form-input { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; background:var(--pill-bg); color:var(--txt); font-size:14px; outline:none; }
+        .form-row-btns { display:flex; gap:8px; margin-top:16px; }
+        .form-row-btns button { flex:1; padding:10px; border-radius:8px; border:none; font-weight:600; font-size:14px; cursor:pointer; }
+        .btn-primary { background:var(--acc); color:#fff; }
+        .btn-secondary { background:var(--pill-bg); color:var(--txt); border:1px solid var(--border); }
+        .filter-row { display:flex; gap:8px; }
     </style>
 </head>
 <body>
@@ -187,8 +218,56 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search pairs..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header"><div class="row-pair">Pair</div><div class="row-timeframes">1H / 4H / 1D / 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert"><i class="fas fa-bell"></i></div></div>
-    <div id="pairsContainer"></div>
+    <div class="screener-wrap">
+        <div class="header-row-table" id="tableHeaderRow"></div>
+        <div id="pairsContainer"></div>
+    </div>
+</div>
+
+<!-- Column context menu (bottom sheet) -->
+<div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
+    <div class="sheet-box" id="colMenuBox"></div>
+</div>
+
+<!-- Add / Edit column modal -->
+<div class="modal" id="colEditModal" onclick="if(event.target===this) closeColEditModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:16px;" id="colEditTitle">Add Column</h3>
+        <div class="form-group">
+            <label class="form-label">Column Type</label>
+            <select class="form-select" id="colTypeSelect" onchange="onColTypeChange()"></select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Label (optional)</label>
+            <input class="form-input" id="colLabelInput" placeholder="Custom label">
+        </div>
+        <div class="form-group" id="colDisplayStyleGroup" style="display:none;">
+            <label class="form-label">Display Style</label>
+            <select class="form-select" id="colDisplayStyleSelect">
+                <option value="colored">Colored text</option>
+                <option value="mono">Monochrome text</option>
+            </select>
+        </div>
+        <div class="form-row-btns">
+            <button class="btn-secondary" onclick="closeColEditModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveColumnFromModal()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Column filter modal -->
+<div class="modal" id="colFilterModal" onclick="if(event.target===this) closeColFilterModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:16px;">Filter Column</h3>
+        <div class="form-group filter-row">
+            <div style="flex:1"><label class="form-label">Min</label><input class="form-input" id="filterMinInput" type="number" placeholder="Min"></div>
+            <div style="flex:1"><label class="form-label">Max</label><input class="form-input" id="filterMaxInput" type="number" placeholder="Max"></div>
+        </div>
+        <div class="form-row-btns">
+            <button class="btn-secondary" onclick="clearColFilter()">Clear</button>
+            <button class="btn-primary" onclick="applyColFilter()">Apply</button>
+        </div>
+    </div>
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
@@ -586,6 +665,211 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
+// ==================== CUSTOM COLUMN SYSTEM ====================
+
+const COLUMN_TYPES = {
+    tf_alignment: { label:'TF Alignment',      kind:'dots', filterable:false },
+    sentiment:    { label:'Sentiment',         kind:'bar',  filterable:false },
+    change_200:   { label:'200 Candle Change', kind:'pct',  field:'longTermTrend',    filterable:true },
+    change_10:    { label:'10 Candle Change',  kind:'pct',  field:'shortTermMomentum',filterable:true },
+    change_1h:    { label:'1H Momentum',       kind:'pct',  field:'microMomentum',    filterable:true },
+    vol_7d:       { label:'Vol 7D Avg',        kind:'num',  field:'volume7dAvg',      filterable:true },
+    dollar_vol:   { label:'$ Volume 1D',       kind:'num',  field:'dollarVolume1d',   filterable:true },
+    price:        { label:'Price',             kind:'num',  field:'price',            filterable:true }
+};
+
+let columnDefs = [];
+let sortColumn = null, sortDir = 'desc';
+let colMenuTargetId = null, filterTargetId = null;
+
+function defaultColumns() {
+    return [
+        { id:'c_tf',   type:'tf_alignment', label:'1H/4H/1D/1W' },
+        { id:'c_sent', type:'sentiment',    label:'Sentiment' },
+        { id:'c_200',  type:'change_200',   label:'200C', style:'colored', filterMin:null, filterMax:null }
+    ];
+}
+function loadColumns() {
+    try {
+        const raw = localStorage.getItem('ici_columns');
+        if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+    } catch(e) {}
+    return defaultColumns();
+}
+function saveColumns() { localStorage.setItem('ici_columns', JSON.stringify(columnDefs)); }
+columnDefs = loadColumns();
+
+function getColumnValue(pairName, col) {
+    const type = COLUMN_TYPES[col.type];
+    const t = techMetrics[pairName] || {};
+    const s = sentimentData[pairName] || {};
+    const m = MARKET_DATA[pairName] || {};
+    const lm = liveMarketData[pairName] || {};
+    if (col.type === 'tf_alignment') {
+        return ['1h','4h','1day','1week'].map(tf => m[tf] || (lm[tf] || ''));
+    }
+    if (col.type === 'sentiment') {
+        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
+        return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
+    }
+    if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
+    return t[type.field] != null ? t[type.field] : null;
+}
+
+function sortValueFor(pairName, col) {
+    const v = getColumnValue(pairName, col);
+    if (typeof v === 'number') return v;
+    if (v && typeof v === 'object' && 'bullPct' in v) return v.bullPct;
+    return null;
+}
+
+function applyColumnSortAndFilter(list) {
+    let out = list;
+    columnDefs.forEach(col => {
+        if (col.filterMin == null && col.filterMax == null) return;
+        out = out.filter(p => {
+            const v = sortValueFor(p.n, col);
+            if (v == null) return false;
+            if (col.filterMin != null && v < col.filterMin) return false;
+            if (col.filterMax != null && v > col.filterMax) return false;
+            return true;
+        });
+    });
+    if (sortColumn) {
+        const col = columnDefs.find(c => c.id === sortColumn);
+        if (col) {
+            out = [...out].sort((a,b) => {
+                const va = sortValueFor(a.n, col), vb = sortValueFor(b.n, col);
+                const na = va == null ? -Infinity : va, nb = vb == null ? -Infinity : vb;
+                return sortDir === 'desc' ? nb - na : na - nb;
+            });
+        }
+    }
+    return out;
+}
+
+function renderHeader() {
+    let html = '<div class="col-pair-fixed col-header-cell">Pair</div>';
+    columnDefs.forEach(col => {
+        const type = COLUMN_TYPES[col.type];
+        let arrow = sortColumn === col.id ? `<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : '';
+        let badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge">F</span>' : '';
+        html += `<div class="col-header-cell" onclick="openColMenu('${col.id}')">${col.label || type.label}${arrow}${badge}</div>`;
+    });
+    html += `<div class="col-add-btn" onclick="openColEditModal(null)"><i class="fas fa-plus-circle"></i></div>`;
+    html += '<div class="col-bell-fixed col-header-cell"><i class="fas fa-bell"></i></div>';
+    document.getElementById('tableHeaderRow').innerHTML = html;
+}
+
+function renderColumnCell(pairName, col) {
+    const type = COLUMN_TYPES[col.type];
+    const val = getColumnValue(pairName, col);
+    if (col.type === 'tf_alignment') {
+        const dots = val.map(sig => `<span class="trend-dot" style="background:${sig === 'bull' ? 'var(--green)' : (sig === 'bear' ? 'var(--red)' : '#cbd5e1')}"></span>`).join('');
+        return `<div class="col-cell dots-container">${dots}</div>`;
+    }
+    if (col.type === 'sentiment') {
+        return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
+    }
+    if (val == null) return `<div class="col-cell" style="color:var(--muted)">--</div>`;
+    if (type.kind === 'pct') {
+        const cls = col.style === 'mono' ? '' : (val >= 0 ? 'up' : 'down');
+        return `<div class="col-cell change-val ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</div>`;
+    }
+    if (col.type === 'price') return `<div class="col-cell">${val.toFixed(4)}</div>`;
+    return `<div class="col-cell">${typeof val === 'number' ? val.toLocaleString() : val}</div>`;
+}
+
+// ── Column menu (bottom sheet: sort / edit / filter / delete) ──
+function openColMenu(colId) {
+    colMenuTargetId = colId;
+    const col = columnDefs.find(c => c.id === colId);
+    if (!col) return;
+    const type = COLUMN_TYPES[col.type];
+    let items = `<div class="sheet-item" onclick="sortByColumn('desc')"><i class="fas fa-sort-amount-down"></i> Sort: Highest first</div>
+                 <div class="sheet-item" onclick="sortByColumn('asc')"><i class="fas fa-sort-amount-up"></i> Sort: Lowest first</div>
+                 <div class="sheet-item" onclick="openColEditModal('${colId}')"><i class="fas fa-edit"></i> Edit column</div>`;
+    if (type.filterable) items += `<div class="sheet-item" onclick="openColFilterModal('${colId}')"><i class="fas fa-filter"></i> Filter</div>`;
+    items += `<div class="sheet-item" onclick="deleteColumn('${colId}')"><i class="fas fa-trash"></i> Delete column</div>
+              <div class="sheet-item" onclick="closeColMenu()" style="color:var(--txt);"><i class="fas fa-times"></i> Cancel</div>`;
+    document.getElementById('colMenuBox').innerHTML = items;
+    document.getElementById('colMenuSheet').classList.add('open');
+}
+function closeColMenu() { document.getElementById('colMenuSheet').classList.remove('open'); }
+function sortByColumn(dir) {
+    sortColumn = colMenuTargetId; sortDir = dir;
+    closeColMenu(); render();
+}
+function deleteColumn(colId) {
+    columnDefs = columnDefs.filter(c => c.id !== colId);
+    if (sortColumn === colId) sortColumn = null;
+    saveColumns(); closeColMenu(); render();
+}
+
+// ── Add / Edit column modal ──
+function openColEditModal(colId) {
+    closeColMenu();
+    const isEdit = !!colId;
+    document.getElementById('colEditTitle').textContent = isEdit ? 'Edit Column' : 'Add Column';
+    const sel = document.getElementById('colTypeSelect');
+    sel.innerHTML = Object.entries(COLUMN_TYPES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
+    sel.dataset.editId = colId || '';
+    if (isEdit) {
+        const col = columnDefs.find(c => c.id === colId);
+        sel.value = col.type;
+        document.getElementById('colLabelInput').value = col.label || '';
+        document.getElementById('colDisplayStyleSelect').value = col.style || 'colored';
+    } else {
+        document.getElementById('colLabelInput').value = '';
+        document.getElementById('colDisplayStyleSelect').value = 'colored';
+    }
+    onColTypeChange();
+    document.getElementById('colEditModal').classList.add('open');
+}
+function onColTypeChange() {
+    const type = COLUMN_TYPES[document.getElementById('colTypeSelect').value];
+    document.getElementById('colDisplayStyleGroup').style.display = type.kind === 'pct' ? 'block' : 'none';
+}
+function closeColEditModal() { document.getElementById('colEditModal').classList.remove('open'); }
+function saveColumnFromModal() {
+    const sel = document.getElementById('colTypeSelect');
+    const editId = sel.dataset.editId;
+    const type = sel.value;
+    const label = document.getElementById('colLabelInput').value.trim();
+    const style = document.getElementById('colDisplayStyleSelect').value;
+    if (editId) {
+        const col = columnDefs.find(c => c.id === editId);
+        col.type = type; col.label = label; col.style = style;
+    } else {
+        columnDefs.push({ id:'c_'+Date.now(), type, label, style, filterMin:null, filterMax:null });
+    }
+    saveColumns(); closeColEditModal(); render();
+}
+
+// ── Filter modal ──
+function openColFilterModal(colId) {
+    closeColMenu();
+    filterTargetId = colId;
+    const col = columnDefs.find(c => c.id === colId);
+    document.getElementById('filterMinInput').value = col.filterMin ?? '';
+    document.getElementById('filterMaxInput').value = col.filterMax ?? '';
+    document.getElementById('colFilterModal').classList.add('open');
+}
+function closeColFilterModal() { document.getElementById('colFilterModal').classList.remove('open'); }
+function applyColFilter() {
+    const col = columnDefs.find(c => c.id === filterTargetId);
+    const minV = document.getElementById('filterMinInput').value;
+    const maxV = document.getElementById('filterMaxInput').value;
+    col.filterMin = minV === '' ? null : parseFloat(minV);
+    col.filterMax = maxV === '' ? null : parseFloat(maxV);
+    saveColumns(); closeColFilterModal(); render();
+}
+function clearColFilter() {
+    const col = columnDefs.find(c => c.id === filterTargetId);
+    col.filterMin = null; col.filterMax = null;
+    saveColumns(); closeColFilterModal(); render();
+}
+
 // ── RENDER (with crash guard) ──
 function render() {
     // DO NOT update the pair list if chart overlay is open (prevents mobile crash)
@@ -603,66 +887,45 @@ function render() {
     else if (curF === 'target' || curF === 'trades')
         filtered = currentPairs.filter(p => validTargets.has(p.n));
     else filtered = currentPairs;
+
+    filtered = applyColumnSortAndFilter(filtered);
+
     currentDisplayPairs = filtered.map(p => p.n);
     chartPairs = filtered.map(p => p.n); // sync chartPairs with current filter
 
+    renderHeader();
+
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
-        const t = techMetrics[p.n] || {}, s = sentimentData[p.n] || {}, m = MARKET_DATA[p.n] || {};
+        const m = MARKET_DATA[p.n] || {};
         const isBull = ['4h','1day','1week'].every(tf => m[tf] === 'bull'),
               isBear = ['4h','1day','1week'].every(tf => m[tf] === 'bear');
         const star = isBull ? 'B' : (isBear ? 'S' : 'N'),
               starColor = isBull ? 'var(--green)' : (isBear ? 'var(--red)' : '#cbd5e1');
-        const change = t.longTermTrend != null ? (t.longTermTrend > 0 ? '+' : '') + t.longTermTrend.toFixed(2) + '%' : '--';
-        const changeClass = t.longTermTrend >= 0 ? 'up' : 'down';
-        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
-        const bearW = Math.round((bearPct / total) * 100), bullW = 100 - bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf => {
-            if (m[tf]) return m[tf];
-            const lm = liveMarketData && liveMarketData[p.n];
-            return lm && lm[tf] ? lm[tf] : '';
-        });
-        const dots = signals.map(sig => `<span class="trend-dot ${sig === 'bull' ? 'g' : 'r'}"></span>`).join('');
-        const shortTermVal = t.shortTermMomentum != null ? (t.shortTermMomentum > 0 ? '+' : '') + t.shortTermMomentum.toFixed(2) + '%' : '--';
-        const microVal = t.microMomentum != null ? (t.microMomentum > 0 ? '+' : '') + t.microMomentum.toFixed(2) + '%' : '--';
-        const vol7dVal = t.volume7dAvg ? t.volume7dAvg.toLocaleString() : '--';
-        const dollarVolVal = t.dollarVolume1d || '--';
         const lm = liveMarketData && liveMarketData[p.n];
         const mktPrice = (m.price || m.currentPrice);
         const livePrice = (lm && (lm.price || lm.currentPrice)) ? (lm.price || lm.currentPrice).toFixed(4) : (mktPrice ? mktPrice.toFixed(4) : '');
         const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
 
-        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
-            <div class="row-pair pair-title">
-                <span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}
-            </div>
-            <div class="row-timeframes dots-container">${dots}</div>
-            <div class="row-sentiment sentiment-wrapper">
-                <div class="sentiment-progress">
-                    <div class="sent-red" style="width:${bearW}%">${bearW}%</div>
-                    <div class="sent-green" style="width:${bullW}%">${bullW}%</div>
-                </div>
-            </div>
-            <div class="row-change change-val ${changeClass}">${change}</div>
-            <div class="row-alert" style="text-align:center;">${getBellHtml(p.n)}</div>
+        let cells = `<div class="col-pair-fixed">
+            <span style="color:${starColor};font-weight:700;margin-right:4px;">${star}</span>
+            <span style="font-weight:700;font-size:14px;">${p.n}</span>${priceHTML}
         </div>`;
+        cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
+        cells += `<div class="col-add-btn" style="visibility:hidden;"></div>`;
+        cells += `<div class="col-bell-fixed">${getBellHtml(p.n)}</div>`;
+
+        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
 
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span>
+                row += `<div class="phase-row" style="position:sticky;left:0;"><span style="color:var(--muted);">Phase:</span>
                     <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span>
                 </div>`;
             }
-            row += '</div>';
-        } else {
-            row += `<div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum >= 0 ? 'up' : 'down'}">${shortTermVal}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum >= 0 ? 'up' : 'down'}">${microVal}</span></div>
-                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
-                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
-            </div></div>`;
         }
+        row += '</div>';
         return row;
     }).join('');
     updateCounts();
