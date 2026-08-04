@@ -133,7 +133,7 @@
 
         /* 🔔 Alert modals must appear ABOVE the chart overlay */
         .modal, .alert-modal {
-            z-index: 2000 !important;   /* was 500, now above chart overlay (1000) */
+            z-index: 2000 !important;
         }
 
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
@@ -949,6 +949,14 @@ db.ref('marketData').on('value', snap => {
     }
     renderDebounced();
 });
+
+// ✅ Safety – ensure all modals & chart are hidden on page load
+(function(){
+    document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+    }
+})();
 
 (function(){
     const savedTheme = localStorage.getItem('ici-theme');
