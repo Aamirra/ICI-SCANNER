@@ -130,7 +130,7 @@
         .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        /* ✅ MISSING MODAL CSS (FIXED) */
+        /* ✅ FIXED MODAL CSS */
         .modal {
             position: fixed;
             inset: 0;
@@ -318,6 +318,31 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
+
+<!-- ⚡ Override openAlertDialog to bring alert above chart overlay -->
+<script>
+(function() {
+    const orig = window.openAlertDialog;
+    if (orig) {
+        window.openAlertDialog = function(pair) {
+            orig(pair);
+            setTimeout(() => {
+                // Try to find any alert modal/overlay and boost z-index
+                const modals = document.querySelectorAll('.iziModal, .alert-modal, [class*="alert"]');
+                modals.forEach(m => { m.style.zIndex = '2500'; });
+                // Generic fallback: bring all fixed visible divs above chart
+                const fixedDivs = document.querySelectorAll('body > div[style*="position: fixed"], body > div[style*="position:fixed"]');
+                fixedDivs.forEach(el => {
+                    if (el.style.display !== 'none' && el.style.visibility !== 'hidden') {
+                        el.style.zIndex = '2500';
+                    }
+                });
+            }, 100);
+        };
+    }
+})();
+</script>
+
 <script>
 (function() {
     const orig = _alFireAlert;
