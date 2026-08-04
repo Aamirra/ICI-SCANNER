@@ -696,6 +696,12 @@ async function masterScan() {
         } catch (err) {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
+        
+        // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true)
+        if (process.env.AUTO_SCAN === 'true') {
+            sendTG(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
+        }
+        
         isScanning = false;
     }
 }
