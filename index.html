@@ -92,11 +92,9 @@
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
-        .sent-red { background:var(--red); }
-        .sent-green { background:var(--green); }
+        .sent-red { background:var(--red); } .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
-        .change-val.up { color:var(--green); }
-        .change-val.down { color:var(--red); }
+        .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
 
         .item-row { border-bottom:1px solid var(--border); }
         .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
@@ -194,10 +192,12 @@
     </div>
 </div>
 
+<!-- Column context menu (bottom sheet) -->
 <div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
     <div class="sheet-box" id="colMenuBox"></div>
 </div>
 
+<!-- Add / Edit column modal -->
 <div class="modal" id="colEditModal" onclick="if(event.target===this) closeColEditModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:16px;" id="colEditTitle">Add Column</h3>
@@ -223,6 +223,7 @@
     </div>
 </div>
 
+<!-- Column filter modal -->
 <div class="modal" id="colFilterModal" onclick="if(event.target===this) closeColFilterModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 style="margin-bottom:16px;">Filter Column</h3>
@@ -253,6 +254,7 @@
         <span id="countdownDisplay" class="countdown-display"></span>
     </div>
     
+    <!-- Multi-Chart Layout Controls + Slot Selector -->
     <div class="layout-controls">
         <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
         <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
@@ -268,6 +270,7 @@
         </span>
     </div>
     
+    <!-- Grid Container for Charts -->
     <div id="chart-grid" class="chart-grid layout-1">
         <div id="tv_chart_1" class="chart-box active"></div>
         <div id="tv_chart_2" class="chart-box"></div>
@@ -283,11 +286,13 @@
     </div>
 </div>
 
+<!-- Alerts.js optional fallback -->
 <script>
 if (typeof getBellHtml !== 'function') window.getBellHtml = p=>'';
 if (typeof openAlertDialog !== 'function') window.openAlertDialog = p=>alert('Alert: '+p);
 if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Alerts list');
 </script>
+
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
 <script>
@@ -320,6 +325,7 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
     };
 })();
 </script>
+
 <script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
@@ -399,7 +405,8 @@ db.ref('lastScanTime/time').on('value', snap => {
     el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
 });
 
-db.ref('alertSettings').on('value', snap => {
+// ⚡ UPDATED: alertSettings now from alertSettings/forex
+db.ref('alertSettings/forex').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -416,8 +423,8 @@ function updateToggleButtons() {
     }
 }
 function toggleAlert(type) {
-    const val = !alertSettings[type];
-    db.ref('alertSettings/' + type).set(val);
+    const val = !(alertSettings[type] ?? true);
+    db.ref('alertSettings/forex/' + type).set(val);
     alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -426,9 +433,10 @@ function toggleAlert(type) {
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        checkAllAlerts(Object.entries(liveMarketData).map(([n,d])=>({
+        const arr = Object.entries(liveMarketData).map(([n,d]) => ({
             name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
-        })));
+        }));
+        checkAllAlerts(arr);
     }
     renderDebounced();
 });
@@ -591,7 +599,7 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
-// ⚡ NEW getColumnValue – uses live price & scanner’s EMA for all timeframes
+// ⚡ Updated getColumnValue – live price + EMA20 for all timeframes
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
@@ -840,15 +848,15 @@ function openChartForPair(pairName) {
     updateChartPairName();
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
-    activeChartPair = pairName; // ⭐ set highlight
-    render(); // update dashboard highlight
+    activeChartPair = pairName;
+    render();
     startCountdownTimer();
 }
 function movePair(step) {
     const total = chartPairs.length;
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
-    activeChartPair = chartPairs[chartIndices[activeChartSlot-1]]; // update highlighted pair
+    activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
     drawChart(activeChartSlot);
     render();
 }
@@ -879,9 +887,10 @@ function drawChart(slot) {
     container.innerHTML = '';
     const idx = chartIndices[slot-1];
     if (!chartPairs[idx]) return;
+    const symbol = chartPairs[idx];
     new TradingView.widget({
         autosize:true,
-        symbol: (typeof psxStockList!=='undefined' && psxStockList.includes(chartPairs[idx])) ? 'KSE:'+chartPairs[idx] : chartPairs[idx],
+        symbol: (typeof psxStockList!=='undefined' && psxStockList.includes(symbol)) ? 'KSE:'+symbol : symbol,
         interval: chartIntervals[slot-1],
         theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
         container_id: 'tv_chart_'+slot,
@@ -896,10 +905,9 @@ function drawChart(slot) {
 function closeChart() {
     if (!document.body.classList.contains('desktop-mode')) {
         document.getElementById('chartOverlay').style.display = 'none';
-        activeChartPair = null; // ⭐ clear highlight
+        activeChartPair = null;
         render();
     } else {
-        // In desktop mode, closing doesn't hide but we can clear highlight
         activeChartPair = null;
         render();
     }
