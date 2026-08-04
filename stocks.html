@@ -413,7 +413,8 @@ function setMarket(market) {
     attachListeners();
 }
 
-db.ref('alertSettings').on('value', snap => {
+// ✅ UPDATED: alertSettings now from alertSettings/stocks
+db.ref('alertSettings/stocks').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -430,8 +431,8 @@ function updateToggleButtons() {
     }
 }
 function toggleAlert(type) {
-    const val = !alertSettings[type];
-    db.ref('alertSettings/' + type).set(val);
+    const val = !(alertSettings[type] ?? true);
+    db.ref('alertSettings/stocks/' + type).set(val);
     alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
