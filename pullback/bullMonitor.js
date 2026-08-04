@@ -2,10 +2,9 @@ const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
 const { PB_STATE, defaultBullState } = require('./tradeStateManager');
 
-// ALERTS ON
-const ALERTS_ENABLED = true; 
+const ALERTS_ENABLED = true;
 
-async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut) {
+async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, alertSettings = { whatsapp: true }) {
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
@@ -31,7 +30,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
 
     // DAILY FILTER
     let s = PB_STATE[stateKey] || defaultBullState();
-    
     const dClose = dCloses[dCloses.length - 1];
     const dSMA50 = calcSMA(dCloses, 50);
     const dEMA20 = calcEMA(dCloses, 20);
@@ -42,7 +40,6 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     }
 
     const isDailyBullish = (dClose > dSMA50 && dClose > dEMA20);
-
     if (!isDailyBullish) {
         delete PB_STATE[stateKey];
         return null;
@@ -75,31 +72,33 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
                         '• 1H: Closed above 50SMA & 20EMA!\n' +
                         '• Current Price: ' + hClose;
 
-                    // Telegram
+                    // Telegram (conditional via sendTG)
                     if (typeof sendTG === 'function') {
                         sendTG(message);
                     }
 
-                    // WhatsApp via execute-action
-                    try {
-                        const https = require('https');
-                        const data = JSON.stringify({
-                            action: 'send_whatsapp',
-                            params: { text: message }
-                        });
-                        const req = https.request({
-                            hostname: 'ici-scanner.onrender.com',
-                            path: '/api/execute-action',
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Content-Length': data.length
-                            }
-                        });
-                        req.write(data);
-                        req.end();
-                    } catch(e) {
-                        console.error('WhatsApp alert error:', e.message);
+                    // WhatsApp – only if enabled
+                    if (alertSettings.whatsapp) {
+                        try {
+                            const https = require('https');
+                            const data = JSON.stringify({
+                                action: 'send_whatsapp',
+                                params: { text: message }
+                            });
+                            const req = https.request({
+                                hostname: 'ici-scanner.onrender.com',
+                                path: '/api/execute-action',
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Content-Length': data.length
+                                }
+                            });
+                            req.write(data);
+                            req.end();
+                        } catch(e) {
+                            console.error('WhatsApp alert error:', e.message);
+                        }
                     }
                 }
             }
