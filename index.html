@@ -86,7 +86,6 @@
         .col-pair-fixed { flex: 1 1 0%; min-width:70px; display:flex; align-items:center; padding-right:4px; }
         .col-bell-fixed { flex: none; min-width:30px; display:flex; align-items:center; justify-content:center; }
 
-        /* Highlighted row */
         .highlighted-row { background: rgba(0,98,255,0.08); }
 
         .dots-container { display:flex; gap:4px; justify-content:center; }
@@ -131,9 +130,29 @@
         .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        /* 🔔 Alert modals must appear ABOVE the chart overlay */
-        .modal, .alert-modal {
-            z-index: 2000 !important;
+        /* ✅ MISSING MODAL CSS (FIXED) */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal.open {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: var(--txt);
         }
 
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
