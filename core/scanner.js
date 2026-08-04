@@ -2,7 +2,7 @@ const https = require('https');
 const cheerio = require('cheerio');
 const admin = require('firebase-admin');
 
-// ── 1. Automatic Firebase Initialization (For Standalone / GitHub Actions) ──
+// ── 1. Automatic Firebase Initialization ──
 if (!admin.apps.length) {
     try {
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -50,18 +50,18 @@ try {
 
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
-const RATE_PER_MIN   = 8;
+// ⚡ ULTRA‑SAFE RATE LIMITS ⚡
+const MAX_CONCURRENT = 2;        // only 2 parallel requests
+const REQUEST_DELAY_MS  = 3500;  // 3.5 seconds between calls
+const BATCH_DELAY_MS    = 4000;  // 4 seconds after every batch
+const RATE_PER_MIN   = 5;        // max 5 calls per minute per key
 const MIN_CREDIT     = 10;
 const COOLDOWN_MS    = 60 * 1000;
-const MAX_CONCURRENT = 12;
 const DAILY_LIMIT = 800;
-const REQUEST_DELAY_MS  = 1500;
-const BATCH_DELAY_MS    = 2000;
-const MINUTE_WAIT_MS    = 61 * 1000;
+const MINUTE_WAIT_MS    = 65 * 1000; // wait 65 seconds if all keys exhausted
 
 // ── Indices list ──
 const INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
-// Symbol mapping for various APIs
 const INDEX_SYMBOLS = {
     'US500': { finnhub: '^GSPC', yahoo: '^GSPC', twelvedata: 'SPY', alphavantage: 'SPY' },
     'US100': { finnhub: '^NDX', yahoo: '^NDX', twelvedata: 'QQQ', alphavantage: 'QQQ' },
@@ -95,7 +95,7 @@ function aggregate1hTo4h(candles) {
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-// ── Multi‑source fetch for indices ──
+// ── Multi‑source fetch for indices (retries increased to 5) ──
 async function fetchIndexCandles(pair, tf) {
     const symMap = INDEX_SYMBOLS[pair];
     if (!symMap) return null;
@@ -117,7 +117,7 @@ async function fetchIndexCandles(pair, tf) {
                 if (tf === '4h') result = aggregate1hTo4h(result);
                 return result && result.closes.length >= 20 ? result : null;
             },
-            retries: 3
+            retries: 5
         },
         {
             name: 'Yahoo',
@@ -143,7 +143,7 @@ async function fetchIndexCandles(pair, tf) {
                 if (tf === '4h') candles = aggregate1hTo4h(candles);
                 return candles && candles.closes.length >= 20 ? candles : null;
             },
-            retries: 3
+            retries: 5
         },
         {
             name: 'Twelve Data',
@@ -166,7 +166,7 @@ async function fetchIndexCandles(pair, tf) {
                 if (tf === '4h') candles = aggregate1hTo4h(candles);
                 return candles && candles.closes.length >= 20 ? candles : null;
             },
-            retries: 3
+            retries: 5
         },
         {
             name: 'Alpha Vantage',
@@ -196,7 +196,7 @@ async function fetchIndexCandles(pair, tf) {
                 }
                 return { closes, highs, lows, volumes, times };
             },
-            retries: 2
+            retries: 5
         }
     ];
 
@@ -218,7 +218,7 @@ async function fetchIndexCandles(pair, tf) {
     return null;
 }
 
-// ── Yahoo candles for crypto ──
+// ── Yahoo candles for crypto (fallback) ──
 function fetchYahooCandles(symbol, tf) {
     const yahooSymbol = symbol;
     const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
@@ -271,6 +271,142 @@ function aggregateTo4Hour(hourlyCloses, hourlyHighs, hourlyLows, hourlyTimes, ho
         aggVolumes.push(vChunk.reduce((a,b)=>a+b,0));
     }
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
+}
+
+// ── Binance candles fetcher (crypto primary) ──
+function fetchBinanceCandles(symbol, tf) {
+    const binanceSymbol = symbol.replace('USD', 'USDT');
+    let interval;
+    if (tf === '1h') interval = '1h';
+    else if (tf === '4h') interval = '4h';
+    else if (tf === '1day') interval = '1d';
+    else if (tf === '1week') interval = '1d'; // aggregate 7 days
+    else interval = '1h';
+
+    const limit = tf === '1week' ? 200 : 200;
+    const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
+
+    return new Promise((resolve) => {
+        https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const klines = JSON.parse(data);
+                    if (!Array.isArray(klines) || klines.length < 20) return resolve(null);
+
+                    const closes = klines.map(k => parseFloat(k[4]));
+                    const highs = klines.map(k => parseFloat(k[2]));
+                    const lows = klines.map(k => parseFloat(k[3]));
+                    const volumes = klines.map(k => parseFloat(k[5]));
+                    const times = klines.map(k => new Date(k[6]).toISOString());
+
+                    if (tf === '1week') {
+                        const aggCloses = [], aggHighs = [], aggLows = [], aggTimes = [], aggVolumes = [];
+                        for (let i = 6; i < closes.length; i += 7) {
+                            const cSlice = closes.slice(i-6, i+1);
+                            const hSlice = highs.slice(i-6, i+1);
+                            const lSlice = lows.slice(i-6, i+1);
+                            const vSlice = volumes.slice(i-6, i+1);
+                            aggCloses.push(cSlice[cSlice.length-1]);
+                            aggHighs.push(Math.max(...hSlice));
+                            aggLows.push(Math.min(...lSlice));
+                            aggTimes.push(times[i]);
+                            aggVolumes.push(vSlice.reduce((a,b)=>a+b,0));
+                        }
+                        resolve({ closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes });
+                    } else {
+                        resolve({ closes, highs, lows, times, volumes });
+                    }
+                } catch (e) {
+                    resolve(null);
+                }
+            });
+        }).on('error', () => resolve(null));
+    });
+}
+
+// ── Updated Crypto Fetch (Binance primary, Yahoo fallback) ──
+async function fetchTF_Yahoo(p, tf) {
+    // 1️⃣ Try Binance first
+    const binanceData = await fetchBinanceCandles(p.n, tf);
+    if (binanceData && binanceData.closes && binanceData.closes.length >= 20) {
+        try {
+            if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
+            const cls = binanceData.closes;
+            const ema20 = calcEMA(cls, 20);
+            const currentPrice = cls[cls.length - 1];
+            if (ema20) {
+                DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+                DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
+                if (tf === '1h') {
+                    DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
+                    DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
+                }
+            } else {
+                DATA_STORE[p.n][tf] = '—';
+            }
+            if (tf === '1h') {
+                RAW_1H[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
+                const last50Closes = binanceData.closes.slice(-50);
+                firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
+            }
+            if (tf === '4h') {
+                RAW_4H[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
+            }
+            if (tf === '1day') {
+                RAW_DAILY[p.n] = { closes: binanceData.closes, volumes: binanceData.volumes, time: binanceData.times[binanceData.times.length-1] };
+            }
+            if (tf === '1week') {
+                RAW_WEEKLY[p.n] = { closes: binanceData.closes, time: binanceData.times[binanceData.times.length-1] };
+            }
+            console.log(`[Binance] Fetched ${p.n} (${tf})`);
+            return true;
+        } catch (e) {
+            console.error(`[Binance] Error processing ${p.n} (${tf}):`, e.message);
+        }
+    }
+
+    // 2️⃣ Fallback to Yahoo
+    let yahooSymbol = p.isCrypto ? yahooCryptoSymbol(p.n) : p.n;
+    const yahooData = await fetchYahooCandles(yahooSymbol, tf);
+    if (!yahooData || !yahooData.closes || yahooData.closes.length < 20) {
+        return false;
+    }
+    try {
+        if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
+        const cls = yahooData.closes;
+        const ema20 = calcEMA(cls, 20);
+        const currentPrice = cls[cls.length - 1];
+        if (ema20) {
+            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
+            if (tf === '1h') {
+                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
+                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
+            }
+        } else {
+            DATA_STORE[p.n][tf] = '—';
+        }
+        if (tf === '1h') {
+            RAW_1H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
+            const last50Closes = yahooData.closes.slice(-50);
+            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
+        }
+        if (tf === '4h') {
+            RAW_4H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
+        }
+        if (tf === '1day') {
+            RAW_DAILY[p.n] = { closes: yahooData.closes, volumes: yahooData.volumes, time: yahooData.time };
+        }
+        if (tf === '1week') {
+            RAW_WEEKLY[p.n] = { closes: yahooData.closes, time: yahooData.time };
+        }
+        return true;
+    } catch (e) {
+        console.error(`[Yahoo] Error processing ${p.n} (${tf}):`, e.message);
+        return false;
+    }
 }
 
 // ── Global state ──
@@ -546,49 +682,6 @@ async function fetchIndexCandlesAndStore(p, tf) {
         return true;
     } catch (e) {
         console.error(`[Index] Error storing ${p.n} (${tf}):`, e.message);
-        return false;
-    }
-}
-
-async function fetchTF_Yahoo(p, tf) {
-    let yahooSymbol = p.isCrypto ? yahooCryptoSymbol(p.n) : p.n;
-    const yahooData = await fetchYahooCandles(yahooSymbol, tf);
-    if (!yahooData || !yahooData.closes || yahooData.closes.length < 20) {
-        return false;
-    }
-    try {
-        if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
-        const cls = yahooData.closes;
-        const ema20 = calcEMA(cls, 20);
-        const currentPrice = cls[cls.length - 1];
-        if (ema20) {
-            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
-            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
-            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
-            if (tf === '1h') {
-                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
-                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
-            }
-        } else {
-            DATA_STORE[p.n][tf] = '—';
-        }
-        if (tf === '1h') {
-            RAW_1H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
-            const last50Closes = yahooData.closes.slice(-50);
-            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
-        }
-        if (tf === '4h') {
-            RAW_4H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
-        }
-        if (tf === '1day') {
-            RAW_DAILY[p.n] = { closes: yahooData.closes, volumes: yahooData.volumes, time: yahooData.time };
-        }
-        if (tf === '1week') {
-            RAW_WEEKLY[p.n] = { closes: yahooData.closes, time: yahooData.time };
-        }
-        return true;
-    } catch (e) {
-        console.error(`[Yahoo] Error processing ${p.n} (${tf}):`, e.message);
         return false;
     }
 }
