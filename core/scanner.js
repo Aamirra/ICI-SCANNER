@@ -28,7 +28,7 @@ const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
 const msUntilNextHourClose = require('../utils/timer');
 const firebasePut = require('../services/database');
-const sendTG = require('../services/telegram'); // still used by other modules
+const sendTG = require('../services/telegram');
 const sendReport = require('../services/report');
 const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
@@ -681,6 +681,21 @@ async function masterScan() {
         console.error('[masterScan] Failed to set scan start status:', err.message);
     }
 
+    // 🔔 Read alert settings from Firebase
+    let alertSettings = { telegram: true, whatsapp: true };
+    try {
+        const alertSnap = await admin.database().ref('alertSettings').once('value');
+        alertSettings = alertSnap.val() || { telegram: true, whatsapp: true };
+    } catch (err) {
+        console.error('[masterScan] Could not read alertSettings:', err.message);
+    }
+
+    // 📲 Conditional Telegram sender
+    const conditionalSendTG = (msg) => {
+        if (alertSettings.telegram) return sendTG(msg);
+        return Promise.resolve();
+    };
+
     try {
         maybeResetDaily();
         const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
@@ -696,9 +711,9 @@ async function masterScan() {
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
                 await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], sendTG, firebasePut, '1h');
+                pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], conditionalSendTG, firebasePut, '1h');
                 if (RAW_4H[p.n]) {
-                    pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], sendTG, firebasePut, '4h');
+                    pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], conditionalSendTG, firebasePut, '4h');
                 }
             }
 
@@ -713,8 +728,8 @@ async function masterScan() {
             };
 
             if (dailyData.closes && hourlyData.closes) {
-                await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, sendTG, firebasePut);
-                await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, sendTG, firebasePut);
+                await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, conditionalSendTG, firebasePut, alertSettings);
+                await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, conditionalSendTG, firebasePut, alertSettings);
             }
         }
         await refreshRealUsage();
@@ -728,12 +743,12 @@ async function masterScan() {
         } catch (err) {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
-        
-        // 👇 AUTO‑SCAN NOTIFICATION (promise‑based, awaited)
-        if (process.env.AUTO_SCAN === 'true') {
+
+        // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true AND telegram enabled)
+        if (process.env.AUTO_SCAN === 'true' && alertSettings.telegram) {
             await sendTelegramDirect(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
         }
-        
+
         isScanning = false;
     }
 }
