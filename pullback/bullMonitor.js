@@ -4,7 +4,7 @@ const { PB_STATE, defaultBullState } = require('./tradeStateManager');
 
 const ALERTS_ENABLED = true;
 
-async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, alertSettings = { whatsapp: true }) {
+async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, category, alertSettings = { whatsapp: true }) {
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
@@ -77,8 +77,9 @@ async function bullMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
                         sendTG(message);
                     }
 
-                    // WhatsApp – only if enabled
-                    if (alertSettings.whatsapp) {
+                    // WhatsApp – only if enabled for this category
+                    const catSettings = alertSettings[category] || { whatsapp: true };
+                    if (catSettings.whatsapp) {
                         try {
                             const https = require('https');
                             const data = JSON.stringify({
