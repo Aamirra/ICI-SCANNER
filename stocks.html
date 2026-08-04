@@ -132,7 +132,8 @@
         .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
+        /* ✅ MODAL FIX (z-index above chart) */
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000 !important; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
@@ -243,6 +244,8 @@
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
+        <!-- ⭐ Star button added -->
+        <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
@@ -290,6 +293,27 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
 </script>
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
+<!-- ⚡ Override openAlertDialog to bring alerts above chart overlay -->
+<script>
+(function() {
+    const orig = window.openAlertDialog;
+    if (orig) {
+        window.openAlertDialog = function(pair) {
+            orig(pair);
+            setTimeout(() => {
+                const modals = document.querySelectorAll('.iziModal, .alert-modal, [class*="alert"]');
+                modals.forEach(m => { m.style.zIndex = '2500'; });
+                const fixedDivs = document.querySelectorAll('body > div[style*="position: fixed"], body > div[style*="position:fixed"]');
+                fixedDivs.forEach(el => {
+                    if (el.style.display !== 'none' && el.style.visibility !== 'hidden') {
+                        el.style.zIndex = '2500';
+                    }
+                });
+            }, 100);
+        };
+    }
+})();
+</script>
 <script>
 (function() {
     const orig = _alFireAlert;
@@ -350,13 +374,28 @@ let chartIntervals = ['60','60','60','60'];
 
 window.alertSettings = alertSettings;
 
-// ── Toggle star ──
+// ⭐ Toggle star
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
     if (idx > -1) starredPairs.splice(idx, 1);
     else starredPairs.push(pair);
     localStorage.setItem('ici_stocks_starred', JSON.stringify(starredPairs));
     render();
+    if (pair === activeChartPair) updateChartStarButton();
+}
+
+// ⭐ Toggle star from chart overlay
+function toggleStarFromChart() {
+    if (activeChartPair) toggleStar(activeChartPair);
+}
+
+// ⭐ Update chart star button icon
+function updateChartStarButton() {
+    const btn = document.getElementById('chartStarBtn');
+    if (btn) {
+        const isStarred = starredPairs.includes(activeChartPair);
+        btn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star"></i>`;
+    }
 }
 
 // ── Utility: normalize stock data signals ──
@@ -368,7 +407,6 @@ function normalizeStockData(raw) {
         m['4h'] = data.signal4h || '';
         m['1day'] = data.signal1d || '';
         m['1week'] = data.signal1w || '';
-        // keep original fields as is (longTermTrend, shortTermMomentum, etc.)
         normalized[sym] = m;
     }
     return normalized;
@@ -602,7 +640,7 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-// ── Column system (same as Forex) ──
+// ── Column system ──
 const COLUMN_TYPES = {
     tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
     sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
@@ -658,7 +696,6 @@ function getColumnValue(pairName, col) {
         return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
     }
     if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
-    // For other metrics, first check techMetrics, then MARKET_DATA (which holds stock data)
     if (t[type.field] != null) return t[type.field];
     if (m[type.field] != null) return m[type.field];
     return null;
@@ -727,7 +764,6 @@ function renderColumnCell(pairName, col) {
     return `<div class="col-cell">${typeof val === 'number' ? val.toLocaleString() : val}</div>`;
 }
 
-// Column menu functions (same as Forex)
 function openColMenu(colId) {
     colMenuTargetId = colId;
     const col = columnDefs.find(c => c.id === colId);
@@ -749,6 +785,7 @@ function deleteColumn(colId) {
     if (sortColumn === colId) sortColumn = null;
     saveColumns(); closeColMenu(); render();
 }
+
 function openColEditModal(colId) {
     closeColMenu();
     const isEdit = !!colId;
@@ -787,6 +824,7 @@ function saveColumnFromModal() {
     }
     saveColumns(); closeColEditModal(); render();
 }
+
 function openColFilterModal(colId) {
     closeColMenu();
     filterTargetId = colId;
@@ -796,6 +834,7 @@ function openColFilterModal(colId) {
     document.getElementById('colFilterModal').classList.add('open');
 }
 function closeColFilterModal() { document.getElementById('colFilterModal').classList.remove('open'); }
+
 function applyColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
     col.filterMin = document.getElementById('filterMinInput').value === '' ? null : parseFloat(document.getElementById('filterMinInput').value);
@@ -804,6 +843,7 @@ function applyColFilter() {
     sortDir = 'desc';
     saveColumns(); closeColFilterModal(); render();
 }
+
 function clearColFilter() {
     const col = columnDefs.find(c => c.id === filterTargetId);
     col.filterMin = null; col.filterMax = null;
@@ -862,7 +902,7 @@ function filterPairs(txt) {
     render();
 }
 
-// Chart functions
+// ── Chart functions (with star button) ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -885,6 +925,7 @@ function openChartForPair(pairName) {
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
     activeChartPair = pairName;
+    updateChartStarButton();   // ⭐ update star button
     render();
     startCountdownTimer();
 }
@@ -893,6 +934,7 @@ function movePair(step) {
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
+    updateChartStarButton();   // ⭐ update star after moving
     drawChart(activeChartSlot);
     render();
 }
@@ -977,6 +1019,14 @@ function toggleDesktopMode() {
     localStorage.setItem('stocks-desktop-mode', isDesktop ? 'desktop' : 'mobile');
     render();
 }
+
+// ✅ Safety – hide all modals and chart on page load
+(function(){
+    document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+    }
+})();
 
 (function(){
     const savedTheme = localStorage.getItem('ici-stocks-theme');
