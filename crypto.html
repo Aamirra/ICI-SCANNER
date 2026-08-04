@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ICI Crypto</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
@@ -28,130 +29,156 @@
         .pill.active-blue { background:var(--acc); color:#fff; border-color:var(--acc); }
         .pill.scan-btn { background:var(--acc); color:#fff; display:flex; align-items:center; gap:4px; }
         .cloud-status { background:var(--pill-bg); color:var(--green); font-size:12px; padding:6px 12px; border-radius:20px; margin-left:auto; font-weight:500; }
+        .sync-info { font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500; cursor:pointer; }
         .counters-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:16px; }
         .count-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 4px; text-align:center; cursor:pointer; }
         .count-card .num { font-size:18px; font-weight:700; margin-bottom:2px; color:var(--txt); }
         .count-card .label { font-size:10px; color:var(--muted); font-weight:500; }
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
-        .table-header { display:flex; justify-content:space-between; padding:0 8px 8px 8px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
-        .row-pair { width:22%; } .row-timeframes { width:28%; text-align:center; } .row-sentiment { width:22%; text-align:center; } .row-change { width:16%; text-align:right; } .row-alert { width:12%; text-align:center; }
-        .item-row { border-bottom:1px solid var(--border); }
-        .item-main { display:flex; justify-content:space-between; align-items:center; padding:12px 8px 6px 8px; cursor:pointer; transition:background 0.2s; }
-        .item-main:hover { background:var(--pill-bg); }
-        .pair-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Auto‑adjust columns, no scroll */
+        .screener-wrap { overflow-x:visible; }
+        .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
+        .col-header-cell {
+            flex: 1 1 0%;
+            min-width: 50px;
+            padding: 0 2px;
+            font-size:10px;
+            font-weight:700;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:0.3px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:2px;
+            cursor:pointer;
+            -webkit-user-select:none;
+            user-select:none;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        .col-pair-fixed.col-header-cell { flex: 1 1 0%; min-width:70px; justify-content:flex-start; cursor:default; padding-left:4px; }
+        .col-bell-fixed.col-header-cell { flex: none; min-width:30px; cursor:default; }
+        .col-add-btn { min-width:24px; flex:none; text-align:center; cursor:pointer; color:var(--acc); font-size:16px; }
+        .item-main {
+            display:flex;
+            align-items:center;
+            padding:12px 0 6px 0;
+            cursor:pointer;
+            -webkit-user-select:none;
+            user-select:none;
+            touch-action:pan-y;
+            width:100%;
+        }
+        .col-cell {
+            flex: 1 1 0%;
+            min-width: 50px;
+            padding: 0 2px;
+            text-align:center;
+            font-size:12px;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        .col-pair-fixed { flex: 1 1 0%; min-width:70px; display:flex; align-items:center; padding-right:4px; }
+        .col-bell-fixed { flex: none; min-width:30px; display:flex; align-items:center; justify-content:center; }
+
+        /* Highlighted row */
+        .highlighted-row { background: rgba(0,98,255,0.08); }
+
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
-        .trend-dot.g { background:var(--green); } .trend-dot.r { background:var(--red); }
-        .sentiment-wrapper { padding:0 4px; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
-        .sent-red { background:var(--red); } .sent-green { background:var(--green); }
+        .sent-red { background:var(--red); }
+        .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
-        .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
-        .compact-details { display:flex; justify-content:space-between; align-items:center; padding:4px 8px 10px 8px; font-size:10px; color:var(--muted); gap:6px; flex-wrap:wrap; }
-        .compact-metric { display:flex; align-items:center; gap:3px; white-space:nowrap; }
-        .compact-metric .lbl { text-transform:uppercase; font-weight:500; color:var(--muted); }
-        .compact-metric .val { font-weight:600; color:var(--txt); }
-        .compact-metric .val.up { color:var(--green); } .compact-metric .val.down { color:var(--red); }
+        .change-val.up { color:var(--green); }
+        .change-val.down { color:var(--red); }
+
+        .item-row { border-bottom:1px solid var(--border); }
         .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
+
+        body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
+        body.desktop-mode .phone-container { max-width:none; width:640px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
+        body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
+        body.desktop-mode .chart-box { min-height:0; }
+        body.desktop-mode #chartCloseBtn { display:none !important; }
+
+        .chart-grid { display:grid; gap:4px; width:100%; flex:1; min-height:0; background:var(--border); padding:4px; }
+        .layout-1 { grid-template-columns:1fr; grid-template-rows:1fr; }
+        .layout-2 { grid-template-columns:1fr 1fr; grid-template-rows:1fr; }
+        .layout-3 { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+        .layout-3 .chart-box:nth-child(3) { grid-column:span 2; }
+        .layout-4 { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+        .chart-box { min-height:0; min-width:0; display:none; background:var(--bg); }
+        .chart-box.active { display:block; }
+        .layout-controls { display:flex; gap:6px; padding:6px 10px; align-items:center; justify-content:center; background:var(--surface); border-bottom:1px solid var(--border); }
+        .layout-btn { padding:4px 12px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); border-radius:6px; cursor:pointer; color:var(--txt); }
+        .layout-btn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+        .slot-selector { display:flex; gap:4px; align-items:center; margin:0 10px; }
+        .slot-btn { padding:4px 8px; font-size:11px; font-weight:600; border:2px solid transparent; border-radius:4px; background:var(--pill-bg); cursor:pointer; color:var(--txt); }
+        .slot-btn.active-slot { border-color:var(--green); color:var(--green); }
+        body.desktop-mode .chart-box:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
+        body.desktop-mode .chart-box:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
+        body.desktop-mode .chart-box:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
+        .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
+        .toggle-4h.active { background:var(--acc); color:#fff; }
+        .chart-interval-selector { display:flex; gap:6px; align-items:center; }
+        .chart-interval-btn { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); cursor:pointer; }
+        .chart-interval-btn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+        .countdown-display { font-size:11px; font-weight:600; margin-left:8px; color:var(--gold); white-space:nowrap; }
+        .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
+        .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
+
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
-        body.desktop-mode { padding:0; height:100vh; overflow:hidden; }
-        body.desktop-mode .phone-container { max-width:none; width:420px; height:100vh; overflow-y:auto; border-radius:0; box-shadow:none; margin:0; flex-shrink:0; border-right:1px solid var(--border); }
-        body.desktop-mode #chartOverlay { position:relative !important; display:flex !important; flex:1; height:100vh; z-index:1 !important; background:var(--bg); }
-        body.desktop-mode #tv_chart_container { min-height:0; }
-        body.desktop-mode #chartCloseBtn { display:none !important; }
-        body.desktop-mode #tv_chart_container:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
-        body.desktop-mode #tv_chart_container:empty::before { content:'📊'; font-size:44px; opacity:0.2; }
-        body.desktop-mode #tv_chart_container:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
-        .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
-        .toggle-4h.active { background:var(--acc); color:#fff; }
-        .watchlist-star { cursor:pointer; font-size:14px; margin-right:2px; user-select:none; }
-        .watchlist-star.active { color: #f59e0b !important; }
-        .alert-cell { font-size:14px; cursor:pointer; text-align:center; }
-        .mmb-btn { cursor:pointer; font-size:12px; margin-left:4px; color:var(--acc); }
-        .mmb-dropdown { position:fixed; background:var(--surface); border:1px solid var(--border); border-radius:8px; z-index:999; box-shadow:0 4px 8px rgba(0,0,0,0.15); padding:4px 0; min-width:80px; }
-        .mmb-dropdown button { display:block; width:100%; padding:6px 12px; background:none; border:none; color:var(--txt); text-align:left; cursor:pointer; font-size:12px; font-weight:500; }
-        .mmb-dropdown button:hover { background:var(--pill-bg); }
-        .ai-assistant-panel { background: var(--surface); border: 1px solid var(--acc); border-radius: 12px; margin-bottom: 12px; font-size: 12px; overflow: hidden; }
-        .ai-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--acc); cursor: pointer; background: var(--pill-bg); }
-        .ai-body { max-height: 300px; overflow-y: auto; transition: max-height 0.3s; }
-        .ai-body.collapsed { max-height: 0; }
-        .error-list-embedded { padding: 4px 12px; border-bottom: 1px solid var(--border); display: none; }
-        .error-list-embedded.has-errors { display: block; }
-        .error-item { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
-        .chat-section { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
-        .chat-messages-embedded { max-height: 120px; overflow-y: auto; font-size: 11px; background: var(--pill-bg); border-radius: 8px; padding: 6px; }
-        .chat-message-embedded { margin-bottom: 6px; }
-        .chat-message-embedded.user { text-align: right; }
-        .chat-message-embedded.assistant { text-align: left; }
-        .chat-message-embedded span { display: inline-block; padding: 4px 8px; border-radius: 10px; max-width: 85%; word-wrap: break-word; }
-        .chat-message-embedded.user span { background: var(--acc); color: #fff; }
-        .chat-message-embedded.assistant span { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
-        .chat-input-embedded { display: flex; gap: 6px; }
-        .chat-input-embedded input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--pill-bg); color: var(--txt); outline: none; }
-        .chat-input-embedded button { padding: 6px 10px; background: var(--acc); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .pending-code-changes { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; margin-bottom: 12px; padding: 8px 12px; font-size: 12px; display: none; }
-        .pending-code-changes.visible { display: block; }
-        .pending-header { font-weight: 600; color: var(--gold); margin-bottom: 6px; }
-        .pending-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
-        .pending-item button { margin-left: 6px; padding: 4px 8px; border-radius: 6px; border: none; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; }
-        .btn-approve { background: var(--green); }
-        .btn-reject { background: var(--red); }
-        .approval-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; display:none; align-items:center; justify-content:center; }
-        .approval-overlay.open { display:flex; }
-        .approval-box { background:var(--surface); border-radius:16px; padding:20px; max-width:360px; width:90%; color:var(--txt); }
-        .approval-box h3 { margin:0 0 8px; font-size:16px; }
-        .approval-box p { font-size:13px; color:var(--muted); margin-bottom:16px; }
-        .approval-btns { display:flex; gap:8px; justify-content:flex-end; }
-        .approval-btns button { padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
-        .approve-btn { background:var(--green); color:#fff; }
-        .reject-btn { background:var(--red); color:#fff; }
-        .chart-interval-selector { display: flex; gap: 6px; align-items: center; }
-        .chart-interval-btn { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--pill-bg); color: var(--txt); cursor: pointer; }
-        .chart-interval-btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+        .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
+        .sheet-overlay.open { display:flex; }
+        .sheet-box { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:450px; padding:8px 0; color:var(--txt); }
+        .sheet-item { padding:14px 20px; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+        .sheet-item:last-child { border-bottom:none; color:var(--red); }
+        .sheet-item:active { background:var(--pill-bg); }
+        .form-group { margin-bottom:12px; }
+        .form-label { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; display:block; }
+        .form-select, .form-input { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; background:var(--pill-bg); color:var(--txt); font-size:14px; outline:none; }
+        .form-row-btns { display:flex; gap:8px; margin-top:16px; }
+        .form-row-btns button { flex:1; padding:10px; border-radius:8px; border:none; font-weight:600; font-size:14px; cursor:pointer; }
+        .btn-primary { background:var(--acc); color:#fff; }
+        .btn-secondary { background:var(--pill-bg); color:var(--txt); border:1px solid var(--border); }
+        .filter-row { display:flex; gap:8px; }
     </style>
 </head>
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
-        <div class="brand"><div class="brand-icon">₿</div><div class="brand-text"><h1>ICI Crypto</h1><span>clean v2</span></div></div>
+        <div class="brand"><div class="brand-icon"><i class="fas fa-bitcoin"></i></div><div class="brand-text"><h1>ICI Crypto</h1><span>clean v2</span></div></div>
         <div class="header-actions">
-            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
-            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn">💻</button>
-            <button class="icon-btn" onclick="openNewsModal()">📰</button>
-            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">🔔 Telegram</button>
-            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">💬 WhatsApp</button>
+            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
         </div>
     </div>
     <div class="pills-row">
-        <button class="pill active-blue" onclick="setFilter('all')">All Crypto</button>
-        <a href="/" class="pill" style="text-decoration:none">💱 Forex</a>
-        <a href="/stocks" class="pill" style="text-decoration:none">📈 Stocks</a>
-        <button class="pill scan-btn" onclick="actualScan()">🔍 Scan</button>
-        <div class="cloud-status" id="statusDot">● Cloud active</div>
+        <button class="pill active-blue" onclick="setFilter('all')">Crypto</button>
+        <a href="/" class="pill" style="text-decoration:none">Forex</a>
+        <a href="/stocks" class="pill" style="text-decoration:none">Stocks</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
+        <button class="pill scan-btn" onclick="actualScan()">Scan</button>
+        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">Alerts</button>
+        <div class="cloud-status" id="statusDot">Cloud active</div>
     </div>
-    <div class="ai-assistant-panel">
-        <div class="ai-header" onclick="toggleAIAssistant()"><span>🤖 AI Assistant</span><span style="font-size:14px;">▼</span></div>
-        <div class="ai-body" id="aiBody">
-            <div class="error-list-embedded" id="errorListEmbedded"></div>
-            <div class="chat-section">
-                <div class="chat-messages-embedded" id="chatMessagesEmbedded"></div>
-                <div class="chat-input-embedded">
-                    <input type="text" id="chatInputEmbedded" placeholder="Ask AI anything..." onkeypress="if(event.key==='Enter') sendOpenRouterChat()">
-                    <button onclick="sendOpenRouterChat()">Send</button>
-                </div>
-            </div>
-        </div>
+    <div style="display:flex; align-items:center; margin-bottom:8px;">
+        <span id="scanStatusText" class="scan-status-line"></span>
+        <span id="lastScanTime" class="last-scan-line">🕒 Last scan: never</span>
     </div>
-    <div class="pending-code-changes" id="pendingCodePanel">
-        <div class="pending-header">🔧 Pending Code Changes (<span id="pendingCodeCount">0</span>)</div>
-        <div id="pendingCodeList"></div>
-    </div>
-    <div style="font-size:12px; color:var(--green); display:flex; align-items:center; gap:4px; margin-bottom:16px; font-weight:500;">
-        ✔ Cloud synced
-        <span class="toggle-4h active" id="toggle4hBtn" onclick="toggle4H()">4H ON</span>
+    <div class="sync-info" onclick="openTargetModal()">
+        Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ></span>
+        <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
     </div>
     <div class="counters-grid">
         <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
@@ -161,58 +188,138 @@
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
-    <div class="table-header">
-        <div class="row-pair">Pair</div><div class="row-timeframes">1H · 4H · 1D · 1W</div><div class="row-sentiment">Sentiment</div><div class="row-change">200C</div><div class="row-alert">⚙️</div>
+    <div class="screener-wrap">
+        <div class="header-row-table" id="tableHeaderRow"></div>
+        <div id="pairsContainer"></div>
     </div>
-    <div id="pairsContainer"></div>
+</div>
+
+<div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
+    <div class="sheet-box" id="colMenuBox"></div>
+</div>
+
+<div class="modal" id="colEditModal" onclick="if(event.target===this) closeColEditModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:16px;" id="colEditTitle">Add Column</h3>
+        <div class="form-group">
+            <label class="form-label">Column Type</label>
+            <select class="form-select" id="colTypeSelect" onchange="onColTypeChange()"></select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Label (optional)</label>
+            <input class="form-input" id="colLabelInput" placeholder="Custom label">
+        </div>
+        <div class="form-group" id="colDisplayStyleGroup" style="display:none;">
+            <label class="form-label">Display Style</label>
+            <select class="form-select" id="colDisplayStyleSelect">
+                <option value="colored">Colored text</option>
+                <option value="mono">Monochrome text</option>
+            </select>
+        </div>
+        <div class="form-row-btns">
+            <button class="btn-secondary" onclick="closeColEditModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveColumnFromModal()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="colFilterModal" onclick="if(event.target===this) closeColFilterModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 style="margin-bottom:16px;">Filter Column</h3>
+        <div class="form-group filter-row">
+            <div style="flex:1"><label class="form-label">Min</label><input class="form-input" id="filterMinInput" type="number" placeholder="Min"></div>
+            <div style="flex:1"><label class="form-label">Max</label><input class="form-input" id="filterMaxInput" type="number" placeholder="Max"></div>
+        </div>
+        <div class="form-row-btns">
+            <button class="btn-secondary" onclick="clearColFilter()">Clear</button>
+            <button class="btn-primary" onclick="applyColFilter()">Apply</button>
+        </div>
+    </div>
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
-        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❮</button>
+        <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-left"></i></button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
-        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)">❯</button>
-        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)">✕</button>
+        <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
+        <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
+        <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
         <button class="chart-interval-btn active" data-interval="60" onclick="changeChartInterval('60', this)">1H</button>
         <button class="chart-interval-btn" data-interval="240" onclick="changeChartInterval('240', this)">4H</button>
         <button class="chart-interval-btn" data-interval="D" onclick="changeChartInterval('D', this)">1D</button>
         <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
+        <span id="countdownDisplay" class="countdown-display"></span>
     </div>
-    <div id="tv_chart_container" style="flex:1"></div>
-</div>
-
-<div class="approval-overlay" id="approvalOverlay">
-    <div class="approval-box">
-        <h3>⚠️ AI Action Approval</h3>
-        <p id="approvalMessage"></p>
-        <div class="approval-btns">
-            <button class="reject-btn" onclick="rejectAction()">Reject</button>
-            <button class="approve-btn" onclick="approveAction()">Approve</button>
-        </div>
+    
+    <div class="layout-controls">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
+        <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
+        <button class="layout-btn" onclick="setChartLayout(2)">2</button>
+        <button class="layout-btn" onclick="setChartLayout(3)">3</button>
+        <button class="layout-btn" onclick="setChartLayout(4)">4</button>
+        <span class="slot-selector">
+            <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:6px;">Slot:</span>
+            <button class="slot-btn active-slot" id="slotBtn1" onclick="activateChartSlot(1)">1</button>
+            <button class="slot-btn" id="slotBtn2" onclick="activateChartSlot(2)">2</button>
+            <button class="slot-btn" id="slotBtn3" onclick="activateChartSlot(3)">3</button>
+            <button class="slot-btn" id="slotBtn4" onclick="activateChartSlot(4)">4</button>
+        </span>
+    </div>
+    
+    <div id="chart-grid" class="chart-grid layout-1">
+        <div id="tv_chart_1" class="chart-box active"></div>
+        <div id="tv_chart_2" class="chart-box"></div>
+        <div id="tv_chart_3" class="chart-box"></div>
+        <div id="tv_chart_4" class="chart-box"></div>
     </div>
 </div>
 
 <div class="modal" id="targetModal" onclick="this.classList.remove('open')">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 style="margin-bottom:16px;color:var(--gold)">🎯 Crypto Target List</h3>
+        <h3 style="margin-bottom:16px;color:var(--gold)">Crypto Auto Setups</h3>
         <div id="targetContent"></div>
     </div>
 </div>
 
-<div class="modal" id="newsModal" onclick="closeNewsModal()">
-    <div class="modal-content" onclick="event.stopPropagation()" style="max-height:85vh;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3 style="margin:0;color:var(--gold)">📰 Crypto News</h3>
-            <button onclick="closeNewsModal()" style="background:none;border:none;font-size:18px;color:var(--red);cursor:pointer;">✕</button>
-        </div>
-        <div id="newsContentModal" style="max-height:60vh;overflow-y:auto;"><div style="color:var(--muted);">Loading news...</div></div>
-    </div>
-</div>
-
+<script>
+if (typeof getBellHtml !== 'function') window.getBellHtml = p=>'';
+if (typeof openAlertDialog !== 'function') window.openAlertDialog = p=>alert('Alert: '+p);
+if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Alerts list');
+</script>
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
+<script>
+(function() {
+    const orig = _alFireAlert;
+    _alFireAlert = function(alert, pair) {
+        if (alert.value != null && alert.type) {
+            const dir = alert.type === 'above' ? 'crossed above' : 'crossed below';
+            if (!alert.message) alert.message = pair.name + ' ' + dir + ' ' + alert.value;
+        }
+        orig(alert, pair);
+        alert.active = false;
+        try {
+            if (typeof alSaveAlerts === 'function') {
+                const all = alLoadAlerts();
+                const idx = all.findIndex(a => a.id === alert.id);
+                if (idx !== -1) { all[idx].active = false; alSaveAlerts(all); }
+            } else if (typeof saveAlerts === 'function') {
+                saveAlerts();
+            } else {
+                const key = 'ici_alerts';
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const list = JSON.parse(raw);
+                    const i = list.findIndex(a => a.id === alert.id);
+                    if (i !== -1) { list[i].active = false; localStorage.setItem(key, JSON.stringify(list)); }
+                }
+            }
+        } catch(e) {}
+    };
+})();
+</script>
 <script>
 firebase.initializeApp({ databaseURL: "https://fatima-16b38-default-rtdb.firebaseio.com" });
 const db = firebase.database();
@@ -239,415 +346,615 @@ const PAIRS = [
 ];
 
 let MARKET_DATA = {}, techMetrics = {}, sentimentData = {}, PB_STATE = {};
-let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], chartIdx = 0, currentDisplayPairs = [], show4H = true;
-let watchlistSet = new Set();
+let curF = 'all', filteredPairs = [...PAIRS], chartPairs = [], currentDisplayPairs = [], show4H = true;
 let liveMarketData = {};
-let errorLog = [];
 let alertSettings = { telegram: true, whatsapp: true };
 let currentChartInterval = "60";
+let currentChartLayout = 1;
+let activeChartSlot = 1;
+let chartIndices = [0,0,0,0];
+let chartIntervals = ['60','60','60','60'];
 
-db.ref('alertSettings').on('value', snap => { alertSettings = snap.val() || { telegram: true, whatsapp: true }; updateToggleButtons(); });
-function updateToggleButtons() {
-    const tgBtn = document.getElementById('tgToggle'), waBtn = document.getElementById('waToggle');
-    if(tgBtn) { tgBtn.textContent = alertSettings.telegram ? '🔔 Telegram ON' : '🔕 Telegram OFF'; tgBtn.className = 'alert-toggle '+(alertSettings.telegram?'active':'inactive'); }
-    if(waBtn) { waBtn.textContent = alertSettings.whatsapp ? '💬 WhatsApp ON' : '🔕 WhatsApp OFF'; waBtn.className = 'alert-toggle '+(alertSettings.whatsapp?'active':'inactive'); }
+window.alertSettings = alertSettings;
+
+let starredPairs = JSON.parse(localStorage.getItem('ici_crypto_starred') || '[]');
+let activeChartPair = null;
+
+function toggleStar(pair) {
+    const idx = starredPairs.indexOf(pair);
+    if (idx > -1) starredPairs.splice(idx, 1);
+    else starredPairs.push(pair);
+    localStorage.setItem('ici_crypto_starred', JSON.stringify(starredPairs));
+    render();
 }
-function toggleAlert(type) { const newVal = !(alertSettings[type] ?? true); db.ref(`alertSettings/${type}`).set(newVal); alertSettings[type]=newVal; updateToggleButtons(); }
 
-db.ref('manualWatchlist').on('value', snap => { watchlistSet = new Set(Object.keys(snap.val() || {})); updateCounts(); render(); });
-function isInWatchlist(p) { return watchlistSet.has(p); }
-function toggleWatchlist(p) { if(isInWatchlist(p)){ watchlistSet.delete(p); db.ref(`manualWatchlist/${p}`).remove(); } else { watchlistSet.add(p); db.ref(`manualWatchlist/${p}`).set(true); } updateCounts(); render(); }
+let renderTimer = null;
+function renderDebounced() {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => { render(); renderTimer = null; }, 300);
+}
+
+let countdownInterval = null;
+function updateCountdown() {
+    const intervalStr = chartIntervals[activeChartSlot-1];
+    let ms = 0;
+    if (intervalStr === 'D') {
+        const now = new Date();
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+        ms = end - now;
+    } else if (intervalStr === 'W') {
+        const now = new Date();
+        const day = now.getUTCDay();
+        const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7;
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilMonday));
+        ms = end - now;
+    } else {
+        const minutes = parseInt(intervalStr) || 60;
+        const periodMs = minutes * 60 * 1000;
+        ms = periodMs - (Date.now() % periodMs);
+    }
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    document.getElementById('countdownDisplay').textContent = '⏳ ' + (h>0?`${h}h `:'') + `${m}m ${s}s`;
+}
+function startCountdownTimer() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+db.ref('lastScanTime/time').on('value', snap => {
+    const el = document.getElementById('lastScanTime');
+    const ts = snap.val();
+    el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
+});
+
+db.ref('alertSettings').on('value', snap => {
+    alertSettings = snap.val() || { telegram: true, whatsapp: true };
+    window.alertSettings = alertSettings;
+    updateToggleButtons();
+});
+function updateToggleButtons() {
+    const tg = document.getElementById('tgToggle'), wa = document.getElementById('waToggle');
+    if (tg) {
+        tg.textContent = alertSettings.telegram ? 'TG ON' : 'TG OFF';
+        tg.className = 'alert-toggle ' + (alertSettings.telegram ? 'active' : 'inactive');
+    }
+    if (wa) {
+        wa.textContent = alertSettings.whatsapp ? 'WA ON' : 'WA OFF';
+        wa.className = 'alert-toggle ' + (alertSettings.whatsapp ? 'active' : 'inactive');
+    }
+}
+function toggleAlert(type) {
+    const val = !alertSettings[type];
+    db.ref('alertSettings/' + type).set(val);
+    alertSettings[type] = val;
+    window.alertSettings = alertSettings;
+    updateToggleButtons();
+}
 
 db.ref('liveMarketData').on('value', snap => {
     liveMarketData = snap.val() || {};
     if (typeof checkAllAlerts === 'function') {
-        const pairsArray = Object.entries(liveMarketData).map(([name, data]) => ({ name, currentPrice: data.price, ema20: null, sentiment: data.sentiment }));
-        checkAllAlerts(pairsArray);
+        checkAllAlerts(Object.entries(liveMarketData).map(([n,d])=>({
+            name:n, currentPrice:d.price, ema20:null, sentiment:d.sentiment, sma20:d.sma20, sma50:d.sma50
+        })));
     }
-    render();
+    renderDebounced();
 });
 
-db.ref('errorLog').on('value', snap => { const val = snap.val(); errorLog = Array.isArray(val) ? val : []; updateErrorListEmbedded(); });
-function updateErrorListEmbedded() {
-    const listDiv = document.getElementById('errorListEmbedded');
-    if (!listDiv) return;
-    if (errorLog.length === 0) { listDiv.classList.remove('has-errors'); listDiv.innerHTML = ''; return; }
-    listDiv.classList.add('has-errors');
-    listDiv.innerHTML = errorLog.slice(-3).reverse().map(e => `<div class="error-item">[${new Date(e.time).toLocaleString()}] ${e.message}</div>`).join('');
-}
-function toggleAIAssistant() { const body = document.getElementById('aiBody'); if (body) body.classList.toggle('collapsed'); }
-
-db.ref('codeChangeRequests').orderByChild('status').equalTo('pending_approval').on('value', snap => {
-    const requests = snap.val() || {};
-    const panel = document.getElementById('pendingCodePanel'), countSpan = document.getElementById('pendingCodeCount'), listDiv = document.getElementById('pendingCodeList');
-    if (!panel) return;
-    const items = Object.entries(requests);
-    if (items.length === 0) { panel.classList.remove('visible'); return; }
-    panel.classList.add('visible'); countSpan.textContent = items.length;
-    listDiv.innerHTML = items.map(([id, req]) => `<div class="pending-item">
-        <span style="flex:1;color:var(--txt);">${escapeHtml(req.instruction)}</span>
-        <button class="btn-approve" onclick="approveCodeChange('${id}')">Approve</button>
-        <button class="btn-reject" onclick="rejectCodeChange('${id}')">Reject</button>
-    </div>`).join('');
+db.ref('pb_state').on('value', snap => {
+    PB_STATE = snap.val() || {};
+    updateCounts();
+    renderDebounced();
 });
-async function approveCodeChange(id) {
-    const snap = await db.ref(`codeChangeRequests/${id}`).once('value');
-    const changeReq = snap.val();
-    if (!changeReq || changeReq.status !== 'pending_approval') { console.error('Change request not found'); return; }
-    const newContent = changeReq.newContent;
-    if (!newContent) { console.error('No newContent'); return; }
-    try {
-        const res = await fetch('/api/approve-code-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newContent }) });
-        const result = await res.json();
-        if (res.ok) { await db.ref(`codeChangeRequests/${id}/status`).set('approved'); alert('Committed!'); }
-        else alert('Error: ' + (result.error || 'Failed'));
-    } catch(e) { console.error(e); }
-}
-async function rejectCodeChange(id) { await db.ref(`codeChangeRequests/${id}`).remove(); }
-
-async function sendOpenRouterChat() {
-    const input = document.getElementById('chatInputEmbedded');
-    const messagesDiv = document.getElementById('chatMessagesEmbedded');
-    const userText = input.value.trim();
-    if (!userText) return;
-    messagesDiv.innerHTML += `<div class="chat-message-embedded user"><span>${escapeHtml(userText)}</span></div>`;
-    input.value = '';
-    messagesDiv.innerHTML += `<div class="chat-message-embedded assistant" id="loadingMsg"><span><em>Soch raha hoon...</em></span></div>`;
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    try {
-        const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userText }) });
-        const data = await response.json();
-        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
-        if (!response.ok) {
-            messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ ${escapeHtml(data.error||`HTTP ${response.status}`)}</span></div>`;
-        } else {
-            const rawResponse = data.response || 'Sorry, no response.';
-            const actionMatch = rawResponse.match(/^\[ACTION:(\w+)\]\s*(.+)$/m);
-            let displayText = rawResponse;
-            if (actionMatch) {
-                const actionType = actionMatch[1], paramsStr = actionMatch[2];
-                displayText = rawResponse.replace(actionMatch[0], '').trim();
-                try {
-                    const params = JSON.parse(paramsStr);
-                    document.getElementById('approvalMessage').textContent = `AI wants: "${actionType}" with ${paramsStr}. Allow?`;
-                    document.getElementById('approvalOverlay').classList.add('open');
-                    window.__pendingAction = { type: actionType, params };
-                } catch(e) { console.error('Action parse error', e); }
-            }
-            if (displayText) messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${escapeHtml(displayText)}</span></div>`;
-        }
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    } catch (e) {
-        const loadingEl = document.getElementById('loadingMsg'); if (loadingEl) loadingEl.remove();
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span style="color:#ef4444;">❌ Network error</span></div>`;
-    }
-}
-
-async function approveAction() {
-    const action = window.__pendingAction; if (!action) return;
-    document.getElementById('approvalOverlay').classList.remove('open');
-    try {
-        const res = await fetch('/api/execute-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action) });
-        const result = await res.json();
-        const messagesDiv = document.getElementById('chatMessagesEmbedded');
-        const msg = result.success ? `✅ ${escapeHtml(result.message)}` : `❌ ${escapeHtml(result.message)}`;
-        messagesDiv.innerHTML += `<div class="chat-message-embedded assistant"><span>${msg}</span></div>`;
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    } catch(e) { console.error(e); }
-    window.__pendingAction = null;
-}
-function rejectAction() { document.getElementById('approvalOverlay').classList.remove('open'); window.__pendingAction = null; }
-function escapeHtml(text) { return text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-function actualScan() {
-    const btn = document.querySelector('.scan-btn'); btn.textContent = '⏳ Scanning...'; btn.disabled = true;
-    fetch('/scan').then(() => { btn.textContent='✅ Started!'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); })
-    .catch(() => { btn.textContent='❌ Error'; setTimeout(()=>{ btn.textContent='🔍 Scan'; btn.disabled=false; },3000); });
-}
 
 function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.getAttribute('data-theme') === 'dark';
-    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
-    localStorage.setItem('ici-crypto-theme', html.getAttribute('data-theme'));
+    const h = document.documentElement, isDark = h.getAttribute('data-theme') === 'dark';
+    h.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.querySelector('#themeBtn i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+    localStorage.setItem('ici-crypto-theme', h.getAttribute('data-theme'));
 }
 function toggleDesktopMode() {
     const isDesktop = document.body.classList.toggle('desktop-mode');
     document.getElementById('chartOverlay').style.display = isDesktop ? 'flex' : 'none';
-    document.getElementById('desktopBtn').textContent = isDesktop ? '📱' : '💻';
+    document.querySelector('#desktopBtn i').className = isDesktop ? 'fas fa-mobile-alt' : 'fas fa-desktop';
     localStorage.setItem('crypto-desktop-mode', isDesktop ? 'desktop' : 'mobile');
+    render();
 }
+
 function setFilter(f) { curF = f; render(); }
-function filterPairs(txt) { filteredPairs = txt ? PAIRS.filter(p=>p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS]; render(); }
+function filterPairs(txt) {
+    filteredPairs = txt ? PAIRS.filter(p => p.n.toLowerCase().includes(txt.toLowerCase())) : [...PAIRS];
+    render();
+}
+
+function actualScan() {
+    const btn = document.querySelector('.scan-btn');
+    const statusEl = document.getElementById('scanStatusText');
+    btn.textContent = '⏳ Scanning...';
+    btn.disabled = true;
+    statusEl.textContent = 'Scan started (may take 2‑3 min)...';
+    fetch('/scan').catch(()=>{});
+    const ref = db.ref('scanStatus');
+    let done = false;
+    const listener = ref.on('value', snap => {
+        const s = snap.val();
+        if (!s) return;
+        if (!s.running && !done) {
+            done = true;
+            ref.off('value', listener);
+            btn.textContent = '✅ Done';
+            btn.disabled = false;
+            db.ref('lastScanTime').set({ time: Date.now() });
+            statusEl.textContent = '✅ Scan completed at ' + new Date().toLocaleTimeString();
+            setTimeout(() => btn.textContent = 'Scan', 4000);
+        } else if (s.running) {
+            statusEl.textContent = '🔄 Scanning... (started ' + (s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '?') + ')';
+        }
+    });
+    setTimeout(() => {
+        if (!done) {
+            ref.off('value', listener);
+            btn.textContent = 'Scan';
+            btn.disabled = false;
+            statusEl.textContent = '⚠️ Scan timeout (>10 min)';
+        }
+    }, 600000);
+}
+
+// ⭐ Unique auto setups from pb_state for crypto pairs only
+function getUniqueAutoSetups() {
+    const pairMap = new Map();
+    if (!PB_STATE) return pairMap;
+    const validPairs = new Set(PAIRS.map(p => p.n));
+    const activePhases = ['wait_push', 'wait_dip', 'wait_reclaim', 'alert_triggered'];
+    for (const key in PB_STATE) {
+        const state = PB_STATE[key];
+        if (!state || !state.dir || !state.phase) continue;
+        const parts = key.split('_');
+        if (parts.length < 3) continue;
+        const dir = parts[parts.length - 1];
+        if (dir !== 'bull' && dir !== 'bear') continue;
+        const pair = parts.slice(0, parts.length - 2).join('');
+        if (!validPairs.has(pair)) continue;
+        if (!activePhases.includes(state.phase)) continue;
+        const prio = { 'alert_triggered':4, 'wait_reclaim':3, 'wait_dip':2, 'wait_push':1 };
+        const newPrio = prio[state.phase] || 0;
+        if (!pairMap.has(pair) || newPrio > (pairMap.get(pair).priority || 0)) {
+            pairMap.set(pair, {
+                dir: state.dir,
+                phase: state.phase,
+                priority: newPrio,
+                timestamp: state.timestamp || null
+            });
+        }
+    }
+    return pairMap;
+}
 
 function updateCounts() {
-    let b=0, r=0;
-    PAIRS.forEach(p => { const d=MARKET_DATA[p.n]||{}; if(['4h','1day','1week'].every(tf=>d[tf]==='bull')) b++; if(['4h','1day','1week'].every(tf=>d[tf]==='bear')) r++; });
-    document.getElementById('bc').textContent=b;
-    document.getElementById('rc').textContent=r;
-    document.getElementById('allCount').textContent=PAIRS.length;
-    const cryptoNames = new Set(PAIRS.map(p=>p.n));
-    let tCount=0;
-    for(const [k,s] of Object.entries(PB_STATE)) {
-        if(!s||!s.phase) continue;
-        const pairName = k.split('_')[0];
-        if (cryptoNames.has(pairName)) { if (!show4H && k.includes('_4h_')) continue; tCount++; }
-    }
-    document.getElementById('targetCount2').textContent = tCount;
-    document.getElementById('tradesCount').textContent = watchlistSet.size;
-}
-
-// ----- MMB Dropdown Functions -----
-function getPairKey(pairName) {
-    const base = pairName + '_';
-    for (const k of Object.keys(PB_STATE)) {
-        if (k.startsWith(base) && PB_STATE[k] && PB_STATE[k].dir) return k;
-    }
-    return null;
-}
-
-async function setPairPhase(pairName, newPhase) {
-    const key = getPairKey(pairName);
-    if (!key) return;
-    await db.ref(`pb_state/${key}/phase`).set(newPhase);
-}
-
-function openMMBDropdown(event, pairName) {
-    event.stopPropagation();
-    const key = getPairKey(pairName);
-    if (!key) return;
-
-    // Remove any existing dropdown
-    const existing = document.querySelector('.mmb-dropdown');
-    if (existing) existing.remove();
-
-    const dropdown = document.createElement('div');
-    dropdown.className = 'mmb-dropdown';
-    const rect = event.target.getBoundingClientRect();
-    dropdown.style.left = rect.left + 'px';
-    dropdown.style.top = (rect.bottom + 4) + 'px';
-
-    ['mmb1','mmb2','mmb3','mmb4'].forEach(phase => {
-        const btn = document.createElement('button');
-        btn.textContent = phase.toUpperCase();
-        btn.onclick = () => {
-            setPairPhase(pairName, phase);
-            dropdown.remove();
-        };
-        dropdown.appendChild(btn);
+    let b=0,r=0;
+    PAIRS.forEach(p => {
+        const d = MARKET_DATA[p.n] || {};
+        if (['4h','1day','1week'].every(tf => d[tf]==='bull')) b++;
+        if (['4h','1day','1week'].every(tf => d[tf]==='bear')) r++;
     });
-
-    document.body.appendChild(dropdown);
-
-    // Close on outside click
-    setTimeout(() => {
-        const handler = (e) => {
-            if (!dropdown.contains(e.target)) {
-                dropdown.remove();
-                document.removeEventListener('click', handler);
-            }
-        };
-        document.addEventListener('click', handler);
-    }, 0);
-}
-
-function getPairPhaseInfo(pairName) {
-    const key = getPairKey(pairName);
-    if (!key) return null;
-    const v = PB_STATE[key];
-    return { phase: v.phase, dir: v.dir };
+    document.getElementById('bc').textContent = b;
+    document.getElementById('rc').textContent = r;
+    document.getElementById('allCount').textContent = PAIRS.length;
+    const u = getUniqueAutoSetups().size;
+    document.getElementById('targetCount2').textContent = u;
+    document.getElementById('targetCount').textContent = u;
+    document.getElementById('tradesCount').textContent = starredPairs.length;
 }
 
 function openTargetModal() {
-    const cryptoNames = new Set(PAIRS.map(p => p.n));
-    const targets = Object.entries(PB_STATE).filter(([k, v]) => {
-        if (!v || v.phase === null || v.phase === 'null') return false;
-        const pairName = k.split('_')[0];
-        return cryptoNames.has(pairName);
-    });
-    if (targets.length === 0) {
+    const setups = getUniqueAutoSetups();
+    if (setups.size === 0) {
         document.getElementById('targetContent').innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center">No active crypto setups</div>';
     } else {
         let html = '';
-        targets.forEach(([k, v]) => {
-            const pairName = k.split('_')[0];
-            const phaseDisplay = (v.phase || '?').replace(/_/g, ' ').toUpperCase();
-            const badgeBg = v.dir === 'bull' ? '#22c55e' : '#ef4444';
-            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pairName}')">
-                <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pairName}</span>
-                <span style="background:${badgeBg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${pairName}')">${phaseDisplay}</span>
-                <span style="color:${v.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;white-space:nowrap;">${(v.dir||'?').toUpperCase()}</span>
+        for (const [pair, info] of setups) {
+            const ph = (info.phase||'?').toUpperCase();
+            const bg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
+            html += `<div style="padding:12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px;" onclick="openChartForPair('${pair}')">
+                <span style="font-weight:700;font-size:14px;flex:1;">${pair} (Auto)</span>
+                <span style="background:${bg};color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${ph}</span>
+                <span style="color:${info.dir==='bull'?'var(--green)':'var(--red)'};font-weight:700;font-size:11px;">${info.dir.toUpperCase()}</span>
             </div>`;
-        });
+        }
         document.getElementById('targetContent').innerHTML = html;
     }
     document.getElementById('targetModal').classList.add('open');
 }
 
-function isInTargetList(p) {
-    const keyBase = `${p}_`;
-    for(const k of Object.keys(PB_STATE)) { if (k.startsWith(keyBase)) { const s = PB_STATE[k]; if (s && s.phase && s.phase!=='watching') return true; } }
-    return false;
+// ── Columns ──
+const COLUMN_TYPES = {
+    tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
+    sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
+    change_200:   { label:'200 Candle Change', kind:'pct', field:'longTermTrend', filterable:true },
+    change_10:    { label:'10 Candle Change',  kind:'pct', field:'shortTermMomentum', filterable:true },
+    change_1h:    { label:'1H Momentum',       kind:'pct', field:'microMomentum', filterable:true },
+    vol_7d:       { label:'Vol 7D Avg',        kind:'num', field:'volume7dAvg', filterable:true },
+    dollar_vol:   { label:'$ Volume 1D',       kind:'num', field:'dollarVolume1d', filterable:true },
+    price:        { label:'Price',             kind:'num', field:'price', filterable:true }
+};
+
+let columnDefs = [];
+let sortColumn = null, sortDir = 'desc';
+let colMenuTargetId = null, filterTargetId = null;
+
+function defaultColumns() {
+    return [
+        { id:'c_tf', type:'tf_alignment', label:'1H/4H/1D/1W' },
+        { id:'c_sent', type:'sentiment', label:'Sentiment' },
+        { id:'c_200', type:'change_200', label:'200C', style:'colored', filterMin:null, filterMax:null }
+    ];
+}
+function loadColumns() {
+    try {
+        const raw = localStorage.getItem('ici_crypto_columns');
+        if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+    } catch(e) {}
+    return defaultColumns();
+}
+function saveColumns() { localStorage.setItem('ici_crypto_columns', JSON.stringify(columnDefs)); }
+columnDefs = loadColumns();
+
+// ⚡ Updated getColumnValue – live price + EMA20 for all timeframes
+function getColumnValue(pairName, col) {
+    const type = COLUMN_TYPES[col.type];
+    const t = techMetrics[pairName] || {};
+    const s = sentimentData[pairName] || {};
+    const m = MARKET_DATA[pairName] || {};
+    const lm = liveMarketData[pairName] || {};
+    if (col.type === 'tf_alignment') {
+        const livePrice = lm.price || lm.currentPrice;
+        // 1h
+        const ema20_1h = m.ema20 || m['1h_ema20'];
+        const sig1h = (livePrice != null && ema20_1h != null) ? (livePrice > ema20_1h ? 'bull' : 'bear') : (m['1h'] || '');
+        // 4h
+        const ema20_4h = m['4h_ema20'];
+        const sig4h = (livePrice != null && ema20_4h != null) ? (livePrice > ema20_4h ? 'bull' : 'bear') : (m['4h'] || '');
+        // 1day
+        const ema20_1d = m['1day_ema20'];
+        const sig1d = (livePrice != null && ema20_1d != null) ? (livePrice > ema20_1d ? 'bull' : 'bear') : (m['1day'] || '');
+        // 1week
+        const ema20_1w = m['1week_ema20'];
+        const sig1w = (livePrice != null && ema20_1w != null) ? (livePrice > ema20_1w ? 'bull' : 'bear') : (m['1week'] || '');
+        return [sig1h, sig4h, sig1d, sig1w];
+    }
+    if (col.type === 'sentiment') {
+        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
+        return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
+    }
+    if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
+    return t[type.field] != null ? t[type.field] : null;
 }
 
+function sortValueFor(pairName, col) {
+    const v = getColumnValue(pairName, col);
+    if (typeof v === 'number') return v;
+    if (v && typeof v === 'object' && 'bullPct' in v) return v.bullPct;
+    return null;
+}
+
+function applyColumnSortAndFilter(list) {
+    let out = list;
+    columnDefs.forEach(col => {
+        if (col.filterMin == null && col.filterMax == null) return;
+        out = out.filter(p => {
+            const v = sortValueFor(p.n, col);
+            if (v == null) return false;
+            if (col.filterMin != null && v < col.filterMin) return false;
+            if (col.filterMax != null && v > col.filterMax) return false;
+            return true;
+        });
+    });
+    if (sortColumn) {
+        const col = columnDefs.find(c => c.id === sortColumn);
+        if (col) {
+            out = [...out].sort((a,b) => {
+                const va = sortValueFor(a.n, col), vb = sortValueFor(b.n, col);
+                return sortDir === 'desc' ? (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va) : (va == null ? -Infinity : va) - (vb == null ? -Infinity : vb);
+            });
+        }
+    }
+    return out;
+}
+
+function renderHeader() {
+    let html = '<div class="col-pair-fixed col-header-cell">Pair</div>';
+    columnDefs.forEach(col => {
+        const type = COLUMN_TYPES[col.type];
+        const arrow = sortColumn === col.id ? `<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : '';
+        const badge = (col.filterMin != null || col.filterMax != null) ? '<span class="filter-badge" style="background:var(--gold);color:#fff;border-radius:8px;font-size:8px;font-weight:700;padding:1px 4px;">F</span>' : '';
+        html += `<div class="col-header-cell" onclick="openColMenu('${col.id}')">${col.label || type.label}${arrow}${badge}</div>`;
+    });
+    html += '<div class="col-add-btn" onclick="openColEditModal(null)"><i class="fas fa-plus-circle"></i></div>';
+    html += '<div class="col-bell-fixed col-header-cell"><i class="fas fa-bell"></i></div>';
+    document.getElementById('tableHeaderRow').innerHTML = html;
+}
+
+function renderColumnCell(pairName, col) {
+    const type = COLUMN_TYPES[col.type];
+    const val = getColumnValue(pairName, col);
+    if (col.type === 'tf_alignment') {
+        const dots = val.map(sig => `<span class="trend-dot" style="background:${sig==='bull'?'var(--green)':(sig==='bear'?'var(--red)':'#cbd5e1')}"></span>`).join('');
+        return `<div class="col-cell dots-container">${dots}</div>`;
+    }
+    if (col.type === 'sentiment') {
+        return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
+    }
+    if (val == null) return '<div class="col-cell" style="color:var(--muted)">--</div>';
+    if (type.kind === 'pct') {
+        const cls = col.style === 'mono' ? '' : (val >= 0 ? 'up' : 'down');
+        return `<div class="col-cell change-val ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</div>`;
+    }
+    if (col.type === 'price') return `<div class="col-cell">${val.toFixed(4)}</div>`;
+    return `<div class="col-cell">${typeof val === 'number' ? val.toLocaleString() : val}</div>`;
+}
+
+function openColMenu(colId) {
+    colMenuTargetId = colId;
+    const col = columnDefs.find(c => c.id === colId);
+    if (!col) return;
+    const type = COLUMN_TYPES[col.type];
+    let items = `<div class="sheet-item" onclick="sortByColumn('desc')"><i class="fas fa-sort-amount-down"></i> Sort: Highest first</div>
+                 <div class="sheet-item" onclick="sortByColumn('asc')"><i class="fas fa-sort-amount-up"></i> Sort: Lowest first</div>
+                 <div class="sheet-item" onclick="openColEditModal('${colId}')"><i class="fas fa-edit"></i> Edit column</div>`;
+    if (type.filterable) items += `<div class="sheet-item" onclick="openColFilterModal('${colId}')"><i class="fas fa-filter"></i> Filter</div>`;
+    items += `<div class="sheet-item" onclick="deleteColumn('${colId}')"><i class="fas fa-trash"></i> Delete column</div>
+              <div class="sheet-item" onclick="closeColMenu()" style="color:var(--txt);"><i class="fas fa-times"></i> Cancel</div>`;
+    document.getElementById('colMenuBox').innerHTML = items;
+    document.getElementById('colMenuSheet').classList.add('open');
+}
+function closeColMenu() { document.getElementById('colMenuSheet').classList.remove('open'); }
+function sortByColumn(dir) { sortColumn = colMenuTargetId; sortDir = dir; closeColMenu(); render(); }
+function deleteColumn(colId) {
+    columnDefs = columnDefs.filter(c => c.id !== colId);
+    if (sortColumn === colId) sortColumn = null;
+    saveColumns(); closeColMenu(); render();
+}
+
+function openColEditModal(colId) {
+    closeColMenu();
+    const isEdit = !!colId;
+    document.getElementById('colEditTitle').textContent = isEdit ? 'Edit Column' : 'Add Column';
+    const sel = document.getElementById('colTypeSelect');
+    sel.innerHTML = Object.entries(COLUMN_TYPES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
+    sel.dataset.editId = colId || '';
+    if (isEdit) {
+        const col = columnDefs.find(c => c.id === colId);
+        sel.value = col.type;
+        document.getElementById('colLabelInput').value = col.label || '';
+        document.getElementById('colDisplayStyleSelect').value = col.style || 'colored';
+    } else {
+        document.getElementById('colLabelInput').value = '';
+        document.getElementById('colDisplayStyleSelect').value = 'colored';
+    }
+    onColTypeChange();
+    document.getElementById('colEditModal').classList.add('open');
+}
+function onColTypeChange() {
+    const type = COLUMN_TYPES[document.getElementById('colTypeSelect').value];
+    document.getElementById('colDisplayStyleGroup').style.display = type.kind === 'pct' ? 'block' : 'none';
+}
+function closeColEditModal() { document.getElementById('colEditModal').classList.remove('open'); }
+function saveColumnFromModal() {
+    const sel = document.getElementById('colTypeSelect');
+    const editId = sel.dataset.editId;
+    const type = sel.value;
+    const label = document.getElementById('colLabelInput').value.trim();
+    const style = document.getElementById('colDisplayStyleSelect').value;
+    if (editId) {
+        const col = columnDefs.find(c => c.id === editId);
+        col.type = type; col.label = label; col.style = style;
+    } else {
+        columnDefs.push({ id:'c_'+Date.now(), type, label, style, filterMin:null, filterMax:null });
+    }
+    saveColumns(); closeColEditModal(); render();
+}
+
+function openColFilterModal(colId) {
+    closeColMenu();
+    filterTargetId = colId;
+    const col = columnDefs.find(c => c.id === colId);
+    document.getElementById('filterMinInput').value = col.filterMin ?? '';
+    document.getElementById('filterMaxInput').value = col.filterMax ?? '';
+    document.getElementById('colFilterModal').classList.add('open');
+}
+function closeColFilterModal() { document.getElementById('colFilterModal').classList.remove('open'); }
+
+function applyColFilter() {
+    const col = columnDefs.find(c => c.id === filterTargetId);
+    col.filterMin = document.getElementById('filterMinInput').value === '' ? null : parseFloat(document.getElementById('filterMinInput').value);
+    col.filterMax = document.getElementById('filterMaxInput').value === '' ? null : parseFloat(document.getElementById('filterMaxInput').value);
+    sortColumn = filterTargetId;
+    sortDir = 'desc';
+    saveColumns(); closeColFilterModal(); render();
+}
+
+function clearColFilter() {
+    const col = columnDefs.find(c => c.id === filterTargetId);
+    col.filterMin = null; col.filterMax = null;
+    if (!columnDefs.some(c => c.filterMin != null || c.filterMax != null)) sortColumn = null;
+    saveColumns(); closeColFilterModal(); render();
+}
+
+// ── Render ──
 function render() {
+    if (!document.body.classList.contains('desktop-mode') && document.getElementById('chartOverlay').style.display === 'flex') return;
+
     const currentPairs = filteredPairs.length ? filteredPairs : PAIRS;
     let filtered;
-    if(curF==='all') filtered = currentPairs;
-    else if(curF==='bull'||curF==='bear') filtered = currentPairs.filter(p=>{ const d=MARKET_DATA[p.n]||{}; return ['4h','1day','1week'].every(tf=>d[tf]===curF); });
-    else if(curF==='target') filtered = currentPairs.filter(p=>isInTargetList(p.n));
-    else if(curF==='trades') filtered = currentPairs.filter(p=>watchlistSet.has(p.n));
+    const validTargets = new Set(getUniqueAutoSetups().keys());
+    if (curF === 'all') filtered = currentPairs;
+    else if (curF === 'bull' || curF === 'bear')
+        filtered = currentPairs.filter(p => {
+            const d = MARKET_DATA[p.n] || {};
+            return ['4h','1day','1week'].every(tf => d[tf] === curF);
+        });
+    else if (curF === 'target') filtered = currentPairs.filter(p => validTargets.has(p.n));
+    else if (curF === 'trades') filtered = currentPairs.filter(p => starredPairs.includes(p.n));
     else filtered = currentPairs;
-    currentDisplayPairs = filtered.map(p=>p.n);
-    const isTargetView = (curF === 'target');
 
-    document.getElementById('pairsContainer').innerHTML = filtered.map(p=>{
-        const t=techMetrics[p.n]||{}, s=sentimentData[p.n]||{}, m=MARKET_DATA[p.n]||{};
-        const isBull=['4h','1day','1week'].every(tf=>m[tf]==='bull'), isBear=['4h','1day','1week'].every(tf=>m[tf]==='bear');
-        const star=isBull?'★':(isBear?'★':'★'), starColor=isBull?'var(--green)':(isBear?'var(--red)':'#cbd5e1');
-        const change=t.longTermTrend!=null?(t.longTermTrend>0?'+':'')+t.longTermTrend.toFixed(2)+'%':'—';
-        const changeClass=t.longTermTrend>=0?'up':'down';
-        const bullPct=s.bullish_pct||0, bearPct=s.bearish_pct||0, total=bullPct+bearPct||1;
-        const bearW=Math.round((bearPct/total)*100), bullW=100-bearW;
-        const signals = ['1h','4h','1day','1week'].map(tf=>{ if (m[tf]) return m[tf]; const liveM = liveMarketData && liveMarketData[p.n]; if (liveM && liveM[tf]) return liveM[tf]; return ''; });
-        const dots = signals.map(sig=>`<span class="trend-dot ${sig==='bull'?'g':'r'}"></span>`).join('');
-        const watchlistStar=`<span class="watchlist-star ${isInWatchlist(p.n)?'active':''}" onclick="event.stopPropagation(); toggleWatchlist('${p.n}')">${isInWatchlist(p.n)?'⭐':'☆'}</span>`;
-        const bellHtml = (typeof getBellHtml==='function') ? getBellHtml(p.n) : `<span class="alert-cell" onclick="event.stopPropagation(); togglePairAlert('${p.n}')">🔕</span>`;
-        const mktData = MARKET_DATA[p.n] || {};
-        const livePriceFromMkt = (mktData.price || mktData.currentPrice)?.toFixed(4) || '';
-        const liveM = liveMarketData && liveMarketData[p.n];
-        const livePrice = liveM ? ((liveM.price || liveM.currentPrice)?.toFixed(4) || livePriceFromMkt) : livePriceFromMkt;
-        const priceHTML = livePrice ? ` <span style="font-size:10px;color:var(--muted);margin-left:4px;">${livePrice}</span>` : '';
+    filtered = applyColumnSortAndFilter(filtered);
+    currentDisplayPairs = filtered.map(p => p.n);
+    chartPairs = filtered.map(p => p.n);
 
-        // Main row
-        let row = `<div class="item-row"><div class="item-main" onclick="openChartForPair('${p.n}')">
-            <div class="row-pair pair-title">${watchlistStar}<span style="color:${starColor}">${star}</span> ${p.n}${priceHTML}</div>
-            <div class="row-timeframes dots-container">${dots}</div>
-            <div class="row-sentiment sentiment-wrapper"><div class="sentiment-progress"><div class="sent-red" style="width:${bearW}%">${bearW}%</div><div class="sent-green" style="width:${bullW}%">${bullW}%</div></div></div>
-            <div class="row-change change-val ${changeClass}">${change}</div>
-            <div class="row-alert" style="display:flex;align-items:center;justify-content:center;gap:2px;">
-                ${bellHtml}
-                <span class="mmb-btn" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')" title="Set MMB phase">⚙️</span>
-            </div>
-        </div>`;
+    renderHeader();
 
-        // In target view, also show phase row with clickable badge
-        if (isTargetView) {
-            const info = getPairPhaseInfo(p.n);
+    document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
+        const isStarred = starredPairs.includes(p.n);
+        const starIcon = `<i class="${isStarred ? 'fas' : 'far'} fa-star" style="color:var(--gold); cursor:pointer; margin-right:4px; font-size:14px;" onclick="event.stopPropagation(); toggleStar('${p.n}')"></i>`;
+
+        let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span></div>`;
+        cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
+        cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
+        cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
+
+        let row = `<div class="item-row ${p.n === activeChartPair ? 'highlighted-row' : ''}"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
+        if (curF === 'target' || curF === 'trades') {
+            const info = getUniqueAutoSetups().get(p.n);
             if (info) {
-                const phaseDisplay = info.phase.replace(/_/g, ' ').toUpperCase();
                 const badgeBg = info.dir === 'bull' ? '#22c55e' : '#ef4444';
-                row += `<div class="phase-row">
-                    <span style="color:var(--muted);">Phase:</span>
-                    <span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();openMMBDropdown(event,'${p.n}')">${phaseDisplay}</span>
-                </div>`;
-            } else {
-                row += `<div class="phase-row" style="color:var(--muted);">Phase: —</div>`;
+                row += `<div class="phase-row"><span style="color:var(--muted);">Phase:</span><span style="background:${badgeBg};color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;">${info.dir.toUpperCase()} ${info.phase}</span></div>`;
             }
-            row += `</div>`; // close item-row
-        } else {
-            // Normal view: volume details row
-            const shortTermVal=t.shortTermMomentum!=null?(t.shortTermMomentum>0?'+':'')+t.shortTermMomentum.toFixed(2)+'%':'—';
-            const microVal=t.microMomentum!=null?(t.microMomentum>0?'+':'')+t.microMomentum.toFixed(2)+'%':'—';
-            const vol7dVal=t.volume7dAvg?t.volume7dAvg.toLocaleString():'—';
-            const dollarVolVal=t.dollarVolume1d||'—';
-            row += `<div class="compact-details">
-                <div class="compact-metric"><span class="lbl">10C</span> <span class="val ${t.shortTermMomentum>=0?'up':'down'}">${shortTermVal}</span></div>
-                <div class="compact-metric"><span class="lbl">1HM</span> <span class="val ${t.microMomentum>=0?'up':'down'}">${microVal}</span></div>
-                <div class="compact-metric"><span class="lbl">Vol7D</span> <span class="val">${vol7dVal}</span></div>
-                <div class="compact-metric"><span class="lbl">$Vol</span> <span class="val">${dollarVolVal}</span></div>
-            </div>`;
-            row += `</div>`; // close item-row
         }
-
+        row += '</div>';
         return row;
     }).join('');
     updateCounts();
 }
 
+// ── Chart functions (with highlight) ──
+function activateChartSlot(s) {
+    activeChartSlot = s;
+    for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
+    updateChartPairName();
+    highlightIntervalButton(chartIntervals[s-1]);
+    startCountdownTimer();
+}
+function updateChartPairName() {
+    document.getElementById('chartPairName').textContent = (currentChartLayout>1?`[Slot ${activeChartSlot}] `:'') + (chartPairs[chartIndices[activeChartSlot-1]]||'Select a pair');
+}
+function highlightIntervalButton(interval) {
+    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.toggle('active', b.dataset.interval===interval));
+}
 function openChartForPair(pairName) {
     chartPairs = currentDisplayPairs.length ? currentDisplayPairs : PAIRS.map(p=>p.n);
-    chartIdx = chartPairs.indexOf(pairName); if(chartIdx===-1) chartIdx=0;
-    openChart(chartIdx);
+    let idx = chartPairs.indexOf(pairName);
+    if (idx===-1) idx = 0;
+    chartIndices[activeChartSlot-1] = idx;
+    updateChartPairName();
+    drawChart(activeChartSlot);
+    document.getElementById('chartOverlay').style.display = 'flex';
+    activeChartPair = pairName;
+    render();
+    startCountdownTimer();
+}
+function movePair(step) {
+    const total = chartPairs.length;
+    chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
+    updateChartPairName();
+    activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
+    drawChart(activeChartSlot);
+    render();
 }
 function changeChartInterval(interval, btn) {
-    currentChartInterval = interval;
-    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    openChart(chartIdx);
+    chartIntervals[activeChartSlot-1] = interval;
+    highlightIntervalButton(interval);
+    drawChart(activeChartSlot);
+    startCountdownTimer();
 }
-function openChart(idx) {
-    chartIdx=idx; const symbol=chartPairs[idx];
-    document.getElementById('chartPairName').textContent=symbol;
-    document.getElementById('chartOverlay').style.display='flex';
-    document.getElementById('tv_chart_container').innerHTML='';
+async function setChartLayout(count) {
+    currentChartLayout = count;
+    document.querySelectorAll('.layout-btn').forEach((b,i) => b.classList.toggle('active', i===count-1));
+    document.getElementById('chart-grid').className = 'chart-grid layout-'+count;
+    for (let i=1;i<=4;i++) document.getElementById('tv_chart_'+i).classList.toggle('active', i<=count);
+    for (let i=1;i<=count;i++) { drawChart(i); if (i<count) await new Promise(r=>setTimeout(r,100)); }
+    for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).style.display = i<=count ? 'inline-block' : 'none';
+    if (activeChartSlot > count) {
+        activeChartSlot = 1;
+        document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('active-slot'));
+        document.getElementById('slotBtn1').classList.add('active-slot');
+        updateChartPairName();
+        highlightIntervalButton(chartIntervals[0]);
+    }
+    startCountdownTimer();
+}
+function drawChart(slot) {
+    const container = document.getElementById('tv_chart_'+slot);
+    container.innerHTML = '';
+    const idx = chartIndices[slot-1];
+    if (!chartPairs[idx]) return;
+    const symbol = chartPairs[idx];
     const futuresSymbol = `BINANCE:${symbol.replace('USD', 'USDT')}.P`;
-    new TradingView.widget({ autosize:true, symbol:futuresSymbol, interval:currentChartInterval,
-        theme:document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
-        container_id:"tv_chart_container",
-        studies:[
-            {id:"MASimple@tv-basicstudies",inputs:{length:10}},
-            {id:"MASimple@tv-basicstudies",inputs:{length:20}},
-            {id:"MASimple@tv-basicstudies",inputs:{length:50}},
-            {id:"WilliamFractal@tv-basicstudies"}
+    new TradingView.widget({
+        autosize:true,
+        symbol: futuresSymbol,
+        interval: chartIntervals[slot-1],
+        theme: document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light',
+        container_id: 'tv_chart_'+slot,
+        overrides: { volumePaneSize: "0" },
+        studies: [
+            { id: "MAExp@tv-basicstudies", inputs: { length: 10 } },
+            { id: "MAExp@tv-basicstudies", inputs: { length: 20 } },
+            { id: "MASimple@tv-basicstudies", inputs: { length: 50 } }
         ]
     });
 }
-function movePair(step) { if(chartIdx+step>=0 && chartIdx+step<chartPairs.length) openChart(chartIdx+step); }
-function closeChart() { if(!document.body.classList.contains('desktop-mode')) document.getElementById('chartOverlay').style.display='none'; }
-
-function toggle4H() { show4H=!show4H; localStorage.setItem('show4H',show4H?'true':'false'); update4hButton(); updateCounts(); render(); }
-function update4hButton() { const btn=document.getElementById('toggle4hBtn'); if(show4H){ btn.textContent='4H ON'; btn.classList.add('active'); } else { btn.textContent='4H OFF'; btn.classList.remove('active'); } }
-(function(){ const saved=localStorage.getItem('show4H'); show4H = (saved==='false')?false:true; update4hButton(); })();
-
-function togglePairAlert(pair) { console.log('Alert toggle',pair); }
-
-async function openNewsModal() {
-    document.getElementById('newsModal').classList.add('open');
-    const container = document.getElementById('newsContentModal');
-    container.innerHTML = '<div style="color:var(--muted);">Loading news...</div>';
-    try {
-        const res = await fetch('/api/crypto-news?symbol=BTCUSD');
-        const news = await res.json();
-        if (!Array.isArray(news) || news.length === 0) {
-            container.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center;">No recent major news.</div>';
-            return;
-        }
-        let html = '';
-        news.forEach(item => {
-            const title = item.title || 'No title';
-            const url = item.url || '#';
-            const source = item.source || 'Unknown';
-            const time = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-            html += `<div onclick="window.open('${url.replace(/'/g, "\\'")}', '_blank')" style="cursor:pointer;padding:10px;border-bottom:1px solid var(--border);">
-                <div style="color:var(--acc);font-weight:600;">${title}</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:4px;">${source} · ${time}</div>
-            </div>`;
-        });
-        container.innerHTML = html;
-    } catch(e) {
-        container.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">Failed to load news</div>';
+function closeChart() {
+    if (!document.body.classList.contains('desktop-mode')) {
+        document.getElementById('chartOverlay').style.display = 'none';
+        activeChartPair = null;
+        render();
+    } else {
+        activeChartPair = null;
+        render();
     }
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 }
-function closeNewsModal() { document.getElementById('newsModal').classList.remove('open'); }
-
-db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; render(); });
-db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; render(); });
-db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); render(); });
-db.ref('marketData').on('value', snap => {
-    MARKET_DATA = snap.val() || {};
-    if (typeof checkAllAlerts === 'function') {
-        const pairsArray = Object.entries(MARKET_DATA).map(([name, data]) => ({ name, currentPrice: data.currentPrice || data.price, ema20: data.ema20, sentiment: data.sentiment }));
-        checkAllAlerts(pairsArray);
-    }
+function toggle4H() {
+    show4H = !show4H;
+    localStorage.setItem('crypto_show4H', show4H);
+    document.getElementById('toggle4hBtn').textContent = show4H ? '4H ON' : '4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active', show4H);
     render();
+}
+(function(){
+    show4H = localStorage.getItem('crypto_show4H') !== 'false';
+    document.getElementById('toggle4hBtn').textContent = show4H ? '4H ON' : '4H OFF';
+    document.getElementById('toggle4hBtn').classList.toggle('active', show4H);
+})();
+
+db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; renderDebounced(); });
+db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; renderDebounced(); });
+db.ref('pb_state').on('value', snap => { PB_STATE = snap.val()||{}; updateCounts(); renderDebounced(); });
+db.ref('marketData').on('value', snap => {
+    MARKET_DATA = snap.val()||{};
+    if (typeof checkAllAlerts === 'function') {
+        checkAllAlerts(Object.entries(MARKET_DATA).map(([n,d])=>({name:n,currentPrice:d.currentPrice,ema20:d.ema20,sentiment:d.sentiment,sma20:d.sma20,sma50:d.sma50})));
+    }
+    renderDebounced();
 });
 
 (function(){
-    const saved=localStorage.getItem('ici-crypto-theme'); if(saved) document.documentElement.setAttribute('data-theme',saved);
-    document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
-    if(localStorage.getItem('crypto-desktop-mode')==='desktop'){ document.body.classList.add('desktop-mode'); document.getElementById('desktopBtn').textContent='📱'; document.getElementById('chartOverlay').style.display='flex'; }
+    const savedTheme = localStorage.getItem('ici-crypto-theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('#themeBtn i').className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+    if (localStorage.getItem('crypto-desktop-mode') === 'desktop') {
+        document.body.classList.add('desktop-mode');
+        document.getElementById('chartOverlay').style.display = 'flex';
+        document.querySelector('#desktopBtn i').className = 'fas fa-mobile-alt';
+    }
+    setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
 </script>
