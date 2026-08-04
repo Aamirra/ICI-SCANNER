@@ -37,67 +37,28 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
 
-        /* Auto‑adjust columns, no scroll */
         .screener-wrap { overflow-x:visible; }
         .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
         .col-header-cell {
             flex: 1 1 0%;
-            min-width: 50px;
-            padding: 0 2px;
-            font-size:10px;
-            font-weight:700;
-            color:var(--muted);
-            text-transform:uppercase;
-            letter-spacing:0.3px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap:2px;
-            cursor:pointer;
-            -webkit-user-select:none;
-            user-select:none;
-            overflow:hidden;
-            text-overflow:ellipsis;
-            white-space:nowrap;
+            min-width: 50px; padding: 0 2px; font-size:10px; font-weight:700; color:var(--muted);
+            text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; justify-content:center;
+            gap:2px; cursor:pointer; -webkit-user-select:none; user-select:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         }
         .col-pair-fixed.col-header-cell { flex: 1 1 0%; min-width:70px; justify-content:flex-start; cursor:default; padding-left:4px; }
         .col-bell-fixed.col-header-cell { flex: none; min-width:30px; cursor:default; }
         .col-add-btn { min-width:24px; flex:none; text-align:center; cursor:pointer; color:var(--acc); font-size:16px; }
-        .item-main {
-            display:flex;
-            align-items:center;
-            padding:12px 0 6px 0;
-            cursor:pointer;
-            -webkit-user-select:none;
-            user-select:none;
-            touch-action:pan-y;
-            width:100%;
-        }
-        .col-cell {
-            flex: 1 1 0%;
-            min-width: 50px;
-            padding: 0 2px;
-            text-align:center;
-            font-size:12px;
-            overflow:hidden;
-            text-overflow:ellipsis;
-            white-space:nowrap;
-        }
+        .item-main { display:flex; align-items:center; padding:12px 0 6px 0; cursor:pointer; -webkit-user-select:none; user-select:none; touch-action:pan-y; width:100%; }
+        .col-cell { flex: 1 1 0%; min-width: 50px; padding: 0 2px; text-align:center; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .col-pair-fixed { flex: 1 1 0%; min-width:70px; display:flex; align-items:center; padding-right:4px; }
         .col-bell-fixed { flex: none; min-width:30px; display:flex; align-items:center; justify-content:center; }
-
-        /* Highlighted row */
         .highlighted-row { background: rgba(0,98,255,0.08); }
-
         .dots-container { display:flex; gap:4px; justify-content:center; }
         .trend-dot { width:8px; height:8px; border-radius:50%; }
         .sentiment-progress { height:14px; border-radius:4px; display:flex; overflow:hidden; font-size:9px; font-weight:700; color:#fff; line-height:14px; text-align:center; }
-        .sent-red { background:var(--red); }
-        .sent-green { background:var(--green); }
+        .sent-red { background:var(--red); } .sent-green { background:var(--green); }
         .change-val { font-size:13px; font-weight:600; }
-        .change-val.up { color:var(--green); }
-        .change-val.down { color:var(--red); }
-
+        .change-val.up { color:var(--green); } .change-val.down { color:var(--red); }
         .item-row { border-bottom:1px solid var(--border); }
         .phase-row { padding:4px 8px 8px 8px; display:flex; align-items:center; gap:6px; font-size:11px; }
 
@@ -411,7 +372,8 @@ db.ref('lastScanTime/time').on('value', snap => {
     el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
 });
 
-db.ref('alertSettings').on('value', snap => {
+// ✅ UPDATED: alertSettings now from alertSettings/crypto
+db.ref('alertSettings/crypto').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -428,8 +390,8 @@ function updateToggleButtons() {
     }
 }
 function toggleAlert(type) {
-    const val = !alertSettings[type];
-    db.ref('alertSettings/' + type).set(val);
+    const val = !(alertSettings[type] ?? true);
+    db.ref('alertSettings/crypto/' + type).set(val);  // ✅ UPDATED path
     alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -505,7 +467,6 @@ function actualScan() {
     }, 600000);
 }
 
-// ⭐ Unique auto setups from pb_state for crypto pairs only
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     if (!PB_STATE) return pairMap;
@@ -604,7 +565,6 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_crypto_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
-// ⚡ Updated getColumnValue – live price + EMA20 for all timeframes
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
@@ -613,16 +573,12 @@ function getColumnValue(pairName, col) {
     const lm = liveMarketData[pairName] || {};
     if (col.type === 'tf_alignment') {
         const livePrice = lm.price || lm.currentPrice;
-        // 1h
         const ema20_1h = m.ema20 || m['1h_ema20'];
         const sig1h = (livePrice != null && ema20_1h != null) ? (livePrice > ema20_1h ? 'bull' : 'bear') : (m['1h'] || '');
-        // 4h
         const ema20_4h = m['4h_ema20'];
         const sig4h = (livePrice != null && ema20_4h != null) ? (livePrice > ema20_4h ? 'bull' : 'bear') : (m['4h'] || '');
-        // 1day
         const ema20_1d = m['1day_ema20'];
         const sig1d = (livePrice != null && ema20_1d != null) ? (livePrice > ema20_1d ? 'bull' : 'bear') : (m['1day'] || '');
-        // 1week
         const ema20_1w = m['1week_ema20'];
         const sig1w = (livePrice != null && ema20_1w != null) ? (livePrice > ema20_1w ? 'bull' : 'bear') : (m['1week'] || '');
         return [sig1h, sig4h, sig1d, sig1w];
