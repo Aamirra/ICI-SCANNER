@@ -4,7 +4,7 @@ const { PB_STATE, defaultBearState } = require('./tradeStateManager');
 
 const ALERTS_ENABLED = true;
 
-async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut) {
+async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, alertSettings = { whatsapp: true }) {
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
@@ -13,7 +13,7 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
         return null;
     }
 
-    // WEEKLY FILTER (Bearish)
+    // WEEKLY FILTER (bearish: close below both)
     const wClose = weeklyCloses[weeklyCloses.length - 1];
     const wSMA50 = calcSMA(weeklyCloses, 50);
     const wEMA20 = calcEMA(weeklyCloses, 20);
@@ -23,15 +23,13 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
         return null;
     }
 
-    // Weekly bearish: price below both MAs
     if (wClose >= wSMA50 || wClose >= wEMA20) {
         delete PB_STATE[stateKey];
         return null;
     }
 
-    // DAILY FILTER (Bearish)
+    // DAILY FILTER (bearish)
     let s = PB_STATE[stateKey] || defaultBearState();
-    
     const dClose = dCloses[dCloses.length - 1];
     const dSMA50 = calcSMA(dCloses, 50);
     const dEMA20 = calcEMA(dCloses, 20);
@@ -42,13 +40,12 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
     }
 
     const isDailyBearish = (dClose < dSMA50 && dClose < dEMA20);
-
     if (!isDailyBearish) {
         delete PB_STATE[stateKey];
         return null;
     }
 
-    // HOURLY LOGIC (Inverse of bull)
+    // HOURLY LOGIC
     if (hCloses && hCloses.length >= 50) {
         const hClose = hCloses[hCloses.length - 1];
         const hSMA50 = calcSMA(hCloses, 50);
@@ -69,37 +66,37 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
                 s.h1Phase = 'alert_triggered';
                 
                 if (ALERTS_ENABLED) {
-                    const message = '🔴 *' + pairName + '* | 1H Breakdown Entry Alert!\n\n' +
+                    const message = '🔻 *' + pairName + '* | 1H Breakdown Entry Alert!\n\n' +
                         '• Weekly: Bearish (Below 50SMA & 20EMA)\n' +
                         '• Daily: Bearish (Below 50SMA & 20EMA)\n' +
                         '• 1H: Closed below 50SMA & 20EMA!\n' +
                         '• Current Price: ' + hClose;
 
-                    // Telegram
                     if (typeof sendTG === 'function') {
                         sendTG(message);
                     }
 
-                    // WhatsApp
-                    try {
-                        const https = require('https');
-                        const data = JSON.stringify({
-                            action: 'send_whatsapp',
-                            params: { text: message }
-                        });
-                        const req = https.request({
-                            hostname: 'ici-scanner.onrender.com',
-                            path: '/api/execute-action',
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Content-Length': data.length
-                            }
-                        });
-                        req.write(data);
-                        req.end();
-                    } catch(e) {
-                        console.error('WhatsApp alert error:', e.message);
+                    if (alertSettings.whatsapp) {
+                        try {
+                            const https = require('https');
+                            const data = JSON.stringify({
+                                action: 'send_whatsapp',
+                                params: { text: message }
+                            });
+                            const req = https.request({
+                                hostname: 'ici-scanner.onrender.com',
+                                path: '/api/execute-action',
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Content-Length': data.length
+                                }
+                            });
+                            req.write(data);
+                            req.end();
+                        } catch(e) {
+                            console.error('WhatsApp alert error:', e.message);
+                        }
                     }
                 }
             }
