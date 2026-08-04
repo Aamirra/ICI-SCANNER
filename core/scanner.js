@@ -699,7 +699,11 @@ async function masterScan() {
         
         // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true)
         if (process.env.AUTO_SCAN === 'true') {
-            sendTG(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
+            try {
+                await sendTG(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
+            } catch(e) {
+                console.error('sendTG failed:', e.message);
+            }
         }
         
         isScanning = false;
