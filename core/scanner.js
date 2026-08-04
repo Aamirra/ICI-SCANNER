@@ -28,7 +28,7 @@ const pullbackEngine = require('../pullback_engine');
 const calcEMA = require('../utils/emaCalc');
 const msUntilNextHourClose = require('../utils/timer');
 const firebasePut = require('../services/database');
-const sendTG = require('../services/telegram');
+const sendTG = require('../services/telegram'); // still used by other modules
 const sendReport = require('../services/report');
 const updateApiStatus = require('../services/apiTracker');
 const checkReminders = require('../pullback/checkReminders');
@@ -638,6 +638,29 @@ async function sendStrongPullbackNotifications() {
     }
 }
 
+// ── Telegram direct sender (fallback) ──
+function sendTelegramDirect(text) {
+    const botToken = process.env.BOT_TOKEN;
+    const chatId = process.env.CHAT_ID;
+    if (!botToken || !chatId) {
+        console.error('Telegram direct: missing BOT_TOKEN or CHAT_ID');
+        return;
+    }
+    const encodedText = encodeURIComponent(text);
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodedText}`;
+    https.get(url, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            try {
+                const json = JSON.parse(data);
+                if (json.ok) console.log('Telegram direct message sent');
+                else console.error('Telegram direct failed:', json.description);
+            } catch(e) {}
+        });
+    }).on('error', (e) => console.error('Telegram direct request error:', e.message));
+}
+
 async function masterScan() {
     if (isScanning) return;
     isScanning = true;
@@ -697,16 +720,9 @@ async function masterScan() {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
         
-        // 👇 DEBUG: check AUTO_SCAN value
-        console.log('DEBUG AUTO_SCAN:', process.env.AUTO_SCAN);
-        
-        // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true)
+        // 👇 AUTO‑SCAN NOTIFICATION (direct Telegram API)
         if (process.env.AUTO_SCAN === 'true') {
-            try {
-                await sendTG(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
-            } catch(e) {
-                console.error('sendTG failed:', e.message);
-            }
+            sendTelegramDirect(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
         }
         
         isScanning = false;
