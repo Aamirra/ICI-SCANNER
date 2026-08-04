@@ -4,7 +4,7 @@ const { PB_STATE, defaultBearState } = require('./tradeStateManager');
 
 const ALERTS_ENABLED = true;
 
-async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, alertSettings = { whatsapp: true }) {
+async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, firebasePut, category, alertSettings = { whatsapp: true }) {
     const { closes: dCloses, weeklyCloses } = dailyData || {};
     const { closes: hCloses } = hourlyData || {};
 
@@ -76,7 +76,8 @@ async function bearMonitor(stateKey, pairName, dailyData, hourlyData, sendTG, fi
                         sendTG(message);
                     }
 
-                    if (alertSettings.whatsapp) {
+                    const catSettings = alertSettings[category] || { whatsapp: true };
+                    if (catSettings.whatsapp) {
                         try {
                             const https = require('https');
                             const data = JSON.stringify({
