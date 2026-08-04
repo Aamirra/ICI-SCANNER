@@ -131,9 +131,11 @@
         .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:500; display:none; align-items:flex-end; justify-content:center; padding:16px; }
-        .modal.open { display:flex; }
-        .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
+        /* 🔔 Alert modals must appear ABOVE the chart overlay */
+        .modal, .alert-modal {
+            z-index: 2000 !important;   /* was 500, now above chart overlay (1000) */
+        }
+
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1500; display:none; align-items:flex-end; justify-content:center; }
         .sheet-overlay.open { display:flex; }
         .sheet-box { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:450px; padding:8px 0; color:var(--txt); }
@@ -244,6 +246,8 @@
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
+        <!-- ⭐ Star button added -->
+        <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
@@ -360,6 +364,19 @@ function toggleStar(pair) {
     else starredPairs.push(pair);
     localStorage.setItem('ici_starred', JSON.stringify(starredPairs));
     render();
+    if (pair === activeChartPair) updateChartStarButton();
+}
+
+function toggleStarFromChart() {
+    if (activeChartPair) toggleStar(activeChartPair);
+}
+
+function updateChartStarButton() {
+    const btn = document.getElementById('chartStarBtn');
+    if (btn) {
+        const isStarred = starredPairs.includes(activeChartPair);
+        btn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star"></i>`;
+    }
 }
 
 let renderTimer = null;
@@ -405,7 +422,6 @@ db.ref('lastScanTime/time').on('value', snap => {
     el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
 });
 
-// ⚡ UPDATED: alertSettings now from alertSettings/forex
 db.ref('alertSettings/forex').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
@@ -599,7 +615,6 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
-// ⚡ Updated getColumnValue – live price + EMA20 for all timeframes
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
@@ -608,16 +623,12 @@ function getColumnValue(pairName, col) {
     const lm = liveMarketData[pairName] || {};
     if (col.type === 'tf_alignment') {
         const livePrice = lm.price || lm.currentPrice;
-        // 1h
         const ema20_1h = m.ema20 || m['1h_ema20'];
         const sig1h = (livePrice != null && ema20_1h != null) ? (livePrice > ema20_1h ? 'bull' : 'bear') : (m['1h'] || '');
-        // 4h
         const ema20_4h = m['4h_ema20'];
         const sig4h = (livePrice != null && ema20_4h != null) ? (livePrice > ema20_4h ? 'bull' : 'bear') : (m['4h'] || '');
-        // 1day
         const ema20_1d = m['1day_ema20'];
         const sig1d = (livePrice != null && ema20_1d != null) ? (livePrice > ema20_1d ? 'bull' : 'bear') : (m['1day'] || '');
-        // 1week
         const ema20_1w = m['1week_ema20'];
         const sig1w = (livePrice != null && ema20_1w != null) ? (livePrice > ema20_1w ? 'bull' : 'bear') : (m['1week'] || '');
         return [sig1h, sig4h, sig1d, sig1w];
@@ -826,7 +837,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart functions (with highlight) ──
+// ── Chart functions (with highlight and star button update) ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -849,6 +860,7 @@ function openChartForPair(pairName) {
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
     activeChartPair = pairName;
+    updateChartStarButton();
     render();
     startCountdownTimer();
 }
@@ -857,6 +869,7 @@ function movePair(step) {
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
+    updateChartStarButton();
     drawChart(activeChartSlot);
     render();
 }
