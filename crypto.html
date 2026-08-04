@@ -204,6 +204,8 @@
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
+        <!-- ⭐ Star button added -->
+        <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div class="chart-interval-selector" style="padding:8px;justify-content:center;">
@@ -321,12 +323,28 @@ window.alertSettings = alertSettings;
 let starredPairs = JSON.parse(localStorage.getItem('ici_crypto_starred') || '[]');
 let activeChartPair = null;
 
+// ⭐ Toggle star for a pair
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
     if (idx > -1) starredPairs.splice(idx, 1);
     else starredPairs.push(pair);
     localStorage.setItem('ici_crypto_starred', JSON.stringify(starredPairs));
     render();
+    if (pair === activeChartPair) updateChartStarButton();
+}
+
+// ⭐ Toggle star for the currently displayed chart pair
+function toggleStarFromChart() {
+    if (activeChartPair) toggleStar(activeChartPair);
+}
+
+// ⭐ Update the chart star button icon based on activeChartPair
+function updateChartStarButton() {
+    const btn = document.getElementById('chartStarBtn');
+    if (btn) {
+        const isStarred = starredPairs.includes(activeChartPair);
+        btn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star"></i>`;
+    }
 }
 
 let renderTimer = null;
@@ -372,7 +390,6 @@ db.ref('lastScanTime/time').on('value', snap => {
     el.textContent = ts ? '🕒 Last scan: ' + new Date(ts).toLocaleTimeString() : '🕒 Last scan: never';
 });
 
-// ✅ UPDATED: alertSettings now from alertSettings/crypto
 db.ref('alertSettings/crypto').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
@@ -391,7 +408,7 @@ function updateToggleButtons() {
 }
 function toggleAlert(type) {
     const val = !(alertSettings[type] ?? true);
-    db.ref('alertSettings/crypto/' + type).set(val);  // ✅ UPDATED path
+    db.ref('alertSettings/crypto/' + type).set(val);
     alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
@@ -787,7 +804,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart functions (with highlight) ──
+// ── Chart functions (with highlight and star button update) ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -810,6 +827,7 @@ function openChartForPair(pairName) {
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
     activeChartPair = pairName;
+    updateChartStarButton();   // ⭐ update star button
     render();
     startCountdownTimer();
 }
@@ -818,6 +836,7 @@ function movePair(step) {
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
+    updateChartStarButton();   // ⭐ update star after moving
     drawChart(activeChartSlot);
     render();
 }
