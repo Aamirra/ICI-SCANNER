@@ -697,6 +697,9 @@ async function masterScan() {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
         
+        // 👇 DEBUG: check AUTO_SCAN value
+        console.log('DEBUG AUTO_SCAN:', process.env.AUTO_SCAN);
+        
         // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true)
         if (process.env.AUTO_SCAN === 'true') {
             try {
