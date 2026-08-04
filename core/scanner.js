@@ -681,18 +681,31 @@ async function masterScan() {
         console.error('[masterScan] Failed to set scan start status:', err.message);
     }
 
-    // 🔔 Read alert settings from Firebase
-    let alertSettings = { telegram: true, whatsapp: true };
+    // 🔔 Read nested alert settings from Firebase
+    let alertSettings = {
+        forex: { telegram: true, whatsapp: true },
+        crypto: { telegram: true, whatsapp: true },
+        stocks: { telegram: true, whatsapp: true }
+    };
     try {
         const alertSnap = await admin.database().ref('alertSettings').once('value');
-        alertSettings = alertSnap.val() || { telegram: true, whatsapp: true };
+        const val = alertSnap.val();
+        if (val) {
+            alertSettings = {
+                forex: val.forex || { telegram: true, whatsapp: true },
+                crypto: val.crypto || { telegram: true, whatsapp: true },
+                stocks: val.stocks || { telegram: true, whatsapp: true }
+            };
+        }
     } catch (err) {
         console.error('[masterScan] Could not read alertSettings:', err.message);
     }
 
-    // 📲 Conditional Telegram sender
-    const conditionalSendTG = (msg) => {
-        if (alertSettings.telegram) return sendTG(msg);
+    // 📲 Conditional Telegram sender – takes category and message
+    const conditionalSendTG = (msg, cat) => {
+        if (alertSettings[cat] && alertSettings[cat].telegram) {
+            return sendTG(msg);
+        }
         return Promise.resolve();
     };
 
@@ -711,9 +724,12 @@ async function masterScan() {
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
                 await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], conditionalSendTG, firebasePut, '1h');
+                // Determine category
+                const category = p.isCrypto ? 'crypto' : 'forex';
+                // Use conditional TG for pullback engine
+                pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], (msg) => conditionalSendTG(msg, category), firebasePut, '1h');
                 if (RAW_4H[p.n]) {
-                    pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], conditionalSendTG, firebasePut, '4h');
+                    pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], (msg) => conditionalSendTG(msg, category), firebasePut, '4h');
                 }
             }
 
@@ -726,10 +742,11 @@ async function masterScan() {
             const hourlyData = {
                 closes: RAW_1H[pairName]?.closes
             };
+            const category = p.isCrypto ? 'crypto' : 'forex';
 
             if (dailyData.closes && hourlyData.closes) {
-                await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, conditionalSendTG, firebasePut, alertSettings);
-                await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, conditionalSendTG, firebasePut, alertSettings);
+                await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, (msg) => conditionalSendTG(msg, category), firebasePut, category, alertSettings);
+                await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, (msg) => conditionalSendTG(msg, category), firebasePut, category, alertSettings);
             }
         }
         await refreshRealUsage();
@@ -744,8 +761,8 @@ async function masterScan() {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
 
-        // 👇 AUTO‑SCAN NOTIFICATION (only when AUTO_SCAN=true AND telegram enabled)
-        if (process.env.AUTO_SCAN === 'true' && alertSettings.telegram) {
+        // 👇 AUTO‑SCAN NOTIFICATION (always send if AUTO_SCAN=true)
+        if (process.env.AUTO_SCAN === 'true') {
             await sendTelegramDirect(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
         }
 
