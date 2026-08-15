@@ -57,16 +57,18 @@ db.ref('pb_state').on('value', (snap) => {
     if (typeof updateBadge === 'function') updateBadge();
 });
 
-// Sentiment Listener
+// Sentiment Listener (Normalized Keys + value cleaning)
 db.ref('sentiment').on('value', function(snap) {
-    const data = snap.val();
-    if (data) {
-        window.sentimentData = data;
-    } else {
-        window.sentimentData = {};
-    }
+    const data = snap.val() || {};
+    window.sentimentData = Object.fromEntries(
+        Object.entries(data).map(([k, v]) => {
+            const key = k ? String(k).trim().toUpperCase() : k;
+            const clean = v || {};
+            const bearish = clean.bearish_pct != null ? Number(clean.bearish_pct) : null;
+            const bullish = clean.bullish_pct != null ? Number(clean.bullish_pct) : null;
+            return [key, { ...clean, bearish_pct: bearish, bullish_pct: bullish }];
+        })
+    );
 
-    if (typeof render === 'function') {
-        render();
-    }
+    if (typeof render === 'function') render();
 });
