@@ -17,7 +17,7 @@ if LOCAL_PACKAGES_DIR not in sys.path:
     print(f"[INFO] sys.path mein add kiya: {LOCAL_PACKAGES_DIR}")
 
 # ============================================================
-# STEP 2: Third-party packages import karo (CHANGED: cloudscraper -> tls-client)
+# STEP 2: Third-party packages import karo
 # ============================================================
 try:
     import schedule
@@ -40,18 +40,27 @@ except ImportError as e:
     print(f"[ERROR] beautifulsoup4 import failed: {e}")
     sys.exit(1)
 
+try:
+    import pandas as pd
+    import yfinance as yf
+    print("[OK] pandas & yfinance imported successfully for custom fallback")
+except ImportError as e:
+    print(f"[ERROR] pandas/yfinance import failed: {e}")
+    sys.exit(1)
+
 HAS_DOTENV = False
 try:
     from dotenv import load_dotenv
     HAS_DOTENV = True
     print("[OK] dotenv imported successfully")
 except ImportError as e:
-    print("[INFO] dotenv library nahi mili. Render Environment variables use hongi. No problem!")
+    print("[INFO] dotenv library nahi mili. Render Environment variables use hongi.")
 
 # ============================================================
 # STEP 3: Standard Library Imports
 # ============================================================
 import time
+import json
 import logging
 
 # ============================================================
@@ -91,47 +100,124 @@ logging.basicConfig(
 logger = logging.getLogger('sentiment_job')
 
 # ============================================================
-# FIXED WHITELIST (Database dependency hamesha ke liye khatam)
+# FIXED WHITELIST & CUSTOM FALLBACK MAP (Crypto & Extra Assets)
 # ============================================================
 WHITELIST_PAIRS = [
     'AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BTCUSD',
-    'CADCHF', 'CADJPY', 'CHFJPY', 'ETHUSD', 'EURAUD', 'EURCAD',
+    'CADCHF', 'CADJPY', 'CHFJPY', 'ETHUSD', 'EURAUD', 'CAD',
     'EURCHF', 'EURGBP', 'EURJPY', 'EURUSD', 'GBPAUD', 'GBPCAD',
     'GBPCHF', 'GBPJPY', 'GBPUSD', 'GER40', 'JPN225', 'NZDCAD',
     'NZDCHF', 'NZDJPY', 'NZDUSD', 'UK100', 'US100', 'US300',
     'US500', 'USDCAD', 'USDCHF', 'USDJPY', 'USOIL', 'XAUUSD'
 ]
 
+# Jo symbols web scraper se nahi aate, unke liye custom yfinance tickers
+CUSTOM_FALLBACK_ASSETS = {
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+    "SOL": "SOL-USD",
+    "BNB": "BNB-USD",
+    "TSLA": "TSLA",
+    "AAPL": "AAPL"
+}
+
 # ============================================================
-# STEP 7: Main Sentiment Job Logic
+# STEP 7: Custom MTF EMA Calculation Logic (Fallback Engine)
+# ============================================================
+def calc_window_score(df, lookback_bars):
+    df["EMA10"] = df["Close"].ewm(span=10, adjust=False).mean()
+    df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
+    df["SMA50"] = df["Close"].rolling(window=50).mean()
+    df = df.dropna()
+
+    if len(df) < lookback_bars: 
+        return 0.5
+    
+    window = df.tail(lookback_bars)
+    total_points = len(window) * 3
+    earned_points = 0
+
+    for _, row in window.iterrows():
+        if row["Close"] > row["EMA10"]: earned_points += 1
+        if row["EMA10"] > row["EMA20"]: earned_points += 1
+        if row["EMA20"] > row["SMA50"]: earned_points += 1
+
+    return earned_points / total_points
+
+def get_custom_sentiment(ticker_symbol):
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        df_15m = ticker.history(period="5d", interval="15m")
+        df_1h  = ticker.history(period="1mo", interval="1h")
+        df_1d  = ticker.history(period="1y", interval="1d")
+
+        if df_15m.empty or df_1h.empty or df_1d.empty: 
+            return None
+
+        score_15m = calc_window_score(df_15m, 32)
+        score_1h  = calc_window_score(df_1h, 24)
+        score_1d  = calc_window_score(df_1d, 14)
+
+        intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+        
+        return {
+            "bearish_pct": 100 - intra_green,
+            "bullish_pct": intra_green
+        }
+    except Exception:
+        return None
+
+# ============================================================
+# STEP 8: Main Sentiment Job Logic (With Safe Merge)
 # ============================================================
 def run_job():
     logger.info("══════════ Sentiment Job START ══════════")
     try:
         logger.info(f"Whitelist [{len(WHITELIST_PAIRS)}]: {sorted(WHITELIST_PAIRS)}")
 
-        # Live market data scrape karo (Ab yeh tls-client ke zariye bypass karega)
+        # 1. Live market data scrape karo (tls-client ke zariye)
         scraped = fetch_sentiment_data()
         if not scraped:
-            logger.error("Scraper se koi data nahi aaya. Job abort.")
-            return
+            logger.warning("Scraper se direct data nahi mila. Fallback mode par chal rahe hain.")
+            scraped = {}
 
-        # Sirf whitelisted pairs ko process karo
         saved = 0
         skipped = 0
+        processed_pairs = set()
+
+        # 2. Whitelisted Scraped Data ko Process karo
         for pair, data in scraped.items():
             if pair in WHITELIST_PAIRS:
                 upsert_sentiment(
                     pair, data['bearish_pct'], data['bullish_pct']
                 )
                 logger.info(
-                    f"  ✓ {pair:<10} | "
+                    f"  ✓ [Web] {pair:<10} | "
                     f"Bear: {data['bearish_pct']}% "
                     f"Bull: {data['bullish_pct']}%"
                 )
                 saved += 1
+                processed_pairs.add(pair)
             else:
                 skipped += 1
+
+        # 3. Custom Fallback Assets (Crypto/Stocks) ko Process karo (Jo web pe nahi thay)
+        logger.info("--- Processing Custom Fallback Assets (Crypto/Stocks) ---")
+        for pair, ticker in CUSTOM_FALLBACK_ASSETS.items():
+            if pair not in scraped and pair not in processed_pairs:
+                custom_data = get_custom_sentiment(ticker)
+                if custom_data:
+                    upsert_sentiment(
+                        pair, custom_data['bearish_pct'], custom_data['bullish_pct']
+                    )
+                    logger.info(
+                        f"  ⚙ [Custom] {pair:<10} | "
+                        f"Bear: {custom_data['bearish_pct']}% "
+                        f"Bull: {custom_data['bullish_pct']}%"
+                    )
+                    saved += 1
+                else:
+                    logger.error(f"  ❌ Custom data fetch failed for {pair}")
 
         logger.info(
             f"══════════ Done — "
@@ -142,7 +228,7 @@ def run_job():
         logger.error(f"Error aaya job run mein: {e}", exc_info=True)
 
 # ============================================================
-# STEP 8: Entry Point
+# STEP 9: Entry Point
 # ============================================================
 if __name__ == "__main__":
     logger.info("------------------------------------------")
