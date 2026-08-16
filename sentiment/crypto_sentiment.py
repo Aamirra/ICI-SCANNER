@@ -81,6 +81,7 @@ def update_crypto_sentiment():
             existing = {}
     except:
         existing = {}
+
     for sym in CRYPTO_SYMBOLS:
         print(f"Processing {sym}...")
         result = get_custom_sentiment(sym)
@@ -90,6 +91,7 @@ def update_crypto_sentiment():
         else:
             print(f"  -> Skipped {sym}")
         time.sleep(1)
+
     response = requests.put(firebase_url, json=existing)
     print(f"Firebase update status: {response.status_code}")
 
