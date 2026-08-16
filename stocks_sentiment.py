@@ -27,9 +27,6 @@ PSX_STOCKS = [
     "TREET", "SNGP", "SSGC"
 ]
 
-def get_yf_ticker(symbol):
-    return symbol
-
 def calc_window_score(df, lookback_bars):
     df = df.copy()
     df["EMA10"] = df["Close"].ewm(span=10, adjust=False).mean()
@@ -51,22 +48,34 @@ def calc_window_score(df, lookback_bars):
     return earned_points / total_points
 
 def get_us_stock_sentiment(symbol):
+    """Fetch US stock data from Yahoo Finance and compute intraday + daily sentiment."""
     try:
         t = yf.Ticker(symbol)
         df_15m = t.history(period="5d", interval="15m")
         df_1h = t.history(period="1mo", interval="1h")
         df_1d = t.history(period="1y", interval="1d")
+
         if df_15m.empty or df_1h.empty or df_1d.empty:
             return None
+
         score_15m = calc_window_score(df_15m, 32)
         score_1h = calc_window_score(df_1h, 24)
         score_1d = calc_window_score(df_1d, 14)
+
         if score_15m is None or score_1h is None or score_1d is None:
             return None
+
+        # Intraday score (15m + 1h)
         intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+
+        # Daily score (1h + 1d)
+        daily_green = round(((score_1h * 0.3) + (score_1d * 0.7)) * 100)
+
         return {
-            "bullish_pct": intra_green,
-            "bearish_pct": 100 - intra_green,
+            "bullish_pct": intra_green,          # intraday bullish
+            "bearish_pct": 100 - intra_green,    # intraday bearish
+            "daily_bullish_pct": daily_green,    # daily bullish
+            "daily_bearish_pct": 100 - daily_green,  # daily bearish
             "source": "Custom MTF Engine"
         }
     except Exception as e:
@@ -78,35 +87,34 @@ def get_psx_sentiment_from_firebase(symbol, psx_data):
     if symbol not in psx_data:
         return None
     data = psx_data[symbol]
-    # Extract signals (keys like signal1h, signal4h, etc.)
     signals = []
+    # Try common signal keys
     for key, val in data.items():
         if 'signal' in key.lower() and isinstance(val, str):
             signals.append(val.lower())
         elif key in ['1h', '4h', '1d', '1w'] and isinstance(val, str):
             signals.append(val.lower())
-    # Also check for direction fields
-    if 'direction' in data:
-        dir_val = str(data['direction']).lower()
-        if dir_val in ['bull', 'bear']:
-            signals.append(dir_val)
+    # Try direction field
+    if 'direction' in data and isinstance(data['direction'], str):
+        signals.append(data['direction'].lower())
+    # Try any value that is bull/bear
     if not signals:
-        # Try any field that is 'bull' or 'bear'
         for key, val in data.items():
             if isinstance(val, str) and val.lower() in ['bull', 'bear']:
                 signals.append(val.lower())
     if not signals:
         return None
+
     bull_count = signals.count('bull') + signals.count('long') + signals.count('buy')
     bear_count = signals.count('bear') + signals.count('short') + signals.count('sell')
     total = bull_count + bear_count
     if total == 0:
         return None
+
     bull_pct = round((bull_count / total) * 100)
-    bear_pct = 100 - bull_pct
     return {
         "bullish_pct": bull_pct,
-        "bearish_pct": bear_pct,
+        "bearish_pct": 100 - bull_pct,
         "source": "PSX Firebase Signals"
     }
 
@@ -115,7 +123,7 @@ def update_stocks_sentiment():
     sentiment_url = firebase_url + "/sentiment.json"
     psx_data_url = firebase_url + "/psxStockMarketData.json"
 
-    # Load existing sentiment data (to preserve US, crypto, etc.)
+    # Load existing sentiment data (preserve forex, crypto, etc.)
     try:
         existing = requests.get(sentiment_url).json()
         if existing is None:
@@ -138,7 +146,7 @@ def update_stocks_sentiment():
         result = get_us_stock_sentiment(sym)
         if result:
             existing[sym] = result
-            print(f"  -> Bullish: {result['bullish_pct']}%, Bearish: {result['bearish_pct']}%")
+            print(f"  -> Intraday Bullish: {result['bullish_pct']}%, Daily Bullish: {result['daily_bullish_pct']}%")
         else:
             print(f"  -> Skipped {sym}")
         time.sleep(1)
