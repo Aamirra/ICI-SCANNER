@@ -1,0 +1,20 @@
+name: Update Crypto Sentiment
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # har 4 ghante
+  workflow_dispatch:          # manual run ke liye
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install requests yfinance pandas
+      - name: Run script
+        run: python crypto_sentiment.py
