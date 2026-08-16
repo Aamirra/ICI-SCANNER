@@ -3,7 +3,7 @@ import requests
 import yfinance as yf
 import pandas as pd
 
-# US Stock Symbols (AAPL, MSFT, etc.)
+# US Stocks
 US_STOCKS = [
     "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "NFLX",
     "AVGO", "AMD", "INTC", "QCOM", "CSCO", "ORCL", "IBM", "CRM",
@@ -16,7 +16,7 @@ US_STOCKS = [
     "BIDU", "NIO", "LI", "XPEV", "FUTU", "HPQ", "MU", "TXN"
 ]
 
-# Pakistan Stock Exchange (PSX) Symbols
+# PSX Stocks
 PSX_STOCKS = [
     "SYS", "TRG", "AIRLINK", "WTL", "MEBL", "UBL", "MCB", "HBL",
     "NBP", "OGDC", "PPL", "MARI", "PSO", "FFC", "EFERT", "ENGRO",
@@ -28,10 +28,9 @@ PSX_STOCKS = [
 ]
 
 def get_yf_ticker(symbol, is_psx=False):
-    """Convert symbol to Yahoo Finance ticker."""
     if is_psx:
-        return f"{symbol}.KAR"   # Karachi Stock Exchange
-    return symbol                # US stock ticker same
+        return f"{symbol}.KAR"
+    return symbol
 
 def calc_window_score(df, lookback_bars):
     df = df.copy()
@@ -60,17 +59,30 @@ def get_custom_sentiment(symbol, is_psx=False):
         df_15m = t.history(period="5d", interval="15m")
         df_1h = t.history(period="1mo", interval="1h")
         df_1d = t.history(period="1y", interval="1d")
-        if df_15m.empty or df_1h.empty or df_1d.empty:
-            return None
-        score_15m = calc_window_score(df_15m, 32)
-        score_1h = calc_window_score(df_1h, 24)
-        score_1d = calc_window_score(df_1d, 14)
-        if score_15m is None or score_1h is None or score_1d is None:
-            return None
-        intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+
+        if df_15m.empty or df_1h.empty:
+            print(f"  Intraday data missing for {symbol}, using daily only")
+            if df_1d.empty:
+                return None
+            score_daily = calc_window_score(df_1d, 14)
+            if score_daily is None:
+                return None
+            intra_green = round(score_daily * 100)
+            daily_green = intra_green
+        else:
+            score_15m = calc_window_score(df_15m, 32)
+            score_1h = calc_window_score(df_1h, 24)
+            score_1d = calc_window_score(df_1d, 14)
+            if score_15m is None or score_1h is None or score_1d is None:
+                return None
+            intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+            daily_green = round(((score_1h * 0.3) + (score_1d * 0.7)) * 100)
+
         return {
             "bullish_pct": intra_green,
             "bearish_pct": 100 - intra_green,
+            "daily_bullish_pct": daily_green,
+            "daily_bearish_pct": 100 - daily_green,
             "source": "Custom MTF Engine"
         }
     except Exception as e:
@@ -86,7 +98,6 @@ def update_stocks_sentiment():
     except:
         existing = {}
 
-    # US Stocks
     print("=== US STOCKS ===")
     for sym in US_STOCKS:
         print(f"Processing {sym}...")
@@ -98,8 +109,7 @@ def update_stocks_sentiment():
             print(f"  -> Skipped {sym}")
         time.sleep(1)
 
-    # PSX Stocks
-    print("\n=== PAKISTAN STOCKS (PSX) ===")
+    print("\n=== PSX STOCKS ===")
     for sym in PSX_STOCKS:
         print(f"Processing {sym}...")
         result = get_custom_sentiment(sym, is_psx=True)
@@ -110,7 +120,6 @@ def update_stocks_sentiment():
             print(f"  -> Skipped {sym}")
         time.sleep(1)
 
-    # Firebase update
     response = requests.put(firebase_url, json=existing)
     print(f"\nFirebase update status: {response.status_code}")
 
