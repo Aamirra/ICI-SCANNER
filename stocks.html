@@ -39,7 +39,6 @@
         .search-container { margin-bottom:16px; }
         .search-bar { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:12px; font-size:14px; outline:none; background:var(--pill-bg); color:var(--txt); }
 
-        /* Auto‑adjust columns, no scroll */
         .screener-wrap { overflow-x:visible; }
         .header-row-table { display:flex; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); width:100%; }
         .col-header-cell {
@@ -132,7 +131,6 @@
         .scan-status-line { font-size:11px; color:var(--muted); margin-left:8px; }
         .last-scan-line { font-size:11px; color:var(--gold); margin-left:auto; }
 
-        /* ✅ MODAL FIX (z-index above chart) */
         .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000 !important; display:none; align-items:flex-end; justify-content:center; padding:16px; }
         .modal.open { display:flex; }
         .modal-content { background:var(--surface); border-radius:20px; padding:20px; width:100%; max-width:400px; max-height:80vh; overflow-y:auto; color:var(--txt); }
@@ -154,6 +152,7 @@
 </head>
 <body>
 <div class="phone-container" id="app">
+    <!-- ... same header, pills, counters, search etc. ... -->
     <div class="header-row">
         <div class="brand"><div class="brand-icon"><i class="fas fa-chart-line"></i></div><div class="brand-text"><h1>ICI Stocks</h1><span>clean v2</span></div></div>
         <div class="header-actions">
@@ -239,12 +238,12 @@
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
+    <!-- chart header, interval selector, layout controls, chart grid same as before -->
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-left"></i></button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
-        <!-- ⭐ Star button added -->
         <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
@@ -255,7 +254,6 @@
         <button class="chart-interval-btn" data-interval="W" onclick="changeChartInterval('W', this)">1W</button>
         <span id="countdownDisplay" class="countdown-display"></span>
     </div>
-    
     <div class="layout-controls">
         <span style="font-size:11px;font-weight:600;color:var(--muted);">Layout:</span>
         <button class="layout-btn active" onclick="setChartLayout(1)">1</button>
@@ -270,7 +268,6 @@
             <button class="slot-btn" id="slotBtn4" onclick="activateChartSlot(4)">4</button>
         </span>
     </div>
-    
     <div id="chart-grid" class="chart-grid layout-1">
         <div id="tv_chart_1" class="chart-box active"></div>
         <div id="tv_chart_2" class="chart-box"></div>
@@ -293,7 +290,6 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
 </script>
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="Alerts.js"></script>
-<!-- ⚡ Override openAlertDialog to bring alerts above chart overlay -->
 <script>
 (function() {
     const orig = window.openAlertDialog;
@@ -316,6 +312,7 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
 </script>
 <script>
 (function() {
+    if (typeof _alFireAlert !== 'function') return;
     const orig = _alFireAlert;
     _alFireAlert = function(alert, pair) {
         if (alert.value != null && alert.type) {
@@ -350,22 +347,21 @@ const db = firebase.database();
 
 // ── Market state ──
 let currentMarket = 'exness';
-let rawStockData = {};        // original data from stockMarketData / psxStockMarketData
-let stockPbState = {};        // from stockMarketDataPbState / psxStockMarketDataPbState
-let MARKET_DATA = {};         // normalized market data (mapped signals, ema, etc.)
+let rawStockData = {};
+let stockPbState = {};
+let MARKET_DATA = {};
 let techMetrics = {};
 let sentimentData = {};
 let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let curF = 'all';
-let filteredSymbols = [];      // search filter
-let chartPairs = [];           // symbols currently shown in the list (for chart navigation)
+let filteredSymbols = [];
+let chartPairs = [];
 let currentDisplayPairs = [];
 let show4H = true;
 let starredPairs = JSON.parse(localStorage.getItem('ici_stocks_starred') || '[]');
 let activeChartPair = null;
 
-// Chart multi-slot
 let currentChartInterval = "60";
 let currentChartLayout = 1;
 let activeChartSlot = 1;
@@ -374,7 +370,6 @@ let chartIntervals = ['60','60','60','60'];
 
 window.alertSettings = alertSettings;
 
-// ⭐ Toggle star
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
     if (idx > -1) starredPairs.splice(idx, 1);
@@ -384,12 +379,10 @@ function toggleStar(pair) {
     if (pair === activeChartPair) updateChartStarButton();
 }
 
-// ⭐ Toggle star from chart overlay
 function toggleStarFromChart() {
     if (activeChartPair) toggleStar(activeChartPair);
 }
 
-// ⭐ Update chart star button icon
 function updateChartStarButton() {
     const btn = document.getElementById('chartStarBtn');
     if (btn) {
@@ -398,7 +391,6 @@ function updateChartStarButton() {
     }
 }
 
-// ── Utility: normalize stock data signals ──
 function normalizeStockData(raw) {
     const normalized = {};
     for (const [sym, data] of Object.entries(raw)) {
@@ -412,7 +404,6 @@ function normalizeStockData(raw) {
     return normalized;
 }
 
-// ── Data listeners ──
 function attachListeners() {
     db.ref('stockMarketData').off();
     db.ref('psxStockMarketData').off();
@@ -451,7 +442,6 @@ function setMarket(market) {
     attachListeners();
 }
 
-// ✅ UPDATED: alertSettings now from alertSettings/stocks
 db.ref('alertSettings/stocks').on('value', snap => {
     alertSettings = snap.val() || { telegram: true, whatsapp: true };
     window.alertSettings = alertSettings;
@@ -490,14 +480,12 @@ db.ref('liveMarketData').on('value', snap => {
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; renderDebounced(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; renderDebounced(); });
 
-// ── Render helpers ──
 let renderTimer = null;
 function renderDebounced() {
     if (renderTimer) clearTimeout(renderTimer);
     renderTimer = setTimeout(() => { render(); renderTimer = null; }, 300);
 }
 
-// Countdown
 let countdownInterval = null;
 function updateCountdown() {
     const intervalStr = chartIntervals[activeChartSlot-1];
@@ -529,7 +517,6 @@ function startCountdownTimer() {
     countdownInterval = setInterval(updateCountdown, 1000);
 }
 
-// Scan status
 db.ref('lastScanTime/time').on('value', snap => {
     const el = document.getElementById('lastScanTime');
     const ts = snap.val();
@@ -570,7 +557,6 @@ function actualScan() {
     }, 600000);
 }
 
-// ── Counts ──
 function isStrongTrend(sym, data, dir) {
     return data && data['4h'] === dir && data['1day'] === dir && data['1week'] === dir;
 }
@@ -590,7 +576,6 @@ function updateCounts() {
     document.getElementById('tradesCount').textContent = starredPairs.length;
 }
 
-// ── Unique setups from stockPbState ──
 function getUniqueAutoSetups() {
     const pairMap = new Map();
     if (!stockPbState) return pairMap;
@@ -673,12 +658,62 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_stocks_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
+// ✅ Add robust sentiment extractor
+function extractSentiment(s) {
+    if (!s || typeof s !== 'object') return null;
+    if (s.sentiment && typeof s.sentiment === 'object') s = s.sentiment;
+    if (s.sentiment && typeof s.sentiment === 'number') return { bullPct: s.sentiment, bearPct: 100 - s.sentiment };
+
+    const bullPatterns = ['bull', 'green', 'positive', 'up', 'long', 'buy'];
+    const bearPatterns = ['bear', 'red', 'negative', 'down', 'short', 'sell'];
+    let bullVal = null, bearVal = null;
+
+    for (const key of Object.keys(s)) {
+        const lowerKey = key.toLowerCase();
+        if (bullVal === null && bullPatterns.some(p => lowerKey.includes(p))) {
+            bullVal = Number(s[key]);
+            if (isNaN(bullVal)) bullVal = null;
+        }
+        if (bearVal === null && bearPatterns.some(p => lowerKey.includes(p))) {
+            bearVal = Number(s[key]);
+            if (isNaN(bearVal)) bearVal = null;
+        }
+        if (bullVal !== null && bearVal !== null) break;
+    }
+
+    if (bullVal === null && bearVal === null) {
+        const values = Object.values(s).filter(v => typeof v === 'number' && !isNaN(v));
+        if (values.length === 1) {
+            const v = values[0];
+            if (v >= 0 && v <= 100) { bullVal = v; bearVal = 100 - v; }
+        } else if (values.length === 2) {
+            const [v1, v2] = values;
+            if (v1 >= 0 && v2 >= 0 && Math.abs(v1 + v2 - 100) < 5) {
+                bullVal = v1; bearVal = v2;
+            }
+        }
+    }
+
+    if (bullVal !== null && bullVal >= 0 && bullVal <= 1) bullVal *= 100;
+    if (bearVal !== null && bearVal >= 0 && bearVal <= 1) bearVal *= 100;
+
+    if (bullVal !== null && bearVal === null) bearVal = Math.max(0, 100 - bullVal);
+    else if (bearVal !== null && bullVal === null) bullVal = Math.max(0, 100 - bearVal);
+
+    if (bullVal === null || bearVal === null) return null;
+    bullVal = Math.max(0, Math.min(100, Math.round(bullVal)));
+    bearVal = Math.max(0, Math.min(100, Math.round(bearVal)));
+    if (bullVal === 0 && bearVal === 0) return null;
+    return { bullPct: bullVal, bearPct: bearVal };
+}
+
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
     const s = sentimentData[pairName] || {};
     const m = MARKET_DATA[pairName] || {};
     const lm = liveMarketData[pairName] || {};
+
     if (col.type === 'tf_alignment') {
         const livePrice = lm.price || lm.currentPrice;
         const ema20_1h = m.ema20 || m['1h_ema20'];
@@ -692,8 +727,7 @@ function getColumnValue(pairName, col) {
         return [sig1h, sig4h, sig1d, sig1w];
     }
     if (col.type === 'sentiment') {
-        const bullPct = s.bullish_pct || 0, bearPct = s.bearish_pct || 0, total = bullPct + bearPct || 1;
-        return { bullPct: Math.round((bullPct/total)*100), bearPct: Math.round((bearPct/total)*100) };
+        return extractSentiment(s);   // ✅ using robust extractor
     }
     if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
     if (t[type.field] != null) return t[type.field];
@@ -753,6 +787,7 @@ function renderColumnCell(pairName, col) {
         return `<div class="col-cell dots-container">${dots}</div>`;
     }
     if (col.type === 'sentiment') {
+        if (!val) return '<div class="col-cell" style="color:var(--muted)">--</div>';   // ✅ null handling
         return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
     }
     if (val == null) return '<div class="col-cell" style="color:var(--muted)">--</div>';
@@ -902,7 +937,7 @@ function filterPairs(txt) {
     render();
 }
 
-// ── Chart functions (with star button) ──
+// ── Chart functions ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -925,7 +960,7 @@ function openChartForPair(pairName) {
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
     activeChartPair = pairName;
-    updateChartStarButton();   // ⭐ update star button
+    updateChartStarButton();
     render();
     startCountdownTimer();
 }
@@ -934,7 +969,7 @@ function movePair(step) {
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
-    updateChartStarButton();   // ⭐ update star after moving
+    updateChartStarButton();
     drawChart(activeChartSlot);
     render();
 }
@@ -1020,7 +1055,7 @@ function toggleDesktopMode() {
     render();
 }
 
-// ✅ Safety – hide all modals and chart on page load
+// Safety
 (function(){
     document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
     if (!document.body.classList.contains('desktop-mode')) {
