@@ -3,9 +3,6 @@ import requests
 import yfinance as yf
 import pandas as pd
 
-# -------------------------------
-# Crypto symbols (frontend list)
-# -------------------------------
 CRYPTO_SYMBOLS = [
     "BTCUSD", "ETHUSD", "LTCUSD", "BCHUSD", "XRPUSD", "ADAUSD",
     "DOTUSD", "LINKUSD", "UNIUSD", "SOLUSD", "MATICUSD", "AVAXUSD",
@@ -28,9 +25,8 @@ CRYPTO_SYMBOLS = [
 ]
 
 def get_yf_ticker(symbol):
-    # Convert "BTCUSD" to "BTC-USD"
     if symbol == "1000SATSUSD":
-        return "1000SATS-USD"  # iska alag hai
+        return "1000SATS-USD"
     return symbol.replace("USD", "-USD")
 
 def calc_window_score(df, lookback_bars):
@@ -60,19 +56,13 @@ def get_custom_sentiment(symbol):
         df_15m = t.history(period="5d", interval="15m")
         df_1h = t.history(period="1mo", interval="1h")
         df_1d = t.history(period="1y", interval="1d")
-
         if df_15m.empty or df_1h.empty or df_1d.empty:
-            print(f"  No data for {symbol}")
             return None
-
         score_15m = calc_window_score(df_15m, 32)
         score_1h = calc_window_score(df_1h, 24)
         score_1d = calc_window_score(df_1d, 14)
-
         if score_15m is None or score_1h is None or score_1d is None:
-            print(f"  Insufficient bars for {symbol}")
             return None
-
         intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
         return {
             "bullish_pct": intra_green,
@@ -80,21 +70,17 @@ def get_custom_sentiment(symbol):
             "source": "Custom MTF Engine"
         }
     except Exception as e:
-        print(f"  Error {symbol}: {e}")
+        print(f"Error {symbol}: {e}")
         return None
 
-def main():
-    print("Crypto sentiment update shuru...")
+def update_crypto_sentiment():
     firebase_url = "https://fatima-16b38-default-rtdb.firebaseio.com/sentiment.json"
-
-    # Pehle existing data le lo taake Forex data overwrite na ho
     try:
         existing = requests.get(firebase_url).json()
         if existing is None:
             existing = {}
     except:
         existing = {}
-
     for sym in CRYPTO_SYMBOLS:
         print(f"Processing {sym}...")
         result = get_custom_sentiment(sym)
@@ -102,16 +88,10 @@ def main():
             existing[sym] = result
             print(f"  -> Bullish: {result['bullish_pct']}%, Bearish: {result['bearish_pct']}%")
         else:
-            print(f"  -> Skipped (no data)")
-        time.sleep(1)  # Rate limit se bachne ke liye
-
-    # Firebase par update karo
+            print(f"  -> Skipped {sym}")
+        time.sleep(1)
     response = requests.put(firebase_url, json=existing)
-    print(f"\nFirebase update status: {response.status_code}")
-    if response.status_code == 200:
-        print("✅ Crypto sentiment Firebase mein save ho gaya!")
-    else:
-        print("❌ Kuch problem hui. Status code:", response.status_code)
+    print(f"Firebase update status: {response.status_code}")
 
 if __name__ == "__main__":
-    main()
+    update_crypto_sentiment()
