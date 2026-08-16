@@ -152,7 +152,6 @@
 </head>
 <body>
 <div class="phone-container" id="app">
-    <!-- ... same header, pills, counters, search etc. ... -->
     <div class="header-row">
         <div class="brand"><div class="brand-icon"><i class="fas fa-chart-line"></i></div><div class="brand-text"><h1>ICI Stocks</h1><span>clean v2</span></div></div>
         <div class="header-actions">
@@ -238,7 +237,6 @@
 </div>
 
 <div id="chartOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:none;flex-direction:column;">
-    <!-- chart header, interval selector, layout controls, chart grid same as before -->
     <div style="display:flex;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--border);">
         <button onclick="movePair(-1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-left"></i></button>
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
@@ -629,6 +627,7 @@ function openTargetModal() {
 const COLUMN_TYPES = {
     tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
     sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
+    daily_sentiment: { label:'Daily Sentiment', kind:'bar', filterable:false },   // ✅ new column type
     change_200:   { label:'200 Candle Change', kind:'pct', field:'longTermTrend', filterable:true },
     change_10:    { label:'10 Candle Change',  kind:'pct', field:'shortTermMomentum', filterable:true },
     change_1h:    { label:'1H Momentum',       kind:'pct', field:'microMomentum', filterable:true },
@@ -645,6 +644,7 @@ function defaultColumns() {
     return [
         { id:'c_tf', type:'tf_alignment', label:'1H/4H/1D/1W' },
         { id:'c_sent', type:'sentiment', label:'Sentiment' },
+        { id:'c_dsent', type:'daily_sentiment', label:'Daily Sent' },   // ✅ new default column
         { id:'c_200', type:'change_200', label:'200C', style:'colored', filterMin:null, filterMax:null }
     ];
 }
@@ -727,7 +727,16 @@ function getColumnValue(pairName, col) {
         return [sig1h, sig4h, sig1d, sig1w];
     }
     if (col.type === 'sentiment') {
-        return extractSentiment(s);   // ✅ using robust extractor
+        return extractSentiment(s);
+    }
+    if (col.type === 'daily_sentiment') {   // ✅ daily sentiment case
+        const bullPct = s.daily_bullish_pct;
+        const bearPct = s.daily_bearish_pct;
+        if (bullPct == null || bearPct == null) return null;
+        const b = Math.round(Number(bullPct));
+        const br = Math.round(Number(bearPct));
+        if (isNaN(b) || isNaN(br)) return null;
+        return { bullPct: b, bearPct: br };
     }
     if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
     if (t[type.field] != null) return t[type.field];
@@ -786,8 +795,8 @@ function renderColumnCell(pairName, col) {
         const dots = val.map(sig => `<span class="trend-dot" style="background:${sig==='bull'?'var(--green)':(sig==='bear'?'var(--red)':'#cbd5e1')}"></span>`).join('');
         return `<div class="col-cell dots-container">${dots}</div>`;
     }
-    if (col.type === 'sentiment') {
-        if (!val) return '<div class="col-cell" style="color:var(--muted)">--</div>';   // ✅ null handling
+    if (col.type === 'sentiment' || col.type === 'daily_sentiment') {   // ✅ both bar types
+        if (!val) return '<div class="col-cell" style="color:var(--muted)">--</div>';
         return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
     }
     if (val == null) return '<div class="col-cell" style="color:var(--muted)">--</div>';
