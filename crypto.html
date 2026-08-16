@@ -548,7 +548,7 @@ function openTargetModal() {
 const COLUMN_TYPES = {
     tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
     sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
-    daily_sentiment: { label:'Daily Sentiment', kind:'bar', filterable:false },   // ✅ new
+    daily_sentiment: { label:'Daily Sentiment', kind:'bar', filterable:false },
     change_200:   { label:'200 Candle Change', kind:'pct', field:'longTermTrend', filterable:true },
     change_10:    { label:'10 Candle Change',  kind:'pct', field:'shortTermMomentum', filterable:true },
     change_1h:    { label:'1H Momentum',       kind:'pct', field:'microMomentum', filterable:true },
@@ -565,7 +565,7 @@ function defaultColumns() {
     return [
         { id:'c_tf', type:'tf_alignment', label:'1H/4H/1D/1W' },
         { id:'c_sent', type:'sentiment', label:'Sentiment' },
-        { id:'c_dsent', type:'daily_sentiment', label:'Daily Sent' },   // ✅ new default
+        { id:'c_dsent', type:'daily_sentiment', label:'Daily Sent' },
         { id:'c_200', type:'change_200', label:'200C', style:'colored', filterMin:null, filterMax:null }
     ];
 }
@@ -579,69 +579,13 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_crypto_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
-// Helper: extract sentiment from various possible formats
-function extractSentiment(s) {
-    if (!s || typeof s !== 'object') return null;
-    
-    if (s.sentiment && typeof s.sentiment === 'object') s = s.sentiment;
-    
-    const bullKeys = ['bullish_pct', 'bull_pct', 'bull', 'green', 'bullish', 'positive', 'up', 'intra_green', 'daily_green', 'bullish_percent', 'bull_percent'];
-    const bearKeys = ['bearish_pct', 'bear_pct', 'bear', 'red', 'bearish', 'negative', 'down', 'intra_red', 'daily_red', 'bearish_percent', 'bear_percent'];
-    
-    let bullVal = null, bearVal = null;
-    
-    for (const key of Object.keys(s)) {
-        const lower = key.toLowerCase();
-        if (bullVal === null && bullKeys.some(k => lower.includes(k))) {
-            bullVal = s[key];
-        }
-        if (bearVal === null && bearKeys.some(k => lower.includes(k))) {
-            bearVal = s[key];
-        }
-        if (bullVal !== null && bearVal !== null) break;
-    }
-    
-    if (bullVal === null && bearVal === null) return null;
-    
-    bullVal = Number(bullVal);
-    bearVal = Number(bearVal);
-    
-    if (isNaN(bullVal)) bullVal = null;
-    if (isNaN(bearVal)) bearVal = null;
-    
-    if (bullVal !== null && bullVal >= 0 && bullVal <= 1 && (bearVal === null || (bearVal >= 0 && bearVal <= 1)) ) {
-        bullVal = bullVal * 100;
-        if (bearVal !== null) bearVal = bearVal * 100;
-    }
-    if (bearVal !== null && bearVal >= 0 && bearVal <= 1 && (bullVal === null || (bullVal >= 0 && bullVal <= 1)) ) {
-        if (bullVal === null) bullVal = 0;
-        bullVal = bullVal * 100;
-        bearVal = bearVal * 100;
-    }
-    
-    if (bullVal !== null && bearVal === null) {
-        if (bullVal >= 0 && bullVal <= 100) bearVal = 100 - bullVal;
-        else bearVal = 0;
-    } else if (bearVal !== null && bullVal === null) {
-        if (bearVal >= 0 && bearVal <= 100) bullVal = 100 - bearVal;
-        else bullVal = 0;
-    }
-    
-    bullVal = Math.max(0, Math.min(100, Math.round(bullVal)));
-    bearVal = Math.max(0, Math.min(100, Math.round(bearVal)));
-    
-    if (bullVal === 0 && bearVal === 0) return null;
-    
-    return { bullPct: bullVal, bearPct: bearVal };
-}
-
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
     const s = sentimentData[pairName] || {};
     const m = MARKET_DATA[pairName] || {};
     const lm = liveMarketData[pairName] || {};
-    
+
     if (col.type === 'tf_alignment') {
         const livePrice = lm.price || lm.currentPrice;
         const ema20_1h = m.ema20 || m['1h_ema20'];
@@ -655,22 +599,16 @@ function getColumnValue(pairName, col) {
         return [sig1h, sig4h, sig1d, sig1w];
     }
     if (col.type === 'sentiment') {
-        const result = extractSentiment(s);
-        if (!window._sentimentLogged && Object.keys(s).length > 0) {
-            console.log('Sentiment data sample for', pairName, ':', s);
-            console.log('Extracted:', result);
-            window._sentimentLogged = true;
-        }
-        return result;
+        const bullPct = s.bullish_pct != null ? s.bullish_pct : (s.intra_green != null ? s.intra_green : null);
+        const bearPct = s.bearish_pct != null ? s.bearish_pct : (s.intra_red != null ? s.intra_red : null);
+        if (bullPct == null || bearPct == null) return null;
+        return { bullPct: Math.round(bullPct), bearPct: Math.round(bearPct) };
     }
-    if (col.type === 'daily_sentiment') {   // ✅ daily sentiment case
+    if (col.type === 'daily_sentiment') {
         const bullPct = s.daily_bullish_pct;
         const bearPct = s.daily_bearish_pct;
         if (bullPct == null || bearPct == null) return null;
-        const b = Math.round(Number(bullPct));
-        const br = Math.round(Number(bearPct));
-        if (isNaN(b) || isNaN(br)) return null;
-        return { bullPct: b, bearPct: br };
+        return { bullPct: Math.round(bullPct), bearPct: Math.round(bearPct) };
     }
     if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
     return t[type.field] != null ? t[type.field] : null;
@@ -727,7 +665,7 @@ function renderColumnCell(pairName, col) {
         const dots = val.map(sig => `<span class="trend-dot" style="background:${sig==='bull'?'var(--green)':(sig==='bear'?'var(--red)':'#cbd5e1')}"></span>`).join('');
         return `<div class="col-cell dots-container">${dots}</div>`;
     }
-    if (col.type === 'sentiment' || col.type === 'daily_sentiment') {   // ✅ both bar types
+    if (col.type === 'sentiment' || col.type === 'daily_sentiment') {
         if (!val) return '<div class="col-cell" style="color:var(--muted)">--</div>';
         return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
     }
