@@ -56,17 +56,25 @@ def get_custom_sentiment(symbol):
         df_15m = t.history(period="5d", interval="15m")
         df_1h = t.history(period="1mo", interval="1h")
         df_1d = t.history(period="1y", interval="1d")
+
         if df_15m.empty or df_1h.empty or df_1d.empty:
             return None
+
         score_15m = calc_window_score(df_15m, 32)
         score_1h = calc_window_score(df_1h, 24)
         score_1d = calc_window_score(df_1d, 14)
+
         if score_15m is None or score_1h is None or score_1d is None:
             return None
+
         intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+        daily_green = round(((score_1h * 0.3) + (score_1d * 0.7)) * 100)
+
         return {
             "bullish_pct": intra_green,
             "bearish_pct": 100 - intra_green,
+            "daily_bullish_pct": daily_green,
+            "daily_bearish_pct": 100 - daily_green,
             "source": "Custom MTF Engine"
         }
     except Exception as e:
@@ -81,15 +89,17 @@ def update_crypto_sentiment():
             existing = {}
     except:
         existing = {}
+
     for sym in CRYPTO_SYMBOLS:
         print(f"Processing {sym}...")
         result = get_custom_sentiment(sym)
         if result:
             existing[sym] = result
-            print(f"  -> Bullish: {result['bullish_pct']}%, Bearish: {result['bearish_pct']}%")
+            print(f"  -> Intraday Bullish: {result['bullish_pct']}%, Daily Bullish: {result['daily_bullish_pct']}%")
         else:
             print(f"  -> Skipped {sym}")
         time.sleep(1)
+
     response = requests.put(firebase_url, json=existing)
     print(f"Firebase update status: {response.status_code}")
 
