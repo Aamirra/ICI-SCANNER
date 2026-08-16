@@ -1,4 +1,4 @@
-name: Update Crypto Sentiment
+name: Update Crypto & Stocks Sentiment
 
 on:
   schedule:
@@ -16,5 +16,7 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: pip install requests yfinance pandas
-      - name: Run script
+      - name: Run crypto script
         run: python crypto_sentiment.py
+      - name: Run stocks script
+        run: python stocks_sentiment.py
