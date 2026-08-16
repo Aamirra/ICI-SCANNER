@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
+        /* ... same CSS as before ... */
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
         [data-theme="light"] { --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --txt:#0f172a; --acc:#0062ff; --green:#22c55e; --red:#ef4444; --gold:#f59e0b; --muted:#64748b; --pill-bg:#f1f5f9; }
@@ -115,6 +116,7 @@
 </head>
 <body>
 <div class="phone-container" id="app">
+    <!-- Same HTML as before ... -->
     <div class="header-row">
         <div class="brand"><div class="brand-icon"><i class="fas fa-bitcoin"></i></div><div class="brand-text"><h1>ICI Crypto</h1><span>clean v2</span></div></div>
         <div class="header-actions">
@@ -155,6 +157,7 @@
     </div>
 </div>
 
+<!-- Modals etc same as before -->
 <div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
     <div class="sheet-box" id="colMenuBox"></div>
 </div>
@@ -204,7 +207,6 @@
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
-        <!-- ⭐ Star button added -->
         <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
@@ -255,7 +257,7 @@ if (typeof openAlertsList !== 'function') window.openAlertsList = ()=>alert('Ale
 <script src="Alerts.js"></script>
 <script>
 (function() {
-    if (typeof _alFireAlert !== 'function') return;  // ✅ guard added
+    if (typeof _alFireAlert !== 'function') return;
     const orig = _alFireAlert;
     _alFireAlert = function(alert, pair) {
         if (alert.value != null && alert.type) {
@@ -334,12 +336,10 @@ function toggleStar(pair) {
     if (pair === activeChartPair) updateChartStarButton();
 }
 
-// ⭐ Toggle star for the currently displayed chart pair
 function toggleStarFromChart() {
     if (activeChartPair) toggleStar(activeChartPair);
 }
 
-// ⭐ Update the chart star button icon based on activeChartPair
 function updateChartStarButton() {
     const btn = document.getElementById('chartStarBtn');
     if (btn) {
@@ -583,12 +583,79 @@ function loadColumns() {
 function saveColumns() { localStorage.setItem('ici_crypto_columns', JSON.stringify(columnDefs)); }
 columnDefs = loadColumns();
 
+// Helper: extract sentiment from various possible formats
+function extractSentiment(s) {
+    if (!s || typeof s !== 'object') return null;
+    
+    // sometimes sentiment is nested under 'sentiment' key
+    if (s.sentiment && typeof s.sentiment === 'object') s = s.sentiment;
+    
+    // possible key names for bull and bear percentages (case-insensitive)
+    const bullKeys = ['bullish_pct', 'bull_pct', 'bull', 'green', 'bullish', 'positive', 'up', 'intra_green', 'daily_green', 'bullish_percent', 'bull_percent'];
+    const bearKeys = ['bearish_pct', 'bear_pct', 'bear', 'red', 'bearish', 'negative', 'down', 'intra_red', 'daily_red', 'bearish_percent', 'bear_percent'];
+    
+    let bullVal = null, bearVal = null;
+    
+    // search case-insensitively
+    for (const key of Object.keys(s)) {
+        const lower = key.toLowerCase();
+        if (bullVal === null && bullKeys.some(k => lower.includes(k))) {
+            bullVal = s[key];
+        }
+        if (bearVal === null && bearKeys.some(k => lower.includes(k))) {
+            bearVal = s[key];
+        }
+        if (bullVal !== null && bearVal !== null) break;
+    }
+    
+    if (bullVal === null && bearVal === null) return null;
+    
+    // convert to numbers, handle strings
+    bullVal = Number(bullVal);
+    bearVal = Number(bearVal);
+    
+    if (isNaN(bullVal)) bullVal = null;
+    if (isNaN(bearVal)) bearVal = null;
+    
+    // if values are fractions (0-1) convert to percentages
+    if (bullVal !== null && bullVal >= 0 && bullVal <= 1 && (bearVal === null || (bearVal >= 0 && bearVal <= 1)) ) {
+        bullVal = bullVal * 100;
+        if (bearVal !== null) bearVal = bearVal * 100;
+    }
+    if (bearVal !== null && bearVal >= 0 && bearVal <= 1 && (bullVal === null || (bullVal >= 0 && bullVal <= 1)) ) {
+        if (bullVal === null) bullVal = 0; // if only bear fraction, bull is complement maybe
+        bullVal = bullVal * 100;
+        bearVal = bearVal * 100;
+    }
+    
+    // if only one side is present
+    if (bullVal !== null && bearVal === null) {
+        // assume bear = 100 - bull if bull is percentage (0-100)
+        if (bullVal >= 0 && bullVal <= 100) bearVal = 100 - bullVal;
+        else bearVal = 0;
+    } else if (bearVal !== null && bullVal === null) {
+        // assume bull = 100 - bear if bear is percentage
+        if (bearVal >= 0 && bearVal <= 100) bullVal = 100 - bearVal;
+        else bullVal = 0;
+    }
+    
+    // clamp and round
+    bullVal = Math.max(0, Math.min(100, Math.round(bullVal)));
+    bearVal = Math.max(0, Math.min(100, Math.round(bearVal)));
+    
+    // if both zero (but data existed?), maybe return null to avoid misleading
+    if (bullVal === 0 && bearVal === 0) return null;
+    
+    return { bullPct: bullVal, bearPct: bearVal };
+}
+
 function getColumnValue(pairName, col) {
     const type = COLUMN_TYPES[col.type];
     const t = techMetrics[pairName] || {};
     const s = sentimentData[pairName] || {};
     const m = MARKET_DATA[pairName] || {};
     const lm = liveMarketData[pairName] || {};
+    
     if (col.type === 'tf_alignment') {
         const livePrice = lm.price || lm.currentPrice;
         const ema20_1h = m.ema20 || m['1h_ema20'];
@@ -602,18 +669,15 @@ function getColumnValue(pairName, col) {
         return [sig1h, sig4h, sig1d, sig1w];
     }
     if (col.type === 'sentiment') {
-        // ✅ FIX: Support multiple sentiment data formats
-        let bullPct = s.bullish_pct;
-        let bearPct = s.bearish_pct;
-        if (bullPct === undefined || bullPct === null) {
-            bullPct = s.intra_green ?? s.daily_green ?? 0;
+        // Use robust extractor
+        const result = extractSentiment(s);
+        // For debugging, log first call only
+        if (!window._sentimentLogged && Object.keys(s).length > 0) {
+            console.log('Sentiment data sample for', pairName, ':', s);
+            console.log('Extracted:', result);
+            window._sentimentLogged = true;
         }
-        if (bearPct === undefined || bearPct === null) {
-            bearPct = s.intra_red ?? s.daily_red ?? (100 - bullPct);
-        }
-        bullPct = Math.max(0, Math.min(100, bullPct || 0));
-        bearPct = Math.max(0, Math.min(100, bearPct || 0));
-        return { bullPct: Math.round(bullPct), bearPct: Math.round(bearPct) };
+        return result; // may be null
     }
     if (col.type === 'price') return (lm.price || lm.currentPrice || m.price || m.currentPrice || null);
     return t[type.field] != null ? t[type.field] : null;
@@ -671,6 +735,7 @@ function renderColumnCell(pairName, col) {
         return `<div class="col-cell dots-container">${dots}</div>`;
     }
     if (col.type === 'sentiment') {
+        if (!val) return '<div class="col-cell" style="color:var(--muted)">--</div>'; // if null
         return `<div class="col-cell"><div class="sentiment-progress"><div class="sent-red" style="width:${val.bearPct}%">${val.bearPct}%</div><div class="sent-green" style="width:${val.bullPct}%">${val.bullPct}%</div></div></div>`;
     }
     if (val == null) return '<div class="col-cell" style="color:var(--muted)">--</div>';
@@ -815,7 +880,7 @@ function render() {
     updateCounts();
 }
 
-// ── Chart functions (with highlight and star button update) ──
+// ── Chart functions ──
 function activateChartSlot(s) {
     activeChartSlot = s;
     for (let i=1;i<=4;i++) document.getElementById('slotBtn'+i).classList.toggle('active-slot', i===s);
@@ -838,7 +903,7 @@ function openChartForPair(pairName) {
     drawChart(activeChartSlot);
     document.getElementById('chartOverlay').style.display = 'flex';
     activeChartPair = pairName;
-    updateChartStarButton();   // ⭐ update star button
+    updateChartStarButton();
     render();
     startCountdownTimer();
 }
@@ -847,7 +912,7 @@ function movePair(step) {
     chartIndices[activeChartSlot-1] = (chartIndices[activeChartSlot-1] + step + total) % total;
     updateChartPairName();
     activeChartPair = chartPairs[chartIndices[activeChartSlot-1]];
-    updateChartStarButton();   // ⭐ update star after moving
+    updateChartStarButton();
     drawChart(activeChartSlot);
     render();
 }
@@ -920,7 +985,6 @@ function toggle4H() {
 
 db.ref('technicalMetrics').on('value', snap => { techMetrics = snap.val()||{}; renderDebounced(); });
 db.ref('sentiment').on('value', snap => { sentimentData = snap.val()||{}; renderDebounced(); });
-// ✅ duplicate pb_state listener removed (ab upar wala hi use hoga)
 db.ref('marketData').on('value', snap => {
     MARKET_DATA = snap.val()||{};
     if (typeof checkAllAlerts === 'function') {
