@@ -122,6 +122,8 @@
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
             <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
             <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
+            <!-- ✅ LTF Alert Button -->
+            <button class="alert-toggle" id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button>
         </div>
     </div>
     <div class="pills-row">
@@ -155,6 +157,7 @@
     </div>
 </div>
 
+<!-- Modals etc same as before -->
 <div class="sheet-overlay" id="colMenuSheet" onclick="if(event.target===this) closeColMenu()">
     <div class="sheet-box" id="colMenuBox"></div>
 </div>
@@ -407,6 +410,23 @@ function toggleAlert(type) {
     alertSettings[type] = val;
     window.alertSettings = alertSettings;
     updateToggleButtons();
+}
+
+// ✅ LTF Alert listener
+db.ref('alertSettings/crypto/ltf_alert').on('value', snap => {
+    const enabled = snap.val() === true;
+    const btn = document.getElementById('ltfAlertBtn');
+    if (btn) {
+        btn.textContent = enabled ? 'LTF ON' : 'LTF OFF';
+        btn.className = 'alert-toggle ' + (enabled ? 'active' : 'inactive');
+    }
+});
+
+function toggleLtfAlert() {
+    db.ref('alertSettings/crypto/ltf_alert').once('value').then(snap => {
+        const current = snap.val() === true;
+        db.ref('alertSettings/crypto/ltf_alert').set(!current);
+    });
 }
 
 db.ref('liveMarketData').on('value', snap => {
