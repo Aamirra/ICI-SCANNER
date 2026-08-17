@@ -57,28 +57,53 @@ def calc_window_score(df, lookback_bars):
     return earned_points / total_points
 
 def fetch_binance_klines(symbol, interval, limit=500):
-    base_url = "https://api.binance.com/api/v3/klines"
+    base_urls = [
+        "https://data-api.binance.vision/api/v3/klines",  # alternative endpoint
+        "https://api.binance.com/api/v3/klines"
+    ]
+    params = {"symbol": symbol, "interval": interval, "limit": limit}
+    for base_url in base_urls:
+        try:
+            resp = requests.get(base_url, params=params, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            if not data:
+                continue
+            df = pd.DataFrame(data, columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "quote_asset_volume", "number_of_trades",
+                "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "ignore"
+            ])
+            df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
+            df["close"] = df["close"].astype(float)
+            return df[["open_time", "close"]]
+        except Exception:
+            continue
+    return None
+
+def fetch_cryptocompare_hist(symbol, timeframe, limit=200):
+    # CryptoCompare uses base currency without USD suffix, e.g., BTC, ETH
+    base = symbol.replace("USD", "")
+    if base == "1000SATS":
+        base = "1000SATS"  # may not exist
+    url = "https://min-api.cryptocompare.com/data/v2/histo" + timeframe
     params = {
-        "symbol": symbol,
-        "interval": interval,
-        "limit": limit
+        "fsym": base,
+        "tsym": "USD",
+        "limit": limit,
+        "aggregate": 1
     }
     try:
-        resp = requests.get(base_url, params=params, timeout=10)
+        resp = requests.get(url, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-        if not data:
+        if data.get("Response") == "Error":
             return None
-        df = pd.DataFrame(data, columns=[
-            "open_time", "open", "high", "low", "close", "volume",
-            "close_time", "quote_asset_volume", "number_of_trades",
-            "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "ignore"
-        ])
-        df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
+        df = pd.DataFrame(data["Data"]["Data"])
+        df["open_time"] = pd.to_datetime(df["time"], unit="s")
         df["close"] = df["close"].astype(float)
         return df[["open_time", "close"]]
-    except Exception as e:
-        print(f"    Binance error for {symbol} {interval}: {e}")
+    except Exception:
         return None
 
 def get_custom_sentiment_binance(symbol):
@@ -145,16 +170,49 @@ def get_custom_sentiment_yahoo(symbol):
         print(f"  Yahoo error for {symbol}: {e}")
         return None
 
+def get_custom_sentiment_cryptocompare(symbol):
+    try:
+        df_15m = fetch_cryptocompare_hist(symbol, "minute", limit=200)  # minutes
+        df_1h = fetch_cryptocompare_hist(symbol, "hour", limit=200)
+        df_1d = fetch_cryptocompare_hist(symbol, "day", limit=200)
+
+        if df_15m is None or df_1h is None or df_1d is None:
+            return None
+
+        score_15m = calc_window_score(df_15m, 32)
+        score_1h = calc_window_score(df_1h, 24)
+        score_1d = calc_window_score(df_1d, 14)
+
+        if score_15m is None or score_1h is None or score_1d is None:
+            return None
+
+        intra_green = round(((score_15m * 0.4) + (score_1h * 0.6)) * 100)
+        daily_green = round(((score_1h * 0.3) + (score_1d * 0.7)) * 100)
+
+        return {
+            "bullish_pct": intra_green,
+            "bearish_pct": 100 - intra_green,
+            "daily_bullish_pct": daily_green,
+            "daily_bearish_pct": 100 - daily_green,
+            "source": "CryptoCompare"
+        }
+    except Exception as e:
+        print(f"  CryptoCompare error for {symbol}: {e}")
+        return None
+
 def get_sentiment_for_symbol(symbol):
-    print(f"  Trying Binance for {symbol}...")
+    # Try Binance
     result = get_custom_sentiment_binance(symbol)
     if result:
         return result
-    print(f"  Binance failed, trying Yahoo for {symbol}...")
+    # Try Yahoo
     result = get_custom_sentiment_yahoo(symbol)
     if result:
         return result
-    print(f"  Both failed for {symbol}, skipping.")
+    # Try CryptoCompare
+    result = get_custom_sentiment_cryptocompare(symbol)
+    if result:
+        return result
     return None
 
 def update_crypto_sentiment():
@@ -173,7 +231,16 @@ def update_crypto_sentiment():
             existing[sym] = result
             print(f"  -> Intraday Bullish: {result['bullish_pct']}%, Daily Bullish: {result['daily_bullish_pct']}%")
         else:
-            print(f"  -> No data for {sym}")
+            # If all sources fail, set neutral 50/50 to avoid empty cells
+            if sym not in existing:
+                existing[sym] = {
+                    "bullish_pct": 50,
+                    "bearish_pct": 50,
+                    "daily_bullish_pct": 50,
+                    "daily_bearish_pct": 50,
+                    "source": "Neutral Default"
+                }
+            print(f"  -> No data for {sym}, set neutral 50/50")
         time.sleep(0.5)
 
     response = requests.put(firebase_url, json=existing)
