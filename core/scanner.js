@@ -39,6 +39,7 @@ const { PB_STATE } = require('../pullback/tradeStateManager');
 // ── Strategy Monitors ──
 const { bullMonitor } = require('../pullback/bullMonitor');
 const { bearMonitor } = require('../pullback/bearMonitor');
+const { ltfBullMonitor } = require('../pullback/ltfBullMonitor'); // ✅ LTF Monitor import
 
 let calculateAndUpdateStockMetrics = null;
 try {
@@ -281,6 +282,7 @@ function fetchBinanceCandles(symbol, tf) {
     else if (tf === '4h') interval = '4h';
     else if (tf === '1day') interval = '1d';
     else if (tf === '1week') interval = '1d'; // aggregate 7 days
+    else if (tf === '15m') interval = '15m'; // ✅ 15m added
     else interval = '1h';
 
     const limit = tf === '1week' ? 200 : 200;
@@ -354,6 +356,9 @@ async function fetchTF_Yahoo(p, tf) {
             if (tf === '4h') {
                 RAW_4H[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
             }
+            if (tf === '15m') { // ✅ Store 15m data
+                RAW_15M[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
+            }
             if (tf === '1day') {
                 RAW_DAILY[p.n] = { closes: binanceData.closes, volumes: binanceData.volumes, time: binanceData.times[binanceData.times.length-1] };
             }
@@ -396,6 +401,9 @@ async function fetchTF_Yahoo(p, tf) {
         if (tf === '4h') {
             RAW_4H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
         }
+        if (tf === '15m') { // ✅ Store 15m data from Yahoo fallback (though Yahoo may not support 15m)
+            RAW_15M[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
+        }
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: yahooData.closes, volumes: yahooData.volumes, time: yahooData.time };
         }
@@ -413,6 +421,7 @@ async function fetchTF_Yahoo(p, tf) {
 let DATA_STORE = {};
 let RAW_1H = {};
 let RAW_4H = {};
+let RAW_15M = {}; // ✅ 15m raw data
 let RAW_DAILY = {};
 let RAW_WEEKLY = {};
 let keyUsage = {};
@@ -591,7 +600,9 @@ async function fetchTF(p, tf, retryCount = 0) {
         return await fetchIndexCandlesAndStore(p, tf);
     }
     const key = await getKey();
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${tf}&outputsize=200&apikey=${key}`;
+    let twelveInterval = tf;
+    if (tf === '15m') twelveInterval = '15min';
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(p.s)}&interval=${twelveInterval}&outputsize=200&apikey=${key}`;
     await sleep(REQUEST_DELAY_MS);
     return new Promise(resolve => {
         const req = https.get(url, { agent }, (r) => {
@@ -627,6 +638,11 @@ async function fetchTF(p, tf, retryCount = 0) {
                             const highs = sorted.map(v => parseFloat(v.high));
                             const lows  = sorted.map(v => parseFloat(v.low));
                             RAW_4H[p.n] = { closes: cls, highs: highs, lows: lows, time: sorted[sorted.length-1]?.datetime };
+                        }
+                        if (tf === '15m') {
+                            const highs = sorted.map(v => parseFloat(v.high));
+                            const lows  = sorted.map(v => parseFloat(v.low));
+                            RAW_15M[p.n] = { closes: cls, highs: highs, lows: lows, time: sorted[sorted.length-1]?.datetime };
                         }
                         if (tf === '1day') {
                             const dailyCls = sorted.map(v => parseFloat(v.close));
@@ -672,6 +688,30 @@ async function fetchIndexCandlesAndStore(p, tf) {
         }
         if (tf === '4h') {
             RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.times[data.times.length-1] };
+        }
+        if (tf === '15m') {
+            // Indices ke liye Twelve Data se 15m data fetch karo
+            const key = config.KEYS[0];
+            if (key) {
+                const twSymbol = INDEX_SYMBOLS[p.n]?.twelvedata;
+                if (twSymbol) {
+                    const url = `https://api.twelvedata.com/time_series?symbol=${twSymbol}&interval=15min&outputsize=200&apikey=${key}`;
+                    try {
+                        const res = await fetch(url);
+                        const json = await res.json();
+                        if (json.values && json.values.length > 1) {
+                            const sorted = [...json.values].sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+                            const closes = sorted.map(v => parseFloat(v.close));
+                            const highs = sorted.map(v => parseFloat(v.high));
+                            const lows = sorted.map(v => parseFloat(v.low));
+                            const times = sorted.map(v => v.datetime);
+                            RAW_15M[p.n] = { closes, highs, lows, time: times[times.length-1] };
+                        }
+                    } catch (e) {
+                        console.error(`[Index] 15m fetch error for ${p.n}:`, e.message);
+                    }
+                }
+            }
         }
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.times[data.times.length-1] };
@@ -804,7 +844,10 @@ async function masterScan() {
 
     try {
         maybeResetDaily();
-        const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => ['1h', '4h', '1day', '1week'].map(tf => ({ p, tf })));
+        const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => {
+            const tfs = ['1h', '4h', '1day', '1week', '15m'];   // ✅ Sabke liye 15m
+            return tfs.map(tf => ({ p, tf }));
+        });
         let failed = await fetchBatch(jobs);
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
@@ -840,6 +883,22 @@ async function masterScan() {
             if (dailyData.closes && hourlyData.closes) {
                 await bullMonitor(`${pairName}_BULL`, pairName, dailyData, hourlyData, (msg) => conditionalSendTG(msg, category), firebasePut, category, alertSettings);
                 await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, (msg) => conditionalSendTG(msg, category), firebasePut, category, alertSettings);
+            }
+
+            // ✅ LTF Bull Monitor (all markets, requires 4h and 15m data)
+            if (RAW_4H[pairName] && RAW_15M[pairName]) {
+                const fourHourData = { closes: RAW_4H[pairName].closes };
+                const fifteenMinData = { closes: RAW_15M[pairName].closes };
+                await ltfBullMonitor(
+                    `${pairName}_LTF_BULL`,
+                    pairName,
+                    fourHourData,
+                    fifteenMinData,
+                    (msg) => conditionalSendTG(msg, category),
+                    firebasePut,
+                    category,
+                    alertSettings
+                );
             }
         }
         await refreshRealUsage();
@@ -878,4 +937,4 @@ if (require.main === module) {
 
 masterScan.isBusy = () => isScanning;
 
-module.exports = { masterScan, RAW_1H, RAW_4H, RAW_DAILY, RAW_WEEKLY };
+module.exports = { masterScan, RAW_1H, RAW_4H, RAW_15M, RAW_DAILY, RAW_WEEKLY };
