@@ -1,6 +1,8 @@
 name: Update Crypto & Stocks Sentiment
 
 on:
+  push:
+    branches: [ main ]   # apna default branch likho (main/master)
   schedule:
     - cron: '0 */4 * * *'   # har 4 ghante
   workflow_dispatch:          # manual run ke liye
