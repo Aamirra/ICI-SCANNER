@@ -1,10 +1,13 @@
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
-const { PB_STATE, defaultLtfState } = require('./ltfStateManager'); // nayi state manager file banao
+const { PB_STATE, defaultLtfState } = require('./ltfStateManager');
 
 const LTF_ALERTS_ENABLED = true;
 
 async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, sendTG, firebasePut, category, alertSettings = { whatsapp: true }) {
+    // ✅ Guard: agar PB_STATE undefined ho to return null
+    if (!PB_STATE) return null;
+
     const { closes: fCloses } = fourHourData || {};
     const { closes: mCloses } = fifteenMinData || {};
 
@@ -47,7 +50,6 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
         // Reclaim condition: current candle closes above 20EMA, previous candle was below 20EMA (pehla candle)
         const prevMClose = mCloses[mCloses.length - 2];
         const prevMEMA20 = calcEMA(mCloses.slice(0, -1), 20); // need previous EMA20
-        // Simplification: check if current close > current EMA20 and previous close <= previous EMA20 (approx)
         if (mClose > mEMA20 && prevMClose <= (prevMEMA20 || mEMA20)) {
             s.ltfPhase = 'alert_triggered';
 
@@ -57,12 +59,10 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
                     '• 15M: Reclaim above 20EMA\n' +
                     '• Current Price: ' + mClose;
 
-                // Telegram
                 if (typeof sendTG === 'function') {
                     sendTG(message);
                 }
 
-                // WhatsApp
                 const catSettings = alertSettings[category] || { whatsapp: true };
                 if (catSettings.whatsapp) {
                     try {
@@ -89,7 +89,6 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
             }
         }
     } else if (s.ltfPhase === 'alert_triggered') {
-        // Reset if price falls back below 20EMA (for new opportunity)
         if (mClose < mEMA20) {
             s.ltfPhase = 'wait_ltf_dip';
         }
