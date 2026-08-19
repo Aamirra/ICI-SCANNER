@@ -1,3 +1,4 @@
+require('dotenv').config();
 const https = require('https');
 const cheerio = require('cheerio');
 const admin = require('firebase-admin');
@@ -12,7 +13,7 @@ if (!admin.apps.length) {
 
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount),
-                databaseURL: process.env.DATABASE_URL || process.env.FIREBASE_URL
+                databaseURL: process.env.FIREBASE_DATABASE_URL || process.env.FIREBASE_URL
             });
             console.log('[MarketScanner] Firebase initialized successfully.');
         } else {
