@@ -52,7 +52,7 @@ try {
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
 // ⚡ ULTRA‑SAFE RATE LIMITS ⚡
-const MAX_CONCURRENT = 2;        // for non-crypto (Twelve Data etc.)
+const MAX_CONCURRENT = 2;
 const REQUEST_DELAY_MS  = 3500;
 const BATCH_DELAY_MS    = 4000;
 const RATE_PER_MIN   = 5;
@@ -409,6 +409,97 @@ async function fetchTF_Yahoo(p, tf) {
     }
 }
 
+// ✅ NEW: Fetch non-crypto (forex/stocks/indices) from Yahoo Finance
+function fetchYahooNonCrypto(p, tf) {
+    const isIndex = INDICES.includes(p.n);
+    let yahooSymbol;
+    if (isIndex) {
+        yahooSymbol = INDEX_SYMBOLS[p.n]?.yahoo;
+    } else {
+        // Forex/Stocks: yahoo symbol e.g., EURUSD=X for forex, direct for stocks
+        yahooSymbol = p.n.includes('=') ? p.n : (p.n.includes('USD') ? p.n + '=X' : p.n);
+    }
+    if (!yahooSymbol) return Promise.resolve(null);
+
+    const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
+    const range = (interval === '1h' || interval === '15m' || interval === '5m') ? '60d' : '1y';
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
+
+    return new Promise((resolve) => {
+        https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    const result = json?.chart?.result?.[0];
+                    if (!result) { resolve(null); return; }
+                    const quotes = result.indicators.quote[0];
+                    if (!quotes || !quotes.close || quotes.close.length < 20) { resolve(null); return; }
+                    const timestamps = result.timestamp || [];
+                    let closes = quotes.close.filter(v => v !== null);
+                    let highs = (quotes.high || []).filter(v => v !== null);
+                    let lows = (quotes.low || []).filter(v => v !== null);
+                    let volumes = (quotes.volume || []).map(v => v || 0);
+                    let times = timestamps.map(t => new Date(t * 1000).toISOString());
+                    const minLen = Math.min(closes.length, highs.length, lows.length, times.length);
+                    closes = closes.slice(-minLen); highs = highs.slice(-minLen); lows = lows.slice(-minLen); volumes = volumes.slice(-minLen); times = times.slice(-minLen);
+
+                    let candles = { closes, highs, lows, volumes, times };
+                    if (tf === '4h') {
+                        const agg = aggregateTo4Hour(closes, highs, lows, times, volumes);
+                        if (!agg) { resolve(null); return; }
+                        resolve({ closes: agg.closes, highs: agg.highs, lows: agg.lows, volumes: agg.volumes, time: agg.times[agg.times.length-1] });
+                    } else {
+                        resolve({ closes, highs, lows, volumes, time: times[times.length-1] });
+                    }
+                } catch (e) { resolve(null); }
+            });
+        }).on('error', () => resolve(null));
+    });
+}
+
+// ✅ NEW: Store non-crypto data (Yahoo or Twelve Data) into DATA_STORE/RAW
+async function storeNonCryptoData(p, tf, data) {
+    try {
+        if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
+        const cls = data.closes;
+        const ema20 = calcEMA(cls, 20);
+        const currentPrice = cls[cls.length - 1];
+        if (ema20) {
+            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
+            if (tf === '1h') {
+                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
+                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
+            }
+        } else {
+            DATA_STORE[p.n][tf] = '—';
+        }
+        if (tf === '1h') {
+            RAW_1H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+            const last50Closes = data.closes.slice(-50);
+            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
+        }
+        if (tf === '4h') {
+            RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+        }
+        if (tf === '15m') {
+            RAW_15M[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+        }
+        if (tf === '1day') {
+            RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.time };
+        }
+        if (tf === '1week') {
+            RAW_WEEKLY[p.n] = { closes: data.closes, time: data.time };
+        }
+        return true;
+    } catch (e) {
+        console.error(`Error storing Yahoo data for ${p.n} (${tf}):`, e.message);
+        return false;
+    }
+}
+
 // ── Global state ──
 let DATA_STORE = {};
 let RAW_1H = {};
@@ -599,9 +690,22 @@ async function fetchTF(p, tf, retryCount = 0) {
     if (p.isCrypto) {
         return fetchTF_Yahoo(p, tf);
     }
+
+    // ✅ Try Yahoo first for non-crypto (forex/stocks/indices)
+    const yahooData = await fetchYahooNonCrypto(p, tf);
+    if (yahooData) {
+        console.log(`[Yahoo] Fetched ${p.n} (${tf})`);
+        return await storeNonCryptoData(p, tf, yahooData);
+    }
+
+    // Fallback to indices multi-source or Twelve Data
     if (INDICES.includes(p.n)) {
+        console.log(`[Yahoo] Failed for ${p.n}, using multi-source...`);
         return await fetchIndexCandlesAndStore(p, tf);
     }
+
+    // Forex/Stocks: Twelve Data fallback
+    console.log(`[Yahoo] Failed for ${p.n}, trying Twelve Data...`);
     const key = await getKey();
     let twelveInterval = tf;
     if (tf === '15m') twelveInterval = '15min';
@@ -691,27 +795,7 @@ async function fetchIndexCandlesAndStore(p, tf) {
             RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.times[data.times.length-1] };
         }
         if (tf === '15m') {
-            const key = config.KEYS[0];
-            if (key) {
-                const twSymbol = INDEX_SYMBOLS[p.n]?.twelvedata;
-                if (twSymbol) {
-                    const url = `https://api.twelvedata.com/time_series?symbol=${twSymbol}&interval=15min&outputsize=200&apikey=${key}`;
-                    try {
-                        const res = await fetch(url);
-                        const json = await res.json();
-                        if (json.values && json.values.length > 1) {
-                            const sorted = [...json.values].sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
-                            const closes = sorted.map(v => parseFloat(v.close));
-                            const highs = sorted.map(v => parseFloat(v.high));
-                            const lows = sorted.map(v => parseFloat(v.low));
-                            const times = sorted.map(v => v.datetime);
-                            RAW_15M[p.n] = { closes, highs, lows, time: times[times.length-1] };
-                        }
-                    } catch (e) {
-                        console.error(`[Index] 15m fetch error for ${p.n}:`, e.message);
-                    }
-                }
-            }
+            RAW_15M[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.times[data.times.length-1] };
         }
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.times[data.times.length-1] };
