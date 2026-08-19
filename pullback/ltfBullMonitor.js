@@ -1,13 +1,17 @@
 const calcEMA = require('../utils/emaCalc');
 const calcSMA = require('../utils/smaCalc');
-const { PB_STATE, defaultLtfState } = require('./ltfStateManager');
+const { PB_STATE } = require('./tradeStateManager');
 
 const LTF_ALERTS_ENABLED = true;
+
+function defaultLtfState() {
+    return { ltfPhase: 'wait_ltf_dip', timestamp: Date.now() };
+}
 
 async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, sendTG, firebasePut, category, alertSettings = { whatsapp: true }) {
     if (!PB_STATE) return null;
 
-    console.log(`[LTF] Checking ${pairName}...`); // ✅ Debug log
+    console.log(`[LTF] Checking ${pairName}...`);
 
     const { closes: fCloses } = fourHourData || {};
     const { closes: mCloses } = fifteenMinData || {};
@@ -17,7 +21,6 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
         return null;
     }
 
-    // 4H FILTER
     const fClose = fCloses[fCloses.length - 1];
     const fSMA50 = calcSMA(fCloses, 50);
     const fEMA20 = calcEMA(fCloses, 20);
@@ -32,7 +35,6 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
         return null;
     }
 
-    // 15M LOGIC
     let s = PB_STATE[stateKey] || defaultLtfState();
 
     const mClose = mCloses[mCloses.length - 1];
@@ -41,7 +43,6 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
 
     if (!mSMA50 || !mEMA20) return s;
 
-    // State machine
     if (!s.ltfPhase || s.ltfPhase === 'wait_ltf_dip') {
         if (mClose < mEMA20 && mClose < mSMA50 && mEMA20 < mSMA50) {
             s.ltfPhase = 'wait_ltf_reclaim';
