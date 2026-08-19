@@ -494,5 +494,18 @@ function runSafeMasterScan() {
         runSafeMasterScan();
     });
 
-    console.log('⏰ All Automated Scans Scheduled Successfully without broken scrapers!');
+    // 🟢 4. Sentiment Scripts Every Hour
+    cron.schedule('0 * * * *', () => {
+        console.log('[CRON] Running sentiment scripts...');
+        exec('bash /home/ubuntu/ICI-SCANNER/run_sentiment_cron.sh', (err, stdout, stderr) => {
+            if (err) {
+                console.error('Sentiment script error:', err.message);
+            } else {
+                console.log('Sentiment updated:\n', stdout);
+                if (stderr) console.warn('Sentiment stderr:', stderr);
+            }
+        });
+    });
+
+    console.log('⏰ All Automated Scans and Sentiment Updates Scheduled Successfully without broken scrapers!');
 })();
