@@ -5,8 +5,9 @@ const { PB_STATE, defaultLtfState } = require('./ltfStateManager');
 const LTF_ALERTS_ENABLED = true;
 
 async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, sendTG, firebasePut, category, alertSettings = { whatsapp: true }) {
-    // ✅ Guard: agar PB_STATE undefined ho to return null
     if (!PB_STATE) return null;
+
+    console.log(`[LTF] Checking ${pairName}...`); // ✅ Debug log
 
     const { closes: fCloses } = fourHourData || {};
     const { closes: mCloses } = fifteenMinData || {};
@@ -42,14 +43,12 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
 
     // State machine
     if (!s.ltfPhase || s.ltfPhase === 'wait_ltf_dip') {
-        // Condition: price below both 20EMA and 50SMA, and 20EMA below 50SMA
         if (mClose < mEMA20 && mClose < mSMA50 && mEMA20 < mSMA50) {
             s.ltfPhase = 'wait_ltf_reclaim';
         }
     } else if (s.ltfPhase === 'wait_ltf_reclaim') {
-        // Reclaim condition: current candle closes above 20EMA, previous candle was below 20EMA (pehla candle)
         const prevMClose = mCloses[mCloses.length - 2];
-        const prevMEMA20 = calcEMA(mCloses.slice(0, -1), 20); // need previous EMA20
+        const prevMEMA20 = calcEMA(mCloses.slice(0, -1), 20);
         if (mClose > mEMA20 && prevMClose <= (prevMEMA20 || mEMA20)) {
             s.ltfPhase = 'alert_triggered';
 
