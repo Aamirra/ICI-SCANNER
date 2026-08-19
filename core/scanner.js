@@ -94,133 +94,28 @@ function aggregate1hTo4h(candles) {
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-async function fetchIndexCandles(pair, tf) {
-    const symMap = INDEX_SYMBOLS[pair];
-    if (!symMap) return null;
-
-    const sources = [
-        {
-            name: 'Finnhub',
-            fetch: async () => {
-                const finnhubSymbol = symMap.finnhub;
-                let resolution = '60';
-                if (tf === '1day') resolution = 'D';
-                else if (tf === '1week') resolution = 'W';
-                const url = `https://finnhub.io/api/v1/stock/candle?symbol=${finnhubSymbol}&resolution=${resolution}&count=200&token=${process.env.FINNHUB_KEY}`;
-                const res = await fetch(url);
-                const json = await res.json();
-                if (json.s !== 'ok' || !json.c) return null;
-                const times = json.t.map(t => new Date(t * 1000).toISOString());
-                let result = { closes: json.c, highs: json.h, lows: json.l, volumes: json.v || [], times };
-                if (tf === '4h') result = aggregate1hTo4h(result);
-                return result && result.closes.length >= 20 ? result : null;
-            },
-            retries: 5
-        },
-        {
-            name: 'Yahoo',
-            fetch: async () => {
-                const yahooSymbol = symMap.yahoo;
-                const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : '1h';
-                const range = (interval === '1h') ? '60d' : '1y';
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
-                const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-                const json = await res.json();
-                const result = json?.chart?.result?.[0];
-                if (!result) return null;
-                const quotes = result.indicators.quote[0];
-                if (!quotes || !quotes.close || quotes.close.length < 20) return null;
-                const timestamps = result.timestamp || [];
-                let closes = quotes.close.filter(v => v !== null);
-                let highs = (quotes.high || []).filter(v => v !== null);
-                let lows = (quotes.low || []).filter(v => v !== null);
-                let volumes = (quotes.volume || []).map(v => v || 0);
-                let times = timestamps.map(t => new Date(t * 1000).toISOString());
-                const minLen = Math.min(closes.length, highs.length, lows.length, times.length);
-                let candles = { closes: closes.slice(-minLen), highs: highs.slice(-minLen), lows: lows.slice(-minLen), volumes: volumes.slice(-minLen), times: times.slice(-minLen) };
-                if (tf === '4h') candles = aggregate1hTo4h(candles);
-                return candles && candles.closes.length >= 20 ? candles : null;
-            },
-            retries: 5
-        },
-        {
-            name: 'Twelve Data',
-            fetch: async () => {
-                const key = config.KEYS[0];
-                if (!key) return null;
-                const twSymbol = symMap.twelvedata;
-                const interval = tf === '4h' ? '1h' : tf === '1day' ? '1day' : tf === '1week' ? '1week' : '1h';
-                const url = `https://api.twelvedata.com/time_series?symbol=${twSymbol}&interval=${interval}&outputsize=200&apikey=${key}`;
-                const res = await fetch(url);
-                const json = await res.json();
-                if (json.code === 429 || !json.values) return null;
-                const sorted = [...json.values].sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
-                const closes = sorted.map(v => parseFloat(v.close));
-                const highs = sorted.map(v => parseFloat(v.high));
-                const lows = sorted.map(v => parseFloat(v.low));
-                const volumes = sorted.map(v => parseFloat(v.volume || '0'));
-                const times = sorted.map(v => v.datetime);
-                let candles = { closes, highs, lows, volumes, times };
-                if (tf === '4h') candles = aggregate1hTo4h(candles);
-                return candles && candles.closes.length >= 20 ? candles : null;
-            },
-            retries: 5
-        },
-        {
-            name: 'Alpha Vantage',
-            fetch: async () => {
-                const avKey = process.env.ALPHA_VANTAGE_KEYS;
-                const key = avKey ? avKey.split(',')[0].trim() : null;
-                if (!key) return null;
-                const avSymbol = symMap.alphavantage;
-                let func = 'TIME_SERIES_INTRADAY', interval = '60min';
-                if (tf === '1day') { func = 'TIME_SERIES_DAILY'; interval = null; }
-                else if (tf === '1week') { func = 'TIME_SERIES_WEEKLY'; interval = null; }
-                let url = `https://www.alphavantage.co/query?function=${func}&symbol=${avSymbol}&apikey=${key}`;
-                if (interval) url += `&interval=${interval}&outputsize=full`;
-                const res = await fetch(url);
-                const json = await res.json();
-                const timeSeriesKey = func === 'TIME_SERIES_INTRADAY' ? `Time Series (${interval})` : (func === 'TIME_SERIES_DAILY' ? 'Time Series (Daily)' : 'Weekly Time Series');
-                const series = json[timeSeriesKey];
-                if (!series) return null;
-                const entries = Object.entries(series).sort(([a],[b]) => new Date(a) - new Date(b));
-                const closes = [], highs = [], lows = [], volumes = [], times = [];
-                for (const [date, values] of entries.slice(-200)) {
-                    closes.push(parseFloat(values['4. close']));
-                    highs.push(parseFloat(values['2. high']));
-                    lows.push(parseFloat(values['3. low']));
-                    volumes.push(parseFloat(values['5. volume']));
-                    times.push(date);
-                }
-                return { closes, highs, lows, volumes, times };
-            },
-            retries: 5
-        }
-    ];
-
-    for (const source of sources) {
-        for (let attempt = 0; attempt < source.retries; attempt++) {
-            try {
-                const data = await source.fetch();
-                if (data) {
-                    console.log(`[Index] ${pair} (${tf}) fetched from ${source.name} (attempt ${attempt+1})`);
-                    return data;
-                }
-            } catch (e) {
-                console.error(`[Index] ${source.name} error for ${pair} (${tf}):`, e.message);
-            }
-            await sleep(500);
-        }
+function aggregateTo4Hour(hourlyCloses, hourlyHighs, hourlyLows, hourlyTimes, hourlyVolumes) {
+    if (!hourlyCloses || hourlyCloses.length < 4) return null;
+    const aggCloses = [], aggHighs = [], aggLows = [], aggTimes = [], aggVolumes = [];
+    for (let i = 3; i < hourlyCloses.length; i += 4) {
+        const cChunk = hourlyCloses.slice(i-3, i+1);
+        const hChunk = hourlyHighs.slice(i-3, i+1);
+        const lChunk = hourlyLows.slice(i-3, i+1);
+        const vChunk = hourlyVolumes.slice(i-3, i+1);
+        aggCloses.push(cChunk[cChunk.length-1]);
+        aggHighs.push(Math.max(...hChunk));
+        aggLows.push(Math.min(...lChunk));
+        aggTimes.push(hourlyTimes[i]);
+        aggVolumes.push(vChunk.reduce((a,b)=>a+b,0));
     }
-    console.warn(`[Index] All sources failed for ${pair} (${tf})`);
-    return null;
+    return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-function fetchYahooCandles(symbol, tf) {
-    const yahooSymbol = symbol;
+// ── Yahoo raw fetcher (single symbol, no mapping logic) ──
+function fetchYahooRaw(symbol, tf) {
     const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
-    const range = (interval === '1h') ? '60d' : '1y';
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
+    const range = (interval === '1h' || interval === '15m' || interval === '5m') ? '60d' : '1y';
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
     return new Promise((resolve) => {
         https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
             let data = '';
@@ -240,6 +135,7 @@ function fetchYahooCandles(symbol, tf) {
                     let times = timestamps.map(t => new Date(t * 1000).toISOString());
                     const minLen = Math.min(closes.length, highs.length, lows.length, times.length);
                     closes = closes.slice(-minLen); highs = highs.slice(-minLen); lows = lows.slice(-minLen); volumes = volumes.slice(-minLen); times = times.slice(-minLen);
+                    let candles = { closes, highs, lows, volumes, times };
                     if (tf === '4h') {
                         const agg = aggregateTo4Hour(closes, highs, lows, times, volumes);
                         if (!agg) { resolve(null); return; }
@@ -253,23 +149,71 @@ function fetchYahooCandles(symbol, tf) {
     });
 }
 
-function aggregateTo4Hour(hourlyCloses, hourlyHighs, hourlyLows, hourlyTimes, hourlyVolumes) {
-    if (!hourlyCloses || hourlyCloses.length < 4) return null;
-    const aggCloses = [], aggHighs = [], aggLows = [], aggTimes = [], aggVolumes = [];
-    for (let i = 3; i < hourlyCloses.length; i += 4) {
-        const cChunk = hourlyCloses.slice(i-3, i+1);
-        const hChunk = hourlyHighs.slice(i-3, i+1);
-        const lChunk = hourlyLows.slice(i-3, i+1);
-        const vChunk = hourlyVolumes.slice(i-3, i+1);
-        aggCloses.push(cChunk[cChunk.length-1]);
-        aggHighs.push(Math.max(...hChunk));
-        aggLows.push(Math.min(...lChunk));
-        aggTimes.push(hourlyTimes[i]);
-        aggVolumes.push(vChunk.reduce((a,b)=>a+b,0));
+// ── Yahoo fetcher for non-crypto (with candidate symbols) ──
+async function fetchYahooNonCrypto(p, tf) {
+    const isIndex = INDICES.includes(p.n);
+    let candidates = [];
+    if (isIndex) {
+        candidates = [INDEX_SYMBOLS[p.n]?.yahoo];
+    } else if (p.n === 'USOIL') {
+        candidates = ['CL=F', 'BZ=F']; // WTI crude, Brent crude
+    } else {
+        // Forex/CFD: try with =X suffix first (Yahoo forex format), then plain symbol
+        candidates = [p.n + '=X', p.n];
     }
-    return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
+    for (const sym of candidates) {
+        if (!sym) continue;
+        const data = await fetchYahooRaw(sym, tf);
+        if (data) {
+            console.log(`[Yahoo] Fetched ${p.n} (${tf}) using ${sym}`);
+            return data;
+        }
+    }
+    return null;
 }
 
+// ── Store non-crypto data into global RAW objects ──
+async function storeNonCryptoData(p, tf, data) {
+    try {
+        if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
+        const cls = data.closes;
+        const ema20 = calcEMA(cls, 20);
+        const currentPrice = cls[cls.length - 1];
+        if (ema20) {
+            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
+            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
+            if (tf === '1h') {
+                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
+                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
+            }
+        } else {
+            DATA_STORE[p.n][tf] = '—';
+        }
+        if (tf === '1h') {
+            RAW_1H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+            const last50Closes = data.closes.slice(-50);
+            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
+        }
+        if (tf === '4h') {
+            RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+        }
+        if (tf === '15m') {
+            RAW_15M[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
+        }
+        if (tf === '1day') {
+            RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.time };
+        }
+        if (tf === '1week') {
+            RAW_WEEKLY[p.n] = { closes: data.closes, time: data.time };
+        }
+        return true;
+    } catch (e) {
+        console.error(`Error storing Yahoo data for ${p.n} (${tf}):`, e.message);
+        return false;
+    }
+}
+
+// ── Binance candles fetcher (crypto primary) ──
 function fetchBinanceCandles(symbol, tf) {
     const binanceSymbol = symbol.replace('USD', 'USDT');
     let interval;
@@ -323,6 +267,7 @@ function fetchBinanceCandles(symbol, tf) {
     });
 }
 
+// ── fetchTF_Yahoo: crypto fetch with Binance primary, Yahoo fallback ──
 async function fetchTF_Yahoo(p, tf) {
     const binanceData = await fetchBinanceCandles(p.n, tf);
     if (binanceData && binanceData.closes && binanceData.closes.length >= 20) {
@@ -405,97 +350,6 @@ async function fetchTF_Yahoo(p, tf) {
         return true;
     } catch (e) {
         console.error(`[Yahoo] Error processing ${p.n} (${tf}):`, e.message);
-        return false;
-    }
-}
-
-// ✅ NEW: Fetch non-crypto (forex/stocks/indices) from Yahoo Finance
-function fetchYahooNonCrypto(p, tf) {
-    const isIndex = INDICES.includes(p.n);
-    let yahooSymbol;
-    if (isIndex) {
-        yahooSymbol = INDEX_SYMBOLS[p.n]?.yahoo;
-    } else {
-        // Forex/Stocks: yahoo symbol e.g., EURUSD=X for forex, direct for stocks
-        yahooSymbol = p.n.includes('=') ? p.n : (p.n.includes('USD') ? p.n + '=X' : p.n);
-    }
-    if (!yahooSymbol) return Promise.resolve(null);
-
-    const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
-    const range = (interval === '1h' || interval === '15m' || interval === '5m') ? '60d' : '1y';
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
-
-    return new Promise((resolve) => {
-        https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const json = JSON.parse(data);
-                    const result = json?.chart?.result?.[0];
-                    if (!result) { resolve(null); return; }
-                    const quotes = result.indicators.quote[0];
-                    if (!quotes || !quotes.close || quotes.close.length < 20) { resolve(null); return; }
-                    const timestamps = result.timestamp || [];
-                    let closes = quotes.close.filter(v => v !== null);
-                    let highs = (quotes.high || []).filter(v => v !== null);
-                    let lows = (quotes.low || []).filter(v => v !== null);
-                    let volumes = (quotes.volume || []).map(v => v || 0);
-                    let times = timestamps.map(t => new Date(t * 1000).toISOString());
-                    const minLen = Math.min(closes.length, highs.length, lows.length, times.length);
-                    closes = closes.slice(-minLen); highs = highs.slice(-minLen); lows = lows.slice(-minLen); volumes = volumes.slice(-minLen); times = times.slice(-minLen);
-
-                    let candles = { closes, highs, lows, volumes, times };
-                    if (tf === '4h') {
-                        const agg = aggregateTo4Hour(closes, highs, lows, times, volumes);
-                        if (!agg) { resolve(null); return; }
-                        resolve({ closes: agg.closes, highs: agg.highs, lows: agg.lows, volumes: agg.volumes, time: agg.times[agg.times.length-1] });
-                    } else {
-                        resolve({ closes, highs, lows, volumes, time: times[times.length-1] });
-                    }
-                } catch (e) { resolve(null); }
-            });
-        }).on('error', () => resolve(null));
-    });
-}
-
-// ✅ NEW: Store non-crypto data (Yahoo or Twelve Data) into DATA_STORE/RAW
-async function storeNonCryptoData(p, tf, data) {
-    try {
-        if (!DATA_STORE[p.n]) DATA_STORE[p.n] = {};
-        const cls = data.closes;
-        const ema20 = calcEMA(cls, 20);
-        const currentPrice = cls[cls.length - 1];
-        if (ema20) {
-            DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
-            DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
-            if (tf === '1h') {
-                DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
-                DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
-            }
-        } else {
-            DATA_STORE[p.n][tf] = '—';
-        }
-        if (tf === '1h') {
-            RAW_1H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
-            const last50Closes = data.closes.slice(-50);
-            firebasePut(`miniChart/${p.n}`, { closes: last50Closes, updatedAt: Date.now() });
-        }
-        if (tf === '4h') {
-            RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
-        }
-        if (tf === '15m') {
-            RAW_15M[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.time };
-        }
-        if (tf === '1day') {
-            RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.time };
-        }
-        if (tf === '1week') {
-            RAW_WEEKLY[p.n] = { closes: data.closes, time: data.time };
-        }
-        return true;
-    } catch (e) {
-        console.error(`Error storing Yahoo data for ${p.n} (${tf}):`, e.message);
         return false;
     }
 }
@@ -768,6 +622,7 @@ async function fetchTF(p, tf, retryCount = 0) {
     });
 }
 
+// ── Index fetch and store ──
 async function fetchIndexCandlesAndStore(p, tf) {
     const data = await fetchIndexCandles(p.n, tf);
     if (!data) return false;
@@ -810,6 +665,34 @@ async function fetchIndexCandlesAndStore(p, tf) {
     }
 }
 
+// ── Index candles fetcher (multi-source) ──
+async function fetchIndexCandles(pair, tf) {
+    const symMap = INDEX_SYMBOLS[pair];
+    if (!symMap) return null;
+
+    const sources = [
+        // ... same as before ...
+    ];
+
+    for (const source of sources) {
+        for (let attempt = 0; attempt < source.retries; attempt++) {
+            try {
+                const data = await source.fetch();
+                if (data) {
+                    console.log(`[Index] ${pair} (${tf}) fetched from ${source.name} (attempt ${attempt+1})`);
+                    return data;
+                }
+            } catch (e) {
+                console.error(`[Index] ${source.name} error for ${pair} (${tf}):`, e.message);
+            }
+            await sleep(500);
+        }
+    }
+    console.warn(`[Index] All sources failed for ${pair} (${tf})`);
+    return null;
+}
+
+// ── Other functions (sendStrongPullbackNotifications, sendTelegramDirect) ──
 async function sendStrongPullbackNotifications() {
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     for (const stateKey in PB_STATE) {
@@ -886,6 +769,7 @@ function sendTelegramDirect(text) {
     });
 }
 
+// ── Master scan ──
 async function masterScan() {
     if (isScanning) return;
     isScanning = true;
@@ -932,7 +816,6 @@ async function masterScan() {
             return tfs.map(tf => ({ p, tf }));
         });
 
-        // ✅ Split and retry logic
         const cryptoJobs = jobs.filter(j => j.p.isCrypto);
         const otherJobs = jobs.filter(j => !j.p.isCrypto);
 
@@ -977,13 +860,8 @@ async function masterScan() {
             }
 
             const pairName = p.n;
-            const dailyData = {
-                closes: RAW_DAILY[pairName]?.closes,
-                weeklyCloses: RAW_WEEKLY[pairName]?.closes
-            };
-            const hourlyData = {
-                closes: RAW_1H[pairName]?.closes
-            };
+            const dailyData = { closes: RAW_DAILY[pairName]?.closes, weeklyCloses: RAW_WEEKLY[pairName]?.closes };
+            const hourlyData = { closes: RAW_1H[pairName]?.closes };
             const category = p.isCrypto ? 'crypto' : 'forex';
 
             if (dailyData.closes && hourlyData.closes) {
