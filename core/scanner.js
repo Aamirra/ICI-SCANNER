@@ -186,6 +186,11 @@ async function storeNonCryptoData(p, tf, data) {
                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
                 DATA_STORE[p.n].ema20        = parseFloat(ema20.toFixed(5));
             }
+            if (tf === '15m') {
+                // ✅ 15m data ko DATA_STORE mein save karo (pahle missing tha)
+                DATA_STORE[p.n]['15m'] = currentPrice > ema20 ? 'bull' : 'bear';
+                DATA_STORE[p.n]['15m_ema20'] = parseFloat(ema20.toFixed(5));
+            }
         } else {
             DATA_STORE[p.n][tf] = '—';
         }
@@ -651,6 +656,10 @@ async function fetchIndexCandlesAndStore(p, tf) {
         }
         if (tf === '15m') {
             RAW_15M[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.times[data.times.length-1] };
+            // ✅ 15m data ko DATA_STORE mein bhi save karo
+            const currentPrice15 = cls[cls.length - 1];
+            DATA_STORE[p.n]['15m'] = currentPrice15 > ema20 ? 'bull' : 'bear';
+            DATA_STORE[p.n]['15m_ema20'] = parseFloat(ema20.toFixed(5));
         }
         if (tf === '1day') {
             RAW_DAILY[p.n] = { closes: data.closes, volumes: data.volumes, time: data.times[data.times.length-1] };
@@ -671,7 +680,103 @@ async function fetchIndexCandles(pair, tf) {
     if (!symMap) return null;
 
     const sources = [
-        // ... same as before ...
+        {
+            name: 'Finnhub',
+            fetch: async () => {
+                const finnhubSymbol = symMap.finnhub;
+                let resolution = '60';
+                if (tf === '1day') resolution = 'D';
+                else if (tf === '1week') resolution = 'W';
+                const url = `https://finnhub.io/api/v1/stock/candle?symbol=${finnhubSymbol}&resolution=${resolution}&count=200&token=${process.env.FINNHUB_KEY}`;
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.s !== 'ok' || !json.c) return null;
+                const times = json.t.map(t => new Date(t * 1000).toISOString());
+                let result = { closes: json.c, highs: json.h, lows: json.l, volumes: json.v || [], times };
+                if (tf === '4h') result = aggregate1hTo4h(result);
+                return result && result.closes.length >= 20 ? result : null;
+            },
+            retries: 5
+        },
+        {
+            name: 'Yahoo',
+            fetch: async () => {
+                const yahooSymbol = symMap.yahoo;
+                const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : '1h';
+                const range = (interval === '1h') ? '60d' : '1y';
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
+                const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                const json = await res.json();
+                const result = json?.chart?.result?.[0];
+                if (!result) return null;
+                const quotes = result.indicators.quote[0];
+                if (!quotes || !quotes.close || quotes.close.length < 20) return null;
+                const timestamps = result.timestamp || [];
+                let closes = quotes.close.filter(v => v !== null);
+                let highs = (quotes.high || []).filter(v => v !== null);
+                let lows = (quotes.low || []).filter(v => v !== null);
+                let volumes = (quotes.volume || []).map(v => v || 0);
+                let times = timestamps.map(t => new Date(t * 1000).toISOString());
+                const minLen = Math.min(closes.length, highs.length, lows.length, times.length);
+                let candles = { closes: closes.slice(-minLen), highs: highs.slice(-minLen), lows: lows.slice(-minLen), volumes: volumes.slice(-minLen), times: times.slice(-minLen) };
+                if (tf === '4h') candles = aggregate1hTo4h(candles);
+                return candles && candles.closes.length >= 20 ? candles : null;
+            },
+            retries: 5
+        },
+        {
+            name: 'Twelve Data',
+            fetch: async () => {
+                const key = config.KEYS[0];
+                if (!key) return null;
+                const twSymbol = symMap.twelvedata;
+                const interval = tf === '4h' ? '1h' : tf === '1day' ? '1day' : tf === '1week' ? '1week' : '1h';
+                const url = `https://api.twelvedata.com/time_series?symbol=${twSymbol}&interval=${interval}&outputsize=200&apikey=${key}`;
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.code === 429 || !json.values) return null;
+                const sorted = [...json.values].sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+                const closes = sorted.map(v => parseFloat(v.close));
+                const highs = sorted.map(v => parseFloat(v.high));
+                const lows = sorted.map(v => parseFloat(v.low));
+                const volumes = sorted.map(v => parseFloat(v.volume || '0'));
+                const times = sorted.map(v => v.datetime);
+                let candles = { closes, highs, lows, volumes, times };
+                if (tf === '4h') candles = aggregate1hTo4h(candles);
+                return candles && candles.closes.length >= 20 ? candles : null;
+            },
+            retries: 5
+        },
+        {
+            name: 'Alpha Vantage',
+            fetch: async () => {
+                const avKey = process.env.ALPHA_VANTAGE_KEYS;
+                const key = avKey ? avKey.split(',')[0].trim() : null;
+                if (!key) return null;
+                const avSymbol = symMap.alphavantage;
+                let func = 'TIME_SERIES_INTRADAY', interval = '60min';
+                if (tf === '1day') { func = 'TIME_SERIES_DAILY'; interval = null; }
+                else if (tf === '1week') { func = 'TIME_SERIES_WEEKLY'; interval = null; }
+                let url = `https://www.alphavantage.co/query?function=${func}&symbol=${avSymbol}&apikey=${key}`;
+                if (interval) url += `&interval=${interval}&outputsize=full`;
+                const res = await fetch(url);
+                const json = await res.json();
+                const timeSeriesKey = func === 'TIME_SERIES_INTRADAY' ? `Time Series (${interval})` : (func === 'TIME_SERIES_DAILY' ? 'Time Series (Daily)' : 'Weekly Time Series');
+                const series = json[timeSeriesKey];
+                if (!series) return null;
+                const entries = Object.entries(series).sort(([a],[b]) => new Date(a) - new Date(b));
+                const closes = [], highs = [], lows = [], volumes = [], times = [];
+                for (const [date, values] of entries.slice(-200)) {
+                    closes.push(parseFloat(values['4. close']));
+                    highs.push(parseFloat(values['2. high']));
+                    lows.push(parseFloat(values['3. low']));
+                    volumes.push(parseFloat(values['5. volume']));
+                    times.push(date);
+                }
+                return { closes, highs, lows, volumes, times };
+            },
+            retries: 5
+        }
     ];
 
     for (const source of sources) {
@@ -692,7 +797,7 @@ async function fetchIndexCandles(pair, tf) {
     return null;
 }
 
-// ── Other functions (sendStrongPullbackNotifications, sendTelegramDirect) ──
+// ── Other functions ──
 async function sendStrongPullbackNotifications() {
     const TARGET_PHASES = ['pullback', 'mark_high', 'mark_low'];
     for (const stateKey in PB_STATE) {
