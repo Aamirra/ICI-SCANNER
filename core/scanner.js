@@ -39,7 +39,7 @@ const { PB_STATE } = require('../pullback/tradeStateManager');
 // ── Strategy Monitors ──
 const { bullMonitor } = require('../pullback/bullMonitor');
 const { bearMonitor } = require('../pullback/bearMonitor');
-const { ltfBullMonitor } = require('../pullback/ltfBullMonitor'); // ✅ LTF Monitor import
+const { ltfBullMonitor } = require('../pullback/ltfBullMonitor');
 
 let calculateAndUpdateStockMetrics = null;
 try {
@@ -52,14 +52,14 @@ try {
 const agent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
 // ⚡ ULTRA‑SAFE RATE LIMITS ⚡
-const MAX_CONCURRENT = 2;        // only 2 parallel requests
-const REQUEST_DELAY_MS  = 3500;  // 3.5 seconds between calls
-const BATCH_DELAY_MS    = 4000;  // 4 seconds after every batch
-const RATE_PER_MIN   = 5;        // max 5 calls per minute per key
+const MAX_CONCURRENT = 2;        // for non-crypto (Twelve Data etc.)
+const REQUEST_DELAY_MS  = 3500;
+const BATCH_DELAY_MS    = 4000;
+const RATE_PER_MIN   = 5;
 const MIN_CREDIT     = 10;
 const COOLDOWN_MS    = 60 * 1000;
 const DAILY_LIMIT = 800;
-const MINUTE_WAIT_MS    = 65 * 1000; // wait 65 seconds if all keys exhausted
+const MINUTE_WAIT_MS    = 65 * 1000;
 
 // ── Indices list ──
 const INDICES = ['US500', 'US100', 'US30', 'GER40', 'UK100', 'JPN225'];
@@ -72,12 +72,10 @@ const INDEX_SYMBOLS = {
     'JPN225':{ finnhub: '^N225', yahoo: '^N225', twelvedata: 'EWJ', alphavantage: 'EWJ' }
 };
 
-// Crypto → Yahoo mapping
 function yahooCryptoSymbol(pair) {
     return pair.replace('USD', '-USD');
 }
 
-// ── Helper to aggregate 1h candles to 4h ──
 function aggregate1hTo4h(candles) {
     if (!candles || candles.closes.length < 4) return null;
     const { closes, highs, lows, times, volumes } = candles;
@@ -96,7 +94,6 @@ function aggregate1hTo4h(candles) {
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-// ── Multi‑source fetch for indices (retries increased to 5) ──
 async function fetchIndexCandles(pair, tf) {
     const symMap = INDEX_SYMBOLS[pair];
     if (!symMap) return null;
@@ -219,7 +216,6 @@ async function fetchIndexCandles(pair, tf) {
     return null;
 }
 
-// ── Yahoo candles for crypto (fallback) ──
 function fetchYahooCandles(symbol, tf) {
     const yahooSymbol = symbol;
     const interval = tf === '4h' ? '1h' : tf === '1day' ? '1d' : tf === '1week' ? '1wk' : tf;
@@ -274,7 +270,6 @@ function aggregateTo4Hour(hourlyCloses, hourlyHighs, hourlyLows, hourlyTimes, ho
     return { closes: aggCloses, highs: aggHighs, lows: aggLows, times: aggTimes, volumes: aggVolumes };
 }
 
-// ── Binance candles fetcher (crypto primary) ──
 function fetchBinanceCandles(symbol, tf) {
     const binanceSymbol = symbol.replace('USD', 'USDT');
     let interval;
@@ -282,7 +277,7 @@ function fetchBinanceCandles(symbol, tf) {
     else if (tf === '4h') interval = '4h';
     else if (tf === '1day') interval = '1d';
     else if (tf === '1week') interval = '1d'; // aggregate 7 days
-    else if (tf === '15m') interval = '15m'; // ✅ 15m added
+    else if (tf === '15m') interval = '15m';
     else interval = '1h';
 
     const limit = tf === '1week' ? 200 : 200;
@@ -328,9 +323,7 @@ function fetchBinanceCandles(symbol, tf) {
     });
 }
 
-// ── Updated Crypto Fetch (Binance primary, Yahoo fallback) ──
 async function fetchTF_Yahoo(p, tf) {
-    // 1️⃣ Try Binance first
     const binanceData = await fetchBinanceCandles(p.n, tf);
     if (binanceData && binanceData.closes && binanceData.closes.length >= 20) {
         try {
@@ -356,7 +349,7 @@ async function fetchTF_Yahoo(p, tf) {
             if (tf === '4h') {
                 RAW_4H[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
             }
-            if (tf === '15m') { // ✅ Store 15m data
+            if (tf === '15m') {
                 RAW_15M[p.n] = { closes: binanceData.closes, highs: binanceData.highs, lows: binanceData.lows, time: binanceData.times[binanceData.times.length-1] };
             }
             if (tf === '1day') {
@@ -372,7 +365,6 @@ async function fetchTF_Yahoo(p, tf) {
         }
     }
 
-    // 2️⃣ Fallback to Yahoo
     let yahooSymbol = p.isCrypto ? yahooCryptoSymbol(p.n) : p.n;
     const yahooData = await fetchYahooCandles(yahooSymbol, tf);
     if (!yahooData || !yahooData.closes || yahooData.closes.length < 20) {
@@ -401,7 +393,7 @@ async function fetchTF_Yahoo(p, tf) {
         if (tf === '4h') {
             RAW_4H[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
         }
-        if (tf === '15m') { // ✅ Store 15m data from Yahoo fallback (though Yahoo may not support 15m)
+        if (tf === '15m') {
             RAW_15M[p.n] = { closes: yahooData.closes, highs: yahooData.highs, lows: yahooData.lows, time: yahooData.time };
         }
         if (tf === '1day') {
@@ -421,7 +413,7 @@ async function fetchTF_Yahoo(p, tf) {
 let DATA_STORE = {};
 let RAW_1H = {};
 let RAW_4H = {};
-let RAW_15M = {}; // ✅ 15m raw data
+let RAW_15M = {};
 let RAW_DAILY = {};
 let RAW_WEEKLY = {};
 let keyUsage = {};
@@ -592,6 +584,17 @@ async function fetchBatch(jobs) {
     return failed;
 }
 
+// ✅ Fast crypto batch (15 concurrent)
+async function fetchCryptoBatch(jobs) {
+    const results = [];
+    for (let i = 0; i < jobs.length; i += 15) {
+        const slice = jobs.slice(i, i + 15);
+        const sliceResults = await Promise.all(slice.map(async ({ p, tf }) => ({ p, tf, ok: await fetchTF(p, tf) })));
+        results.push(...sliceResults);
+    }
+    return results.filter(r => !r.ok).map(r => ({ p: r.p, tf: r.tf }));
+}
+
 async function fetchTF(p, tf, retryCount = 0) {
     if (p.isCrypto) {
         return fetchTF_Yahoo(p, tf);
@@ -620,7 +623,6 @@ async function fetchTF(p, tf, retryCount = 0) {
                         const currentPrice = cls[cls.length - 1];
                         if (ema20) {
                             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
-                            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
                             DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
                             if (tf === '1h') {
                                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
@@ -672,7 +674,6 @@ async function fetchIndexCandlesAndStore(p, tf) {
         const currentPrice = cls[cls.length - 1];
         if (ema20) {
             DATA_STORE[p.n][tf] = currentPrice > ema20 ? 'bull' : 'bear';
-            // ✅ SAVE EMA20 FOR THIS TIMEFRAME
             DATA_STORE[p.n][tf + '_ema20'] = parseFloat(ema20.toFixed(5));
             if (tf === '1h') {
                 DATA_STORE[p.n].currentPrice = parseFloat(currentPrice.toFixed(5));
@@ -690,7 +691,6 @@ async function fetchIndexCandlesAndStore(p, tf) {
             RAW_4H[p.n] = { closes: data.closes, highs: data.highs, lows: data.lows, time: data.times[data.times.length-1] };
         }
         if (tf === '15m') {
-            // Indices ke liye Twelve Data se 15m data fetch karo
             const key = config.KEYS[0];
             if (key) {
                 const twSymbol = INDEX_SYMBOLS[p.n]?.twelvedata;
@@ -771,7 +771,6 @@ async function sendStrongPullbackNotifications() {
     }
 }
 
-// ── Telegram direct sender (promise‑based) ──
 function sendTelegramDirect(text) {
     return new Promise((resolve, reject) => {
         const botToken = process.env.BOT_TOKEN;
@@ -807,14 +806,12 @@ async function masterScan() {
     if (isScanning) return;
     isScanning = true;
 
-    // 🟢 SCAN START STATUS
     try {
         await admin.database().ref('scanStatus').set({ running: true, startedAt: Date.now() });
     } catch (err) {
         console.error('[masterScan] Failed to set scan start status:', err.message);
     }
 
-    // 🔔 Read nested alert settings from Firebase
     let alertSettings = {
         forex: { telegram: true, whatsapp: true },
         crypto: { telegram: true, whatsapp: true },
@@ -834,7 +831,6 @@ async function masterScan() {
         console.error('[masterScan] Could not read alertSettings:', err.message);
     }
 
-    // 📲 Conditional Telegram sender – takes category and message
     const conditionalSendTG = (msg, cat) => {
         if (alertSettings[cat] && alertSettings[cat].telegram) {
             return sendTG(msg);
@@ -845,10 +841,39 @@ async function masterScan() {
     try {
         maybeResetDaily();
         const jobs = config.PAIRS.filter(p => !shouldSkip(p.n)).flatMap(p => {
-            const tfs = ['1h', '4h', '1day', '1week', '15m'];   // ✅ Sabke liye 15m
+            const category = p.isCrypto ? 'crypto' : 'forex';
+            const ltfEnabled = alertSettings[category] && alertSettings[category].ltf_alert === true;
+            const tfs = ['1h', '4h', '1day', '1week'];
+            if (ltfEnabled) tfs.push('15m');
             return tfs.map(tf => ({ p, tf }));
         });
-        let failed = await fetchBatch(jobs);
+
+        // ✅ Split and retry logic
+        const cryptoJobs = jobs.filter(j => j.p.isCrypto);
+        const otherJobs = jobs.filter(j => !j.p.isCrypto);
+
+        let failed = [];
+        if (cryptoJobs.length > 0) {
+            failed = failed.concat(await fetchCryptoBatch(cryptoJobs));
+        }
+        if (otherJobs.length > 0) {
+            failed = failed.concat(await fetchBatch(otherJobs));
+        }
+
+        if (failed.length > 0) {
+            console.log(`Retrying ${failed.length} failed jobs...`);
+            const failedCrypto = failed.filter(j => j.p.isCrypto);
+            const failedOther = failed.filter(j => !j.p.isCrypto);
+            let retryFailed = [];
+            if (failedCrypto.length > 0) {
+                retryFailed = retryFailed.concat(await fetchCryptoBatch(failedCrypto));
+            }
+            if (failedOther.length > 0) {
+                retryFailed = retryFailed.concat(await fetchBatch(failedOther));
+            }
+            failed = retryFailed;
+        }
+
         fetchMentFXSentiment();
         await calculateAndUpdateTechnicalMetrics(RAW_DAILY, RAW_1H);
         if (calculateAndUpdateStockMetrics) {
@@ -860,16 +885,13 @@ async function masterScan() {
         for (const p of config.PAIRS) {
             if (DATA_STORE[p.n]) {
                 await firebasePut(`marketData/${p.n}`, DATA_STORE[p.n]);
-                // Determine category
                 const category = p.isCrypto ? 'crypto' : 'forex';
-                // Use conditional TG for pullback engine
                 pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_1H[p.n], (msg) => conditionalSendTG(msg, category), firebasePut, '1h');
                 if (RAW_4H[p.n]) {
                     pullbackEngine.checkRules(p, DATA_STORE[p.n], RAW_4H[p.n], (msg) => conditionalSendTG(msg, category), firebasePut, '4h');
                 }
             }
 
-            // 🔥 Execute Strategy Monitors
             const pairName = p.n;
             const dailyData = {
                 closes: RAW_DAILY[pairName]?.closes,
@@ -885,7 +907,6 @@ async function masterScan() {
                 await bearMonitor(`${pairName}_BEAR`, pairName, dailyData, hourlyData, (msg) => conditionalSendTG(msg, category), firebasePut, category, alertSettings);
             }
 
-            // ✅ LTF Bull Monitor (all markets, requires 4h and 15m data)
             if (RAW_4H[pairName] && RAW_15M[pairName]) {
                 const fourHourData = { closes: RAW_4H[pairName].closes };
                 const fifteenMinData = { closes: RAW_15M[pairName].closes };
@@ -905,7 +926,6 @@ async function masterScan() {
     } catch (err) {
         console.error('[masterScan] Fatal error:', err);
     } finally {
-        // 🔴 SCAN COMPLETE STATUS
         try {
             await admin.database().ref('scanStatus').set({ running: false, completedAt: Date.now() });
             await admin.database().ref('lastScanTime').set({ time: Date.now() });
@@ -913,7 +933,6 @@ async function masterScan() {
             console.error('[masterScan] Failed to set scan complete status:', err.message);
         }
 
-        // 👇 AUTO‑SCAN NOTIFICATION (always send if AUTO_SCAN=true)
         if (process.env.AUTO_SCAN === 'true') {
             await sendTelegramDirect(`✅ ICI Scanner: auto‑scan completed at ${new Date().toLocaleString()}`);
         }
@@ -922,7 +941,6 @@ async function masterScan() {
     }
 }
 
-// ── 2. Standalone Trigger (For Direct Node Execution in GitHub Actions) ──
 if (require.main === module) {
     masterScan()
         .then(() => {
