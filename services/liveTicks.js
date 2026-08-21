@@ -486,9 +486,18 @@ async function checkUserAlerts() {
                 console.log(`[UserAlerts] Alert triggered: ${alert.name} (${pair})`);
 
                 if (settings.telegram) {
-                    try { 
-                        const tg = require('./telegram');
-                        await tg.sendTG(message);
+                    try {
+                        const token = process.env.BOT_TOKEN;
+                        const chatId = process.env.CHAT_ID;
+                        if (token && chatId) {
+                            const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chat_id: chatId, text: message })
+                            });
+                            const tgData = await tgRes.json();
+                            if (!tgData.ok) console.error('[UserAlerts] Telegram API error:', tgData.description);
+                        }
                     } catch(e) { console.error('[UserAlerts] Telegram send error:', e.message); }
                 }
                 if (settings.whatsapp) {

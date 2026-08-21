@@ -368,12 +368,7 @@ function _alFireAlert(alert, pair) {
     alShowToast('Alert: ' + pair.name + ': ' + msg, 'info');
     try { if (window.Android) window.Android.showNotification(alert.name, msg, pair.name); } catch(e) {}
     try { if (Notification && Notification.permission === 'granted') new Notification('Alert: ' + alert.name, { body: msg }); } catch(e) {}
-    var settings = window.alertSettings;
-    if (settings) {
-        var formattedMsg = '[' + pair.name + '] ' + msg;
-        if (settings.telegram) { sendExternalAlert('telegram', formattedMsg, alert.name, pair.name); }
-        if (settings.whatsapp) { sendExternalAlert('whatsapp', formattedMsg, alert.name, pair.name); }
-    }
+    // External notifications ab backend se send hote hain (duplicate rokne ke liye frontend block hata diya)
     // Auto-delete "Only Once" alert after firing
     if (alert.frequency === 'Only Once') {
         alRemoveAlertById(alert.id);
