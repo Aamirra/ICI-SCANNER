@@ -1,0 +1,8 @@
+.env
+.env.backup
+firebase-key.json
+firebase_key.json
+firebase-key.jso
+node_modules/
+package-lock.json
+*.log
