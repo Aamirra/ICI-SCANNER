@@ -400,3 +400,24 @@ if (typeof Notification !== 'undefined' && Notification.permission !== 'granted'
 
 // Sync alerts from Firebase on page load (to reflect backend deletions)
 fetchAlertsFromFirebase();
+
+// Realtime sync with Firebase (bina refresh list update)
+function startAlertsRealtimeSync() {
+    try {
+        const dbRef = getDb();
+        if (!dbRef) return;
+        dbRef.ref('userAlerts').on('value', snap => {
+            const val = snap.val();
+            let arr = [];
+            if (Array.isArray(val)) arr = val;
+            else if (val) arr = Object.values(val);
+            localStorage.setItem('ici_alerts', JSON.stringify(arr));
+            if (typeof render === 'function') render();
+            if (typeof _alRenderList === 'function') {
+                const overlay = document.getElementById('alListOverlay');
+                if (overlay && overlay.classList.contains('show')) _alRenderList();
+            }
+        });
+    } catch(e) { console.error('Realtime alerts sync error:', e); }
+}
+startAlertsRealtimeSync();
