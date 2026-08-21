@@ -398,6 +398,8 @@ async function checkUserAlerts() {
         const settingsSnap = await db.ref('alertSettings').once('value');
         const settings = settingsSnap.val() || {};
 
+        const alertsToDelete = [];
+
         for (const alert of alerts) {
             if (!alert.active) continue;
             const pair = alert.pair;
@@ -496,7 +498,19 @@ async function checkUserAlerts() {
                     } catch(e) { console.error('[UserAlerts] WhatsApp send error:', e.message); }
                 }
                 await sendPushNotification(alert, message);
+
+                // Auto-delete "Only Once" alert
+                if (alert.frequency === 'Only Once') {
+                    alertsToDelete.push(alert.id);
+                }
             }
+        }
+
+        // Remove triggered "Only Once" alerts from Firebase
+        if (alertsToDelete.length > 0) {
+            const updatedAlerts = alerts.filter(a => !alertsToDelete.includes(a.id));
+            await db.ref('userAlerts').set(updatedAlerts);
+            console.log(`[UserAlerts] Deleted ${alertsToDelete.length} triggered 'Only Once' alerts`);
         }
     } catch (error) {
         console.error('[UserAlerts] checkUserAlerts error:', error.message);
