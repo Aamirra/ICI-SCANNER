@@ -391,8 +391,9 @@ async function checkUserAlerts() {
     try {
         const db = admin.database();
         const alertsSnap = await db.ref('userAlerts').once('value');
-        const alerts = alertsSnap.val() || [];
-        if (!Array.isArray(alerts) || alerts.length === 0) return;
+        let alerts = alertsSnap.val() || [];
+        if (!Array.isArray(alerts)) alerts = Object.values(alerts);
+        if (!alerts.length) return;
 
         const settingsSnap = await db.ref('alertSettings').once('value');
         const settings = settingsSnap.val() || {};
