@@ -1,4 +1,10 @@
-// ICI SCREENER - ALERTS SYSTEM (Clean Version) - Bug Fixed
+// Alerts.js — ICI Scanner Alerts (with Firebase sync)
+
+// Ensure Firebase database reference exists
+function getDb() {
+    if (typeof firebase !== 'undefined' && firebase.database) return firebase.database();
+    return null;
+}
 
 function initIciAlertsUI() {
     // Inject CSS Safely
@@ -71,9 +77,30 @@ function alLoadAlerts() {
     try { if (window.Android) return JSON.parse(window.Android.getAlerts() || '[]'); } catch(e) {}
     try { return JSON.parse(localStorage.getItem('ici_alerts') || '[]'); } catch(e) { return []; }
 }
+
 function alSaveAlerts(arr) {
+    // Local storage save karo
     try { localStorage.setItem('ici_alerts', JSON.stringify(arr)); } catch(e) {}
-    try { if (window.Android) { arr.forEach(function(a) { window.Android.saveAlert(JSON.stringify(a)); }); } } catch(e) {}
+    
+    // Android bridge ko save karo
+    try { 
+        if (window.Android) { 
+            arr.forEach(function(a) { 
+                window.Android.saveAlert(JSON.stringify(a)); 
+            }); 
+        } 
+    } catch(e) {}
+
+    // Firebase Realtime Database mein sync karo (backend ke liye)
+    try {
+        const dbRef = getDb();
+        if (dbRef) {
+            dbRef.ref('userAlerts').set(arr);
+            console.log('Alerts synced to Firebase:', arr.length);
+        }
+    } catch(e) {
+        console.error('Firebase sync error:', e.message);
+    }
 }
 
 function getBellHtml(pairName) {
