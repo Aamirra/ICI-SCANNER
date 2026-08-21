@@ -303,6 +303,205 @@ async function pushSignalsAndAlerts() {
     }
 }
 
+// ──────────────────────────────────────────────────────────────
+// USER ALERTS BACKEND CHECKER (NEW)
+// ──────────────────────────────────────────────────────────────
+
+function calcSimpleMovingAverage(values, period) {
+    if (!values || values.length < period) return null;
+    const slice = values.slice(-period);
+    return slice.reduce((sum, v) => sum + v, 0) / period;
+}
+
+function getEMAForPair(pair, timeframe) {
+    let closes;
+    if (timeframe === '1H') closes = liveCloses1H[pair] || [];
+    else if (timeframe === '4H') closes = liveCloses4H[pair] || [];
+    else if (timeframe === '1D') closes = (RAW_DAILY[pair] && RAW_DAILY[pair].closes) || [];
+    else return null; // 1W not supported yet
+    if (!closes || closes.length < 20) return null;
+    return calcEMA(closes, 20);
+}
+
+function getSMAForPair(pair, timeframe, period) {
+    let closes;
+    if (timeframe === '1H') closes = liveCloses1H[pair] || [];
+    else if (timeframe === '4H') closes = liveCloses4H[pair] || [];
+    else if (timeframe === '1D') closes = (RAW_DAILY[pair] && RAW_DAILY[pair].closes) || [];
+    else return null;
+    return calcSimpleMovingAverage(closes, period);
+}
+
+function buildAlertMessage(alert, pair, price) {
+    let msg = alert.message || '{{ticker}} - Alert triggered!';
+    msg = msg
+        .replace(/\{\{ticker\}\}/g, pair)
+        .replace(/\{\{price\}\}/g, price !== undefined ? String(price) : '')
+        .replace(/\{\{time\}\}/g, new Date().toLocaleString());
+    return msg;
+}
+
+const triggeredAlerts = new Set();
+function shouldFireAlert(alert) {
+    const freq = alert.frequency || 'Only Once';
+    const alertId = alert.id;
+
+    if (freq === 'Every Time') return true;
+    if (freq === 'Only Once') {
+        if (triggeredAlerts.has(alertId)) return false;
+        triggeredAlerts.add(alertId);
+        return true;
+    }
+    const hour = Math.floor(Date.now() / 3600000);
+    const dedupKey = `${alertId}_${hour}`;
+    if (triggeredAlerts.has(dedupKey)) return false;
+    triggeredAlerts.add(dedupKey);
+    return true;
+}
+
+async function sendPushNotification(alert, message) {
+    try {
+        const db = admin.database();
+        const tokensSnap = await db.ref('fcmTokens').once('value');
+        const tokens = tokensSnap.val();
+        if (!tokens) return;
+        const tokenList = Object.entries(tokens)
+            .filter(([token, val]) => val === true)
+            .map(([token]) => token);
+        if (tokenList.length === 0) return;
+
+        const payload = {
+            notification: {
+                title: `Alert: ${alert.name || alert.pair}`,
+                body: message
+            },
+            data: {
+                pair: alert.pair,
+                alertId: String(alert.id || '')
+            }
+        };
+        await admin.messaging().sendToDevice(tokenList, payload);
+        console.log(`[UserAlerts] FCM sent to ${tokenList.length} devices`);
+    } catch (e) {
+        console.error('[UserAlerts] FCM error:', e.message);
+    }
+}
+
+async function checkUserAlerts() {
+    try {
+        const db = admin.database();
+        const alertsSnap = await db.ref('userAlerts').once('value');
+        const alerts = alertsSnap.val() || [];
+        if (!Array.isArray(alerts) || alerts.length === 0) return;
+
+        const settingsSnap = await db.ref('alertSettings').once('value');
+        const settings = settingsSnap.val() || {};
+
+        for (const alert of alerts) {
+            if (!alert.active) continue;
+            const pair = alert.pair;
+            const price = currentPrices[pair];
+            if (price === undefined) continue;
+
+            let conditionMet = false;
+
+            switch (alert.condition) {
+                case 'PRICE_ABOVE_VAL':
+                    conditionMet = alert.targetPrice !== null && alert.targetPrice !== undefined && price >= alert.targetPrice;
+                    break;
+                case 'PRICE_BELOW_VAL':
+                    conditionMet = alert.targetPrice !== null && alert.targetPrice !== undefined && price <= alert.targetPrice;
+                    break;
+                case 'PRICE_ABOVE_EMA20': {
+                    const ema = getEMAForPair(pair, alert.timeframe || '1H');
+                    conditionMet = ema !== null && price > ema;
+                    break;
+                }
+                case 'PRICE_BELOW_EMA20': {
+                    const ema = getEMAForPair(pair, alert.timeframe || '1H');
+                    conditionMet = ema !== null && price < ema;
+                    break;
+                }
+                case 'PRICE_ABOVE_SMA20': {
+                    const sma = getSMAForPair(pair, alert.timeframe || '1H', 20);
+                    conditionMet = sma !== null && price > sma;
+                    break;
+                }
+                case 'PRICE_BELOW_SMA20': {
+                    const sma = getSMAForPair(pair, alert.timeframe || '1H', 20);
+                    conditionMet = sma !== null && price < sma;
+                    break;
+                }
+                case 'PRICE_ABOVE_SMA50': {
+                    const sma = getSMAForPair(pair, alert.timeframe || '1H', 50);
+                    conditionMet = sma !== null && price > sma;
+                    break;
+                }
+                case 'PRICE_BELOW_SMA50': {
+                    const sma = getSMAForPair(pair, alert.timeframe || '1H', 50);
+                    conditionMet = sma !== null && price < sma;
+                    break;
+                }
+                case 'SENT_ABOVE_60':
+                case 'SENT_BELOW_60':
+                case 'SENT_ABOVE_75':
+                case 'SENT_BELOW_25': {
+                    const sentimentSnap = await db.ref(`sentimentData/${pair}`).once('value');
+                    const sentiment = sentimentSnap.val();
+                    const bullishPct = sentiment?.bullish_pct || 0;
+                    if (alert.condition === 'SENT_ABOVE_60') conditionMet = bullishPct > 60;
+                    else if (alert.condition === 'SENT_BELOW_60') conditionMet = bullishPct < 60;
+                    else if (alert.condition === 'SENT_ABOVE_75') conditionMet = bullishPct > 75;
+                    else if (alert.condition === 'SENT_BELOW_25') conditionMet = bullishPct < 25;
+                    break;
+                }
+                case 'TECH_200D_ABOVE':
+                case 'TECH_200D_BELOW':
+                case 'TECH_10D_ABOVE':
+                case 'TECH_10D_BELOW':
+                case 'TECH_1H_ABOVE':
+                case 'TECH_1H_BELOW': {
+                    const techSnap = await db.ref(`technicalMetrics/${pair}`).once('value');
+                    const tech = techSnap.val();
+                    const threshold = alert.targetPercent || 0;
+                    if (tech) {
+                        if (alert.condition === 'TECH_200D_ABOVE') conditionMet = tech.longTermTrend > threshold;
+                        else if (alert.condition === 'TECH_200D_BELOW') conditionMet = tech.longTermTrend < threshold;
+                        else if (alert.condition === 'TECH_10D_ABOVE') conditionMet = tech.shortTermMomentum > threshold;
+                        else if (alert.condition === 'TECH_10D_BELOW') conditionMet = tech.shortTermMomentum < threshold;
+                        else if (alert.condition === 'TECH_1H_ABOVE') conditionMet = tech.microMomentum > threshold;
+                        else if (alert.condition === 'TECH_1H_BELOW') conditionMet = tech.microMomentum < threshold;
+                    }
+                    break;
+                }
+                default:
+                    conditionMet = false;
+            }
+
+            if (conditionMet && shouldFireAlert(alert)) {
+                const message = buildAlertMessage(alert, pair, price);
+                console.log(`[UserAlerts] Alert triggered: ${alert.name} (${pair})`);
+
+                if (settings.telegram) {
+                    try { 
+                        const tg = require('./telegram');
+                        await tg.sendTG(message);
+                    } catch(e) { console.error('[UserAlerts] Telegram send error:', e.message); }
+                }
+                if (settings.whatsapp) {
+                    try { 
+                        const wa = require('./whatsappBot');
+                        await wa.sendWhatsAppAlert(message);
+                    } catch(e) { console.error('[UserAlerts] WhatsApp send error:', e.message); }
+                }
+                await sendPushNotification(alert, message);
+            }
+        }
+    } catch (error) {
+        console.error('[UserAlerts] checkUserAlerts error:', error.message);
+    }
+}
+
 function start() {
     console.log('[LiveTicks] Starting live feed (WS crypto + WS forex + REST indices)...');
     connectFinnhub();
@@ -350,6 +549,9 @@ function start() {
         }
         await pushSignalsAndAlerts();
     }, 60000);
+
+    // User alerts backend checker (har 5 second)
+    setInterval(checkUserAlerts, 5000);
 }
 
 module.exports = { start };
