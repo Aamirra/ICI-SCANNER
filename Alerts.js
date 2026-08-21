@@ -1,4 +1,4 @@
-// Alerts.js — ICI Scanner Alerts (with Firebase sync)
+// Alerts.js — ICI Scanner Alerts (with Firebase sync + auto-delete for Only Once)
 
 // Ensure Firebase database reference exists
 function getDb() {
@@ -79,28 +79,43 @@ function alLoadAlerts() {
 }
 
 function alSaveAlerts(arr) {
-    // Local storage save karo
     try { localStorage.setItem('ici_alerts', JSON.stringify(arr)); } catch(e) {}
-    
-    // Android bridge ko save karo
-    try { 
-        if (window.Android) { 
-            arr.forEach(function(a) { 
-                window.Android.saveAlert(JSON.stringify(a)); 
-            }); 
-        } 
-    } catch(e) {}
-
-    // Firebase Realtime Database mein sync karo (backend ke liye)
+    try { if (window.Android) { arr.forEach(function(a) { window.Android.saveAlert(JSON.stringify(a)); }); } } catch(e) {}
+    // Firebase sync
     try {
         const dbRef = getDb();
         if (dbRef) {
             dbRef.ref('userAlerts').set(arr);
             console.log('Alerts synced to Firebase:', arr.length);
         }
-    } catch(e) {
-        console.error('Firebase sync error:', e.message);
-    }
+    } catch(e) { console.error('Firebase sync error:', e.message); }
+}
+
+// Fetch alerts from Firebase on load (to sync local storage with server changes)
+function fetchAlertsFromFirebase() {
+    try {
+        const dbRef = getDb();
+        if (dbRef) {
+            dbRef.ref('userAlerts').once('value').then(snap => {
+                const val = snap.val();
+                if (Array.isArray(val)) {
+                    localStorage.setItem('ici_alerts', JSON.stringify(val));
+                } else if (val) {
+                    const arr = Object.values(val);
+                    localStorage.setItem('ici_alerts', JSON.stringify(arr));
+                } else {
+                    localStorage.setItem('ici_alerts', '[]');
+                }
+                if (typeof render === 'function') render();
+            }).catch(e => console.error('Fetch alerts error:', e));
+        }
+    } catch(e) {}
+}
+
+// Auto-delete triggered "Only Once" alert
+function alRemoveAlertById(id) {
+    var alerts = alLoadAlerts().filter(function(a){ return a.id !== id; });
+    alSaveAlerts(alerts);
 }
 
 function getBellHtml(pairName) {
@@ -359,6 +374,11 @@ function _alFireAlert(alert, pair) {
         if (settings.telegram) { sendExternalAlert('telegram', formattedMsg, alert.name, pair.name); }
         if (settings.whatsapp) { sendExternalAlert('whatsapp', formattedMsg, alert.name, pair.name); }
     }
+    // Auto-delete "Only Once" alert after firing
+    if (alert.frequency === 'Only Once') {
+        alRemoveAlertById(alert.id);
+        if (typeof render === 'function') render();
+    }
 }
 
 function sendExternalAlert(platform, message, alertName, pairName) {
@@ -382,3 +402,6 @@ function alShowToast(msg, type) {
 if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
     Notification.requestPermission();
 }
+
+// Sync alerts from Firebase on page load (to reflect backend deletions)
+fetchAlertsFromFirebase();
