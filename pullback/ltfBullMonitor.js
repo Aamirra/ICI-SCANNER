@@ -69,11 +69,9 @@ async function ltfBullMonitor(stateKey, pairName, fourHourData, fifteenMinData, 
             s.ltfPhase = 'wait_ltf_reclaim';
         }
     } else if (s.ltfPhase === 'wait_ltf_reclaim') {
-        const prevMClose = mCloses[mCloses.length - 2];
-        const prevMEMA20 = calcEMA(mCloses.slice(0, -1), 20);
-        const reclaimed = mClose > mEMA20 && prevMClose <= (prevMEMA20 || mEMA20);
+        const reclaimed = mClose > mEMA20;
 
-        console.log(`[LTF] ${pairName} reclaim check - prevClose:${prevMClose} prevEMA20:${prevMEMA20 ? prevMEMA20.toFixed(2) : prevMEMA20} currClose:${mClose} currEMA20:${mEMA20.toFixed(2)} -> ${reclaimed ? 'RECLAIMED, firing alert' : 'not yet'}`);
+        console.log(`[LTF] ${pairName} reclaim check - close:${mClose} EMA20:${mEMA20.toFixed(2)} -> ${reclaimed ? 'RECLAIMED, firing alert' : 'still waiting'}`);
 
         if (reclaimed) {
             s.ltfPhase = 'alert_triggered';
