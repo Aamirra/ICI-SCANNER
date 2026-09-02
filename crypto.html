@@ -1140,5 +1140,249 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
     document.addEventListener('DOMContentLoaded', bindPresetClickEvents);
 }
 </script>
+
+<style>
+  #safe-floating-toolbar {
+      position: absolute;
+      top: 100px;
+      left: 20px;
+      z-index: 99999;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      user-select: none;
+  }
+  .safe-tb-handle {
+      width: 100%;
+      height: 16px;
+      background: #334155;
+      border-radius: 3px;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2px;
+      touch-action: none;
+  }
+  .safe-tb-handle::after {
+      content: '';
+      width: 16px;
+      height: 2px;
+      background: #94a3b8;
+      border-radius: 1px;
+  }
+  .safe-tb-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .safe-tb-btn:hover, .safe-tb-btn.active { background: #0062ff; color: #fff; }
+  .safe-tb-btn.danger { color: #f87171; }
+  .safe-tb-btn.danger:hover { background: #7f1d1d; color: #fff; }
+</style>
+
+<div id="safe-floating-toolbar">
+    <div id="safe-tb-handle" class="safe-tb-handle" title="Drag toolbar"></div>
+    <button class="safe-tb-btn" id="stb-select" onclick="setSafeTool('select')" title="Select / Pan">✕</button>
+    <button class="safe-tb-btn" id="stb-trend" onclick="setSafeTool('trend')" title="Trendline">╱</button>
+    <button class="safe-tb-btn" id="stb-hline" onclick="setSafeTool('hline')" title="Horizontal Line">―</button>
+    <button class="safe-tb-btn" id="stb-rect" onclick="setSafeTool('rect')" title="Rectangle">☐</button>
+    <div style="height:1px;background:#334155;margin:2px 0;"></div>
+    <button class="safe-tb-btn" onclick="safeUndo()" title="Undo">↶</button>
+    <button class="safe-tb-btn danger" onclick="safeClear()" title="Clear All">🗑</button>
+</div>
+
+<script>
+window.activeSafeTool = 'select';
+window.safeDrawings = JSON.parse(localStorage.getItem('safe_chart_drawings') || '[]');
+
+function setSafeTool(tool) {
+    window.activeSafeTool = tool;
+    ['select', 'trend', 'hline', 'rect'].forEach(function(t) {
+        var b = document.getElementById('stb-' + t);
+        if (b) {
+            if (t === tool) b.classList.add('active');
+            else b.classList.remove('active');
+        }
+    });
+}
+
+function initSafeToolbarDrag() {
+    var toolbar = document.getElementById('safe-floating-toolbar');
+    var handle = document.getElementById('safe-tb-handle');
+    if (handle._safeDragBound) return;
+    handle._safeDragBound = true;
+
+
+    var isDragging = false;
+    var startX = 0, startY = 0, initialLeft = 20, initialTop = 100;
+    var activePointerId = null;
+
+    function resetDrag() {
+        isDragging = false;
+        activePointerId = null;
+        handle.style.cursor = 'grab';
+    }
+
+    function startDrag(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        isDragging = true;
+        activePointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        var rect = toolbar.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        toolbar.style.left = initialLeft + 'px';
+        toolbar.style.top = initialTop + 'px';
+        toolbar.style.right = 'auto';
+        toolbar.style.bottom = 'auto';
+
+        handle.style.cursor = 'grabbing';
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+    }
+
+    function onDrag(e) {
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+
+        toolbar.style.left = (initialLeft + dx) + 'px';
+        toolbar.style.top = (initialTop + dy) + 'px';
+        e.preventDefault();
+    }
+
+    function endDrag(e) {
+        if (e && activePointerId !== null && e.pointerId !== activePointerId) return;
+        try { if (e) handle.releasePointerCapture(e.pointerId); } catch (err) {}
+        resetDrag();
+    }
+
+    handle.style.touchAction = 'none';
+
+    handle.addEventListener('pointerdown', startDrag);
+    handle.addEventListener('pointermove', onDrag);
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+
+    // safety nets — force reset if focus/visibility changes mid-drag
+    window.addEventListener('blur', resetDrag);
+    document.addEventListener('visibilitychange', function() { if (document.hidden) resetDrag(); });
+}
+
+function safeUndo() {
+    window.safeDrawings.pop();
+    localStorage.setItem('safe_chart_drawings', JSON.stringify(window.safeDrawings));
+}
+
+function safeClear() {
+    window.safeDrawings = [];
+    localStorage.removeItem('safe_chart_drawings');
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(initSafeToolbarDrag, 400);
+} else {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(initSafeToolbarDrag, 400); });
+}
+</script>
+
+
+<div id="tv-indicators-container" style="position: absolute; top: 12px; left: 12px; z-index: 10000; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+    <button id="tv-ind-btn" style="background: #1e222d; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span>Indicators</span>
+    </button>
+    
+    <div id="tv-ind-dropdown" style="display: none; position: absolute; top: 38px; left: 0; background: #1e222d; border: 1px solid #2a2e39; border-radius: 6px; width: 250px; padding: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); color: #d1d4dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; padding-bottom: 8px; margin-bottom: 10px; font-weight: bold; font-size: 13px;">
+            <span>EMA Settings</span>
+            <button id="tv-ind-close" style="background: none; border: none; color: #787b86; cursor: pointer; font-size: 18px;">&times;</button>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+            <div>
+                <label style="display: block; margin-bottom: 4px; color: #787b86;">Fast EMA Period</label>
+                <input type="number" id="ema-fast-period" value="10" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 4px; color: #787b86;">Slow EMA Period</label>
+                <input type="number" id="ema-slow-period" value="20" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 4px; color: #787b86;">HTF EMA Period</label>
+                <input type="number" id="ema-htf-period" value="200" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
+            </div>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+            <button id="tv-ind-save" style="background: #2962ff; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Save & Apply</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function initIndicatorSettings() {
+        var btn = document.getElementById('tv-ind-btn');
+        var dropdown = document.getElementById('tv-ind-dropdown');
+        var closeBtn = document.getElementById('tv-ind-close');
+        var saveBtn = document.getElementById('tv-ind-save');
+
+        var savedSettings = JSON.parse(localStorage.getItem('tv_ema_settings') || '{}');
+        if (savedSettings.fast) document.getElementById('ema-fast-period').value = savedSettings.fast;
+        if (savedSettings.slow) document.getElementById('ema-slow-period').value = savedSettings.slow;
+        if (savedSettings.htf) document.getElementById('ema-htf-period').value = savedSettings.htf;
+
+        btn.onclick = function(e) {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        };
+
+        closeBtn.onclick = function() {
+            dropdown.style.display = 'none';
+        };
+
+        document.addEventListener('click', function(e) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        saveBtn.onclick = function() {
+            var settings = {
+                fast: parseInt(document.getElementById('ema-fast-period').value) || 10,
+                slow: parseInt(document.getElementById('ema-slow-period').value) || 20,
+                htf: parseInt(document.getElementById('ema-htf-period').value) || 200
+            };
+            localStorage.setItem('tv_ema_settings', JSON.stringify(settings));
+            dropdown.style.display = 'none';
+            location.reload();
+        };
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initIndicatorSettings, 300);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(initIndicatorSettings, 300); });
+    }
+})();
+</script>
+
 </body>
 </html>
