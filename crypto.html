@@ -188,6 +188,11 @@
         <div class="tf-slot" data-slot="2"><button class="tf-slot-btn">4h</button><div class="tf-dropdown" id="tfDropdown2"></div></div>
         <div class="tf-slot" data-slot="3"><button class="tf-slot-btn">1D</button><div class="tf-dropdown" id="tfDropdown3"></div></div>
         <div class="tf-slot" data-slot="4"><button class="tf-slot-btn">1W</button><div class="tf-dropdown" id="tfDropdown4"></div></div>
+        <div style="display:flex;gap:4px;align-items:center;margin-left:auto;">
+            <button id="btn-preset-H" onclick="applyPreset('H')" title="High TF" style="padding:4px 9px;background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:4px;font-weight:bold;cursor:pointer;">H</button>
+            <button id="btn-preset-M" onclick="applyPreset('M')" title="Medium TF" style="padding:4px 9px;background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:4px;font-weight:bold;cursor:pointer;">M</button>
+            <button id="btn-preset-L" onclick="applyPreset('L')" title="Low TF" style="padding:4px 9px;background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:4px;font-weight:bold;cursor:pointer;">L</button>
+        </div>
         <button onclick="resetChartView()" 
             title="Reset chart view"
             style="margin-left:auto;padding:6px 14px;border:1px solid var(--acc);
@@ -311,6 +316,7 @@ window.alertSettings = alertSettings;
 let customChart = null;
 let candleSeries = null;
 let ema10Series = null;
+let htfEmaSeries = null;
 let ema20Series = null;
 let sma50Series = null;
 let atrSeries = null;
@@ -350,10 +356,21 @@ function initCustomChart() {
     borderUpColor: '#000000',
     borderDownColor: '#000000'
 });
-    ema10Series = customChart.addLineSeries({ color: '#0062ff', lineWidth: 1 });
-    ema20Series = customChart.addLineSeries({ color: '#ef4444', lineWidth: 1 });
-    sma50Series = customChart.addLineSeries({ color: '#cbd5e1', lineWidth: 1 });
-    atrSeries = customChart.addLineSeries({ color: '#8b5cf6', lineWidth: 1 });
+    htfEmaSeries = customChart.addLineSeries({ color: '#ffff00', lineWidth: 2, lastValueVisible: true, priceLineVisible: false });
+    ema10Series = customChart.addLineSeries({ color: '#0062ff', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+    ema20Series = customChart.addLineSeries({ color: '#ef4444', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+    sma50Series = customChart.addLineSeries({ color: '#cbd5e1', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+    atrSeries = customChart.addLineSeries({
+        color: '#8b5cf6',
+        lineWidth: 1,
+        priceScaleId: 'atr',
+        lastValueVisible: true,
+        priceLineVisible: false
+    });
+    customChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.05, bottom: 0.25 } });
+    customChart.priceScale('atr').applyOptions({ scaleMargins: { top: 0.80, bottom: 0 } });
+    customChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.05, bottom: 0.25 } });
+    customChart.priceScale('atr').applyOptions({ scaleMargins: { top: 0.80, bottom: 0 } });
     loadChartData();
 }
 
@@ -441,6 +458,7 @@ async function loadChartData() {
         const customCandles = baseCandles;
         candleSeries.setData(customCandles);
         ema10Series.setData(calcEMA(customCandles, 10));
+        if (htfEmaSeries && customCandles.length >= 20) htfEmaSeries.setData(calcEMA(customCandles, Math.min(400, customCandles.length)));
         ema20Series.setData(calcEMA(customCandles, 20));
         sma50Series.setData(calcSMA(customCandles, 50));
         atrSeries.setData(calcATR(customCandles, 14));
@@ -469,6 +487,7 @@ function setSlotTF(slot, tf) {
     activeChartSlot = slot;
     updateSlotButton(slot, tf);
     closeAllDropdowns();
+    if (typeof updateActiveStyles === 'function') updateActiveStyles();
     loadChartData();
 }
 
@@ -1049,6 +1068,77 @@ db.ref('marketData').on('value', snap => {
     setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
+</script>
+
+
+
+
+<script>
+window.currentActivePreset = null;
+
+function execPreset(type) {
+    var presets = {
+        'H': ['1h', '4h', '1D', '1W'],
+        'M': ['15m', '2h', '20h', '1D'],
+        'L': ['1m', '15m', '1h', '4h']
+    };
+    var list = presets[type];
+
+    window.currentActivePreset = type;
+
+    // Timeframe text change
+    list.forEach(function(tf, idx) {
+        var slotNum = idx + 1;
+        var btn = document.querySelector('.tf-slot[data-slot="' + slotNum + '"] .tf-slot-btn');
+        if (btn) btn.textContent = tf;
+    });
+
+    // Preset button color update
+    ['H', 'M', 'L'].forEach(function(p) {
+        var el = document.getElementById('btn-preset-' + p);
+        if (el) {
+            if (p === type) {
+                el.style.background = '#0062ff';
+                el.style.color = '#ffffff';
+                el.style.border = '1px solid #0062ff';
+            } else {
+                el.style.background = '#1e293b';
+                el.style.color = '#38bdf8';
+                el.style.border = '1px solid #334155';
+            }
+        }
+    });
+
+    // Chart reload for active slot
+    var activeSlot = (typeof activeChartSlot !== 'undefined' && activeChartSlot) ? activeChartSlot : 1;
+    if (activeSlot > list.length) activeSlot = 1;
+    var targetTf = list[activeSlot - 1];
+
+    if (typeof setSlotTF === 'function') {
+        setSlotTF(activeSlot, targetTf);
+    } else if (typeof tfToMinutes === 'function' && typeof loadChartData === 'function') {
+        window.currentTfMinutes = tfToMinutes(targetTf);
+        loadChartData();
+    }
+}
+
+function bindPresetClickEvents() {
+    ['H', 'M', 'L'].forEach(function(type) {
+        var btn = document.getElementById('btn-preset-' + type);
+        if (btn) {
+            btn.onclick = function(e) {
+                if (e) e.preventDefault();
+                execPreset(type);
+            };
+        }
+    });
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    bindPresetClickEvents();
+} else {
+    document.addEventListener('DOMContentLoaded', bindPresetClickEvents);
+}
 </script>
 </body>
 </html>
