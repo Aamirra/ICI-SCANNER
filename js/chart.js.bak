@@ -264,3 +264,59 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     initCustomChart();
 });
+
+// ── Long Press for TF Buttons (Single click = chart, Long press = dropdown) ──
+function setupTFLongPress() {
+    document.querySelectorAll('.tf-slot').forEach(slotEl => {
+        const slotNum = parseInt(slotEl.getAttribute('data-slot'));
+        const btn = slotEl.querySelector('.tf-slot-btn');
+        if (!btn) return;
+
+        // HTML ka purana onclick remove karo
+        btn.removeAttribute('onclick');
+        btn.onclick = null;
+
+        let pressTimer = null;
+        let longFired = false;
+
+        const onStart = () => {
+            longFired = false;
+            pressTimer = setTimeout(() => {
+                longFired = true;
+                toggleTFDropdown(slotNum); // Long press = dropdown open
+            }, 600);
+        };
+
+        const onEnd = () => clearTimeout(pressTimer);
+
+        btn.addEventListener('mousedown', onStart);
+        btn.addEventListener('touchstart', onStart, { passive: true });
+        btn.addEventListener('mouseup', onEnd);
+        btn.addEventListener('touchend', onEnd);
+        btn.addEventListener('mouseleave', onEnd);
+        // Mobile pe long press context menu na aaye
+        btn.addEventListener('contextmenu', e => e.preventDefault());
+
+        btn.addEventListener('click', () => {
+            if (!longFired) {
+                // Single click = us button ka TF seedha set karo
+                const tf = btn.textContent.trim();
+                setSlotTF(slotNum, tf);
+            }
+        });
+    });
+}
+
+// ── Bahar click/touch karo to dropdown band ho ──
+document.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.tf-slot') && !e.target.closest('.tf-dropdown')) {
+        closeAllDropdowns();
+    }
+});
+
+document.addEventListener('touchstart', (e) => {
+    if (!e.target.closest('.tf-slot') && !e.target.closest('.tf-dropdown')) {
+        closeAllDropdowns();
+    }
+}, { passive: true });
+

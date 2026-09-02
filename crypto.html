@@ -184,11 +184,80 @@
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div id="tfSlots" style="display:flex;gap:8px;padding:8px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;">
-        <div class="tf-slot" data-slot="1"><button class="tf-slot-btn" onclick="toggleTFDropdown(1)">1h</button><div class="tf-dropdown" id="tfDropdown1"></div></div>
-        <div class="tf-slot" data-slot="2"><button class="tf-slot-btn" onclick="toggleTFDropdown(2)">4h</button><div class="tf-dropdown" id="tfDropdown2"></div></div>
-        <div class="tf-slot" data-slot="3"><button class="tf-slot-btn" onclick="toggleTFDropdown(3)">1D</button><div class="tf-dropdown" id="tfDropdown3"></div></div>
-        <div class="tf-slot" data-slot="4"><button class="tf-slot-btn" onclick="toggleTFDropdown(4)">1W</button><div class="tf-dropdown" id="tfDropdown4"></div></div>
+        <div class="tf-slot" data-slot="1"><button class="tf-slot-btn">1h</button><div class="tf-dropdown" id="tfDropdown1"></div></div>
+        <div class="tf-slot" data-slot="2"><button class="tf-slot-btn">4h</button><div class="tf-dropdown" id="tfDropdown2"></div></div>
+        <div class="tf-slot" data-slot="3"><button class="tf-slot-btn">1D</button><div class="tf-dropdown" id="tfDropdown3"></div></div>
+        <div class="tf-slot" data-slot="4"><button class="tf-slot-btn">1W</button><div class="tf-dropdown" id="tfDropdown4"></div></div>
+        <button onclick="resetChartView()" 
+            title="Reset chart view"
+            style="margin-left:auto;padding:6px 14px;border:1px solid var(--acc);
+                   background:var(--acc);border-radius:6px;cursor:pointer;
+                   font-weight:700;color:#fff;font-size:16px;line-height:1;">
+            ⤢
+        </button>
     </div>
+
+    <script id="tfLongPressSetup">
+    (function(){
+        function bindBtn(btn, slot) {
+            if (btn._b) return;
+            btn._b = true;
+            var T=null, fired=false, touch=false;
+
+            btn.addEventListener('touchstart', function(){
+                touch=true;
+                clearTimeout(T);
+                fired=false;
+                T=setTimeout(function(){ fired=true; toggleTFDropdown(slot); }, 600);
+            }, {passive:true});
+
+            btn.addEventListener('touchend', function(){
+                clearTimeout(T);
+                setTimeout(function(){ touch=false; }, 400);
+            });
+
+            btn.addEventListener('mousedown', function(){
+                if(touch) return;
+                clearTimeout(T);
+                fired=false;
+                T=setTimeout(function(){ fired=true; toggleTFDropdown(slot); }, 600);
+            });
+
+            btn.addEventListener('mouseup', function(){
+                if(!touch) clearTimeout(T);
+            });
+
+            btn.addEventListener('mouseleave', function(){ clearTimeout(T); });
+            btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+            btn.addEventListener('click', function(){
+                if(!fired) setSlotTF(slot, btn.textContent.trim());
+                fired=false;
+            });
+        }
+
+        function setup(){
+            document.querySelectorAll('.tf-slot').forEach(function(el){
+                var n=parseInt(el.getAttribute('data-slot'));
+                var b=el.querySelector('.tf-slot-btn');
+                if(b) bindBtn(b, n);
+            });
+            if(!document._tfOut){
+                document._tfOut=true;
+                document.addEventListener('mousedown', function(e){
+                    if(!e.target.closest('.tf-slot')) closeAllDropdowns();
+                });
+                document.addEventListener('touchstart', function(e){
+                    if(!e.target.closest('.tf-slot')) closeAllDropdowns();
+                }, {passive:true});
+            }
+        }
+
+        if(document.readyState==='loading')
+            document.addEventListener('DOMContentLoaded', setup);
+        else setup();
+    })();
+    </script>
     <div id="customChart" style="flex:1;width:100%;"></div>
 </div>
 
@@ -273,10 +342,14 @@ function initCustomChart() {
         timeScale: { borderColor: '#ddd' }
     });
     candleSeries = customChart.addCandlestickSeries({
-        upColor: '#ffffff', downColor: '#000000',
-        borderUpColor: '#cccccc', borderDownColor: '#333333',
-        wickUpColor: '#cccccc', wickDownColor: '#333333'
-    });
+    upColor: '#ffffff',
+    downColor: '#000000',
+    borderVisible: true,
+    wickUpColor: '#000000',
+    wickDownColor: '#000000',
+    borderUpColor: '#000000',
+    borderDownColor: '#000000'
+});
     ema10Series = customChart.addLineSeries({ color: '#0062ff', lineWidth: 1 });
     ema20Series = customChart.addLineSeries({ color: '#ef4444', lineWidth: 1 });
     sma50Series = customChart.addLineSeries({ color: '#cbd5e1', lineWidth: 1 });
@@ -284,22 +357,33 @@ function initCustomChart() {
     loadChartData();
 }
 
-async function fetchBaseCandlesCryptoCompare(symbol, limit=1000) {
-    const fsym = symbol;
-    const url = `/api/crypto-chart?symbol=${encodeURIComponent(fsym)}&limit=${limit}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (data.Response === 'Error') throw new Error(data.Message || 'CryptoCompare error');
-    if (!data.Data || !data.Data.Data || !Array.isArray(data.Data.Data)) throw new Error('Unexpected data format');
-    return data.Data.Data.map(d => ({
-        time: d.time,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volumefrom
-    }));
+async function fetchBaseCandlesCryptoCompare(symbol) {
+    let tfStr = '1h';
+    const mins = typeof currentTfMinutes !== 'undefined' ? currentTfMinutes : 60;
+    if (mins >= 10080) tfStr = '1w';
+    else if (mins >= 1440) tfStr = '1d';
+    else if (mins >= 240) tfStr = '4h';
+    else if (mins >= 120) tfStr = '2h';
+    else if (mins >= 60) tfStr = '1h';
+    else if (mins >= 30) tfStr = '30m';
+    else if (mins >= 15) tfStr = '15m';
+    else if (mins >= 5) tfStr = '5m';
+    else tfStr = '1m';
+
+    try {
+        const url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol || 'BTC') + '&tf=' + tfStr + '&_t=' + Date.now();
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+            const map = new Map();
+            json.data.forEach(c => { if (c && c.time) map.set(c.time, c); });
+            return Array.from(map.values()).sort((a, b) => a.time - b.time);
+        }
+        return [];
+    } catch (e) {
+        console.error('Data Fetch Error:', e);
+        return [];
+    }
 }
 
 function aggregateCandles(baseCandles, minutes) {
@@ -354,7 +438,7 @@ function calcATR(data, period=14) {
 async function loadChartData() {
     try {
         const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 1000);
-        const customCandles = aggregateCandles(baseCandles, currentTfMinutes);
+        const customCandles = baseCandles;
         candleSeries.setData(customCandles);
         ema10Series.setData(calcEMA(customCandles, 10));
         ema20Series.setData(calcEMA(customCandles, 20));
@@ -399,6 +483,24 @@ function updateSlotButton(slot, tf) {
 }
 
 function closeAllDropdowns() { document.querySelectorAll('.tf-dropdown').forEach(d => d.classList.remove('open')); }
+
+function resetChartView() {
+    if (!customChart) return;
+    // Price scale auto reset
+    customChart.priceScale('right').applyOptions({ autoScale: true });
+    // Last 100 candles dikhao — TradingView jaisa
+    var ts = customChart.timeScale();
+    var series = candleSeries;
+    try {
+        var data = series && series._internal__series && series._internal__series._data;
+    } catch(e) {}
+    // Seedha last bars tak scroll karo aur fit karo
+    ts.scrollToRealTime();
+    setTimeout(function() {
+        ts.applyOptions({ rightOffset: 5 });
+        customChart.priceScale('right').applyOptions({ autoScale: true });
+    }, 50);
+}
 
 function openChartForPair(pairName) {
     currentSymbol = getCryptoCompareSymbol(pairName);

@@ -15,6 +15,7 @@ if (!admin.apps.length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountJson) {
         console.error('❌ FIREBASE_SERVICE_ACCOUNT env variable missing!');
+x
         process.exit(1);
     }
     admin.initializeApp({
@@ -51,81 +52,7 @@ async function commitFileChange(owner, repo, filePath, newContent, commitMessage
 }
 
 http.createServer((req, res) => {
-
-
     const safePath = req.url.split('?')[0];
-
-    // ── Crypto Chart Endpoint ──
-    if (req.method === 'GET' && safePath === '/api/crypto-chart') {
-        (async () => {
-            try {
-                const chartParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
-                let symbol = (chartParams.get('symbol') || 'BTC').toUpperCase().replace(/(USD|USDT|EUR|GBP)$/i, '') || 'BTC';
-                let tf = (chartParams.get('tf') || '1h').toLowerCase();
-                const binanceTf = (tf === '1w') ? '1w' : (tf === '1d') ? '1d' : (tf === '4h') ? '4h' : (tf === '2h') ? '2h' : (tf === '1h') ? '1h' : '15m';
-
-                global.__chartCache = global.__chartCache || new Map();
-                const cacheKey = symbol + '_' + binanceTf;
-                const CACHE_TTL_MS = 20000;
-                const cached = global.__chartCache.get(cacheKey);
-                if (cached && (Date.now() - cached.ts) < CACHE_TTL_MS) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true, data: cached.data }));
-                    return;
-                }
-
-                const MAX_CANDLES = 5000;
-                const BATCH_SIZE = 1000;
-                const intervalMsMap = { '1w': 604800000, '1d': 86400000, '4h': 14400000, '2h': 7200000, '1h': 3600000, '15m': 900000 };
-                const intervalMs = intervalMsMap[binanceTf] || 3600000;
-                const numBatches = Math.ceil(MAX_CANDLES / BATCH_SIZE);
-                const now = Date.now();
-
-                const batchPromises = [];
-                for (let i = 0; i < numBatches; i++) {
-                    const endTime = now - i * BATCH_SIZE * intervalMs;
-                    const batchUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=${binanceTf}&limit=${BATCH_SIZE}&endTime=${endTime}`;
-                    batchPromises.push(fetch(batchUrl).then(r => r.json()).catch(() => []));
-                }
-                const batches = await Promise.all(batchPromises);
-
-                const merged = new Map();
-                batches.forEach(batch => {
-                    if (Array.isArray(batch)) batch.forEach(item => merged.set(item[0], item));
-                });
-
-                let allCandles = Array.from(merged.values()).sort((a, b) => a[0] - b[0]);
-                if (allCandles.length === 0) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: false, error: 'No data received' }));
-                    return;
-                }
-                if (allCandles.length > MAX_CANDLES) {
-                    allCandles = allCandles.slice(allCandles.length - MAX_CANDLES);
-                }
-
-                const candles = allCandles.map(item => ({
-                    time: Math.floor(item[0] / 1000),
-                    open: parseFloat(item[1]),
-                    high: parseFloat(item[2]),
-                    low: parseFloat(item[3]),
-                    close: parseFloat(item[4]),
-                    volume: parseFloat(item[5])
-                }));
-
-                global.__chartCache.set(cacheKey, { data: candles, ts: Date.now() });
-
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, data: candles }));
-            } catch (error) {
-                console.error('Crypto Chart Error:', error.message);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Failed to fetch crypto data' }));
-            }
-        })();
-        return;
-    }
-
 
     // ── AI Chat Proxy ──
     if (req.method === 'POST' && safePath === '/api/chat') {
@@ -395,7 +322,31 @@ Always put the action block FIRST, then your reply.`;
     }
 
     // ✅ NEW: Crypto Chart Data Proxy
-    
+    if (req.method === 'GET' && safePath === '/api/crypto-chart') {
+        const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+        const symbol = urlParams.get('symbol') || 'BTC';
+        const limit = urlParams.get('limit') || '1000';
+        const targetUrl = `https://min-api.cryptocompare.com/data/v2/histominute?fsym=${symbol}&tsym=USD&limit=${limit}&aggregate=1`;
+
+        https.get(targetUrl, (apiRes) => {
+            let data = '';
+            apiRes.on('data', chunk => data += chunk);
+            apiRes.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(json));
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid JSON from CryptoCompare' }));
+                }
+            });
+        }).on('error', (e) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
 
     // ── GITHUB WEBHOOK BLOCK ──
     if (req.method === 'POST' && safePath === '/webhook') {
