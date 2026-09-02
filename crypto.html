@@ -290,8 +290,11 @@ function initCustomChart() {
 async function fetchBaseCandlesCryptoCompare(symbol, limit=1000) {
     const fsym = symbol;
     const tsym = 'USD';
-    const url = `https://min-api.cryptocompare.com/data/v2/histominute?fsym=${fsym}&tsym=${tsym}&limit=${limit}&aggregate=1`;
+    // Use AllOrigins proxy to avoid CORS issues
+    const targetUrl = `https://min-api.cryptocompare.com/data/v2/histominute?fsym=${fsym}&tsym=${tsym}&limit=${limit}&aggregate=1`;
+    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(url);
+    if (!res.ok) throw new Error('Network response not ok');
     const data = await res.json();
     if (data.Response === 'Error') {
         throw new Error(data.Message || 'CryptoCompare error');
