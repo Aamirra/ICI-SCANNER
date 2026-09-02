@@ -1304,83 +1304,110 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 </script>
 
 
-<div id="tv-indicators-container" style="position: absolute; top: 12px; left: 12px; z-index: 10000; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <button id="tv-ind-btn" style="background: #1e222d; color: #d1d4dc; border: 1px solid #2a2e39; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-        <span>Indicators</span>
-    </button>
-    
-    <div id="tv-ind-dropdown" style="display: none; position: absolute; top: 38px; left: 0; background: #1e222d; border: 1px solid #2a2e39; border-radius: 6px; width: 250px; padding: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); color: #d1d4dc;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; padding-bottom: 8px; margin-bottom: 10px; font-weight: bold; font-size: 13px;">
-            <span>EMA Settings</span>
-            <button id="tv-ind-close" style="background: none; border: none; color: #787b86; cursor: pointer; font-size: 18px;">&times;</button>
-        </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
-            <div>
-                <label style="display: block; margin-bottom: 4px; color: #787b86;">Fast EMA Period</label>
-                <input type="number" id="ema-fast-period" value="10" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 4px; color: #787b86;">Slow EMA Period</label>
-                <input type="number" id="ema-slow-period" value="20" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 4px; color: #787b86;">HTF EMA Period</label>
-                <input type="number" id="ema-htf-period" value="200" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 6px; border-radius: 4px; box-sizing: border-box;">
-            </div>
-        </div>
-        
-        <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
-            <button id="tv-ind-save" style="background: #2962ff; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Save & Apply</button>
-        </div>
-    </div>
-</div>
+
+
 
 <script>
 (function() {
-    function initIndicatorSettings() {
-        var btn = document.getElementById('tv-ind-btn');
-        var dropdown = document.getElementById('tv-ind-dropdown');
-        var closeBtn = document.getElementById('tv-ind-close');
-        var saveBtn = document.getElementById('tv-ind-save');
+    function injectTvIndicators() {
+        if (document.getElementById('tv-indicators-container')) return;
 
-        var savedSettings = JSON.parse(localStorage.getItem('tv_ema_settings') || '{}');
-        if (savedSettings.fast) document.getElementById('ema-fast-period').value = savedSettings.fast;
-        if (savedSettings.slow) document.getElementById('ema-slow-period').value = savedSettings.slow;
-        if (savedSettings.htf) document.getElementById('ema-htf-period').value = savedSettings.htf;
+        var chartEl = document.getElementById('chart-container') || 
+                      document.getElementById('chart') || 
+                      document.querySelector('.chart-container') || 
+                      document.querySelector('[id*="chart"]');
 
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        };
 
-        closeBtn.onclick = function() {
-            dropdown.style.display = 'none';
-        };
+        chartEl.style.position = 'relative';
 
-        document.addEventListener('click', function(e) {
-                dropdown.style.display = 'none';
-            }
-        });
+        var container = document.createElement('div');
+        container.id = 'tv-indicators-container';
+        container.style.cssText = 'position: absolute; top: 10px; left: 10px; z-index: 99999; font-family: sans-serif; pointer-events: auto;';
 
-        saveBtn.onclick = function() {
-            var settings = {
-                fast: parseInt(document.getElementById('ema-fast-period').value) || 10,
-                slow: parseInt(document.getElementById('ema-slow-period').value) || 20,
-                htf: parseInt(document.getElementById('ema-htf-period').value) || 200
-            };
-            localStorage.setItem('tv_ema_settings', JSON.stringify(settings));
-            dropdown.style.display = 'none';
-            location.reload();
-        };
+        container.innerHTML = `
+            <style>
+              #tv-ind-btn {
+                  background: #1e222d; color: #d1d4dc; border: 1px solid #2a2e39;
+                  padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+                  display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+              }
+              #tv-ind-btn:hover { background: #2a2e39; }
+              #tv-ind-dropdown {
+                  display: none; position: absolute; top: 34px; left: 0;
+                  background: #1e222d; border: 1px solid #2a2e39; border-radius: 6px;
+                  width: 200px; max-width: calc(100vw - 30px); padding: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); color: #d1d4dc;
+                  z-index: 100000; box-sizing: border-box;
+              }
+            </style>
+            <button id="tv-ind-btn" onclick="toggleTvIndDropdown(event)" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span>Indicators</span>
+            </button>
+            <div id="tv-ind-dropdown">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2e39; padding-bottom: 6px; margin-bottom: 8px; font-weight: bold; font-size: 12px;">
+                    <span>EMA Settings</span>
+                    <button onclick="closeTvIndDropdown(event)" type="button" style="background: none; border: none; color: #787b86; cursor: pointer; font-size: 16px;">&times;</button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 2px; color: #787b86;">Fast EMA Period</label>
+                        <input type="number" id="ema-fast-period" value="10" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 4px 6px; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 2px; color: #787b86;">Slow EMA Period</label>
+                        <input type="number" id="ema-slow-period" value="20" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 4px 6px; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 2px; color: #787b86;">HTF EMA Period</label>
+                        <input type="number" id="ema-htf-period" value="200" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 4px 6px; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button onclick="saveTvIndSettings(event)" type="button" style="background: #2962ff; color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; width: 100%; text-align: center;">Save & Apply</button>
+                </div>
+            </div>
+        `;
+
+        chartEl.appendChild(container);
+
+        var saved = JSON.parse(localStorage.getItem('tv_ema_settings') || '{}');
+        if(saved.fast && document.getElementById('ema-fast-period')) document.getElementById('ema-fast-period').value = saved.fast;
+        if(saved.slow && document.getElementById('ema-slow-period')) document.getElementById('ema-slow-period').value = saved.slow;
+        if(saved.htf && document.getElementById('ema-htf-period')) document.getElementById('ema-htf-period').value = saved.htf;
     }
+
+    window.toggleTvIndDropdown = function(e) {
+        if(e) e.stopPropagation();
+        var dd = document.getElementById('tv-ind-dropdown');
+        if(dd) dd.style.display = (dd.style.display === 'block') ? 'none' : 'block';
+    };
+
+    window.closeTvIndDropdown = function(e) {
+        if(e) e.stopPropagation();
+        var dd = document.getElementById('tv-ind-dropdown');
+        if(dd) dd.style.display = 'none';
+    };
+
+    window.saveTvIndSettings = function(e) {
+        if(e) e.stopPropagation();
+        var fast = parseInt(document.getElementById('ema-fast-period').value) || 10;
+        var slow = parseInt(document.getElementById('ema-slow-period').value) || 20;
+        var htf = parseInt(document.getElementById('ema-htf-period').value) || 200;
+        localStorage.setItem('tv_ema_settings', JSON.stringify({ fast: fast, slow: slow, htf: htf }));
+        window.closeTvIndDropdown();
+        location.reload();
+    };
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(initIndicatorSettings, 300);
+        setTimeout(injectTvIndicators, 500);
     } else {
-        document.addEventListener('DOMContentLoaded', function() { setTimeout(initIndicatorSettings, 300); });
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(injectTvIndicators, 500); });
     }
+
+    document.addEventListener('click', function(e) {
+        var container = document.getElementById('tv-indicators-container');
+        var dd = document.getElementById('tv-ind-dropdown');
+    });
 })();
 </script>
 
