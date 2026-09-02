@@ -7,6 +7,7 @@ const { sendWhatsAppAlert } = require('./services/whatsappBot');
 const crypto = require('crypto');
 const { exec } = require('child_process');
 const cron = require('node-cron');
+const https = require('https');
 
 let scannerModule;
 
@@ -319,6 +320,33 @@ Always put the action block FIRST, then your reply.`;
         return;
     }
 
+    // ✅ NEW: Crypto Chart Data Proxy
+    if (req.method === 'GET' && safePath === '/api/crypto-chart') {
+        const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+        const symbol = urlParams.get('symbol') || 'BTC';
+        const limit = urlParams.get('limit') || '1000';
+        const targetUrl = `https://min-api.cryptocompare.com/data/v2/histominute?fsym=${symbol}&tsym=USD&limit=${limit}&aggregate=1`;
+
+        https.get(targetUrl, (apiRes) => {
+            let data = '';
+            apiRes.on('data', chunk => data += chunk);
+            apiRes.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(json));
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid JSON from CryptoCompare' }));
+                }
+            });
+        }).on('error', (e) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+
     // ── GITHUB WEBHOOK BLOCK ──
     if (req.method === 'POST' && safePath === '/webhook') {
         let body = '';
@@ -442,7 +470,6 @@ async function updateScanTimestamp() {
     const now = Date.now();
     await admin.database().ref('scanStatus').set({ running: false, completedAt: now });
     await admin.database().ref('lastScanTime').set({ time: now });
-    // This updates the main dashboard timestamp properly!
     await admin.database().ref('system/lastScan').set({ 
         timestamp: now, 
         readable: new Date().toISOString() 
@@ -476,25 +503,21 @@ function runSafeMasterScan() {
         console.log('⚠️ Scanner function not found – manual scan only');
     }
 
-    // 🟢 1. 15-Min Scan
     cron.schedule('*/15 * * * *', () => {
         console.log('[CRON] 🕒 Running 15-min Master Scan...');
         runSafeMasterScan();
     });
 
-    // 🟢 2. 30-Min Scan
     cron.schedule('*/30 * * * *', () => {
         console.log('[CRON] 🕒 Running 30-min Master Scan...');
         runSafeMasterScan();
     });
 
-    // 🟢 3. Hourly Scan
     cron.schedule('0 * * * *', () => {
         console.log('[CRON] 🕒 Running Hourly Master Scan...');
         runSafeMasterScan();
     });
 
-    // 🟢 4. Sentiment Scripts Every Hour
     cron.schedule('0 * * * *', () => {
         console.log('[CRON] Running sentiment scripts...');
         exec('bash /home/ubuntu/ICI-SCANNER/run_sentiment_cron.sh', (err, stdout, stderr) => {
