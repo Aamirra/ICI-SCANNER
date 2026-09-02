@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Lightweight Charts Library -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
         body { background:var(--bg); color:var(--txt); padding:16px; display:flex; justify-content:center; min-height:100vh; }
@@ -245,7 +246,7 @@ let ema10Series = null;
 let ema20Series = null;
 let sma50Series = null;
 let atrSeries = null;
-let currentSymbol = 'BTCUSDT';
+let currentSymbol = 'BTC';
 let currentTfMinutes = 60;
 
 const TF_PRESETS = ['1m','3m','5m','15m','30m','45m','1h','2h','3h','4h','1D','1W'];
@@ -258,12 +259,17 @@ function tfToMinutes(tf) {
     return 60;
 }
 
-function getBinanceSymbol(pair) { return pair.replace('USD','USDT'); }
+function getCryptoCompareSymbol(pair) {
+    return pair.replace('USD','');
+}
 
 function initCustomChart() {
-    customChart = LightweightCharts.createChart(document.getElementById('customChart'), {
-        width: document.getElementById('customChart').clientWidth,
-        height: document.getElementById('customChart').clientHeight,
+    const container = document.getElementById('customChart');
+    const width = container.clientWidth || 400;
+    const height = container.clientHeight || 300;
+    customChart = LightweightCharts.createChart(container, {
+        width: width,
+        height: height,
         layout: { background: { type: 'solid', color: '#ffffff' }, textColor: '#333' },
         grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
         rightPriceScale: { borderColor: '#ddd' },
@@ -281,13 +287,22 @@ function initCustomChart() {
     loadChartData();
 }
 
-async function fetchBaseCandles(symbol, interval, limit=1000) {
-    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+async function fetchBaseCandlesCryptoCompare(symbol, limit=1000) {
+    const fsym = symbol;
+    const tsym = 'USD';
+    const url = `https://min-api.cryptocompare.com/data/v2/histominute?fsym=${fsym}&tsym=${tsym}&limit=${limit}&aggregate=1`;
     const res = await fetch(url);
     const data = await res.json();
-    return data.map(k => ({
-        time: Math.floor(k[0]/1000),
-        open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5])
+    if (data.Response === 'Error') {
+        throw new Error(data.Message || 'CryptoCompare error');
+    }
+    return data.Data.Data.map(d => ({
+        time: d.time,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+        volume: d.volumefrom
     }));
 }
 
@@ -341,17 +356,18 @@ function calcATR(data, period=14) {
 }
 
 async function loadChartData() {
-    const baseSymbol = currentSymbol;
-    let baseInterval = '1m';
-    if (currentTfMinutes >= 60) baseInterval = '1h';
-    const baseCandles = await fetchBaseCandles(baseSymbol, baseInterval, 1000);
-    const customCandles = aggregateCandles(baseCandles, currentTfMinutes);
-    candleSeries.setData(customCandles);
-    ema10Series.setData(calcEMA(customCandles, 10));
-    ema20Series.setData(calcEMA(customCandles, 20));
-    sma50Series.setData(calcSMA(customCandles, 50));
-    atrSeries.setData(calcATR(customCandles, 14));
-    customChart.timeScale().fitContent();
+    try {
+        const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 1000);
+        const customCandles = aggregateCandles(baseCandles, currentTfMinutes);
+        candleSeries.setData(customCandles);
+        ema10Series.setData(calcEMA(customCandles, 10));
+        ema20Series.setData(calcEMA(customCandles, 20));
+        sma50Series.setData(calcSMA(customCandles, 50));
+        atrSeries.setData(calcATR(customCandles, 14));
+        customChart.timeScale().fitContent();
+    } catch(e) {
+        alert('Chart data fetch error: ' + e.message);
+    }
 }
 
 function toggleTFDropdown(slot) {
@@ -389,7 +405,7 @@ function updateSlotButton(slot, tf) {
 function closeAllDropdowns() { document.querySelectorAll('.tf-dropdown').forEach(d => d.classList.remove('open')); }
 
 function openChartForPair(pairName) {
-    currentSymbol = getBinanceSymbol(pairName);
+    currentSymbol = getCryptoCompareSymbol(pairName);
     document.getElementById('chartOverlay').style.display = 'flex';
     document.getElementById('chartPairName').textContent = pairName;
     activeChartPair = pairName;
@@ -426,7 +442,6 @@ document.addEventListener('keydown', function(e) {
     else if (key === 'W') setSlotTF(activeChartSlot, '1W');
 });
 
-// Toggle star
 function toggleStar(pair) {
     const idx = starredPairs.indexOf(pair);
     if (idx > -1) starredPairs.splice(idx, 1);
@@ -452,7 +467,6 @@ function renderDebounced() {
     renderTimer = setTimeout(() => { render(); renderTimer = null; }, 300);
 }
 
-// Alert settings listeners
 db.ref('lastScanTime/time').on('value', snap => {
     const el = document.getElementById('lastScanTime');
     const ts = snap.val();
@@ -633,7 +647,6 @@ function openTargetModal() {
     document.getElementById('targetModal').classList.add('open');
 }
 
-// Columns
 const COLUMN_TYPES = {
     tf_alignment: { label:'TF Alignment', kind:'dots', filterable:false },
     sentiment:    { label:'Sentiment',    kind:'bar',  filterable:false },
