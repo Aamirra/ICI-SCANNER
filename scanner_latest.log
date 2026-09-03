@@ -1,0 +1,942 @@
+nohup: ignoring input
+[MarketScanner] Firebase initialized successfully.
+[config] ✅ 16 API keys loaded.
+[Setup] Total Twelve Data Keys Loaded: 16
+[Binance] Fetched LTCUSD (1h)
+[Binance] Fetched BCHUSD (1h)
+[Binance] Fetched BTCUSD (1week)
+[Binance] Fetched BTCUSD (1day)
+[Binance] Fetched ETHUSD (4h)
+[Binance] Fetched LTCUSD (4h)
+[Binance] Fetched BCHUSD (4h)
+[Binance] Fetched BTCUSD (4h)
+[Binance] Fetched ETHUSD (1week)
+[Binance] Fetched BTCUSD (1h)
+[Binance] Fetched ETHUSD (1h)
+[Binance] Fetched BCHUSD (1day)
+[Binance] Fetched ETHUSD (1day)
+[Binance] Fetched LTCUSD (1day)
+[Binance] Fetched LTCUSD (1week)
+✅ Firebase saved: miniChart/LTCUSD
+✅ Firebase saved: miniChart/BCHUSD
+✅ Firebase saved: miniChart/BTCUSD
+✅ Firebase saved: miniChart/ETHUSD
+[Binance] Fetched ADAUSD (1h)
+[Binance] Fetched LINKUSD (1h)
+[Binance] Fetched DOTUSD (1h)
+[Binance] Fetched ADAUSD (1week)
+[Binance] Fetched BCHUSD (1week)
+[Binance] Fetched DOTUSD (1day)
+[Binance] Fetched DOTUSD (4h)
+[Binance] Fetched XRPUSD (1day)
+[Binance] Fetched ADAUSD (4h)
+[Binance] Fetched ADAUSD (1day)
+[Binance] Fetched XRPUSD (1week)
+[Binance] Fetched XRPUSD (1h)
+[Binance] Fetched DOTUSD (1week)
+[Binance] Fetched XRPUSD (4h)
+[Binance] Fetched LINKUSD (4h)
+✅ Firebase saved: miniChart/ADAUSD
+✅ Firebase saved: miniChart/LINKUSD
+✅ Firebase saved: miniChart/DOTUSD
+✅ Firebase saved: miniChart/XRPUSD
+[Binance] Fetched UNIUSD (1h)
+[Binance] Fetched SOLUSD (1h)
+[Binance] Fetched UNIUSD (1week)
+[Binance] Fetched AVAXUSD (1h)
+[Binance] Fetched SOLUSD (1day)
+[Binance] Fetched MATICUSD (1week)
+[Binance] Fetched SOLUSD (1week)
+[Binance] Fetched UNIUSD (4h)
+[Binance] Fetched MATICUSD (1h)
+[Binance] Fetched MATICUSD (4h)
+[Binance] Fetched LINKUSD (1day)
+[Binance] Fetched MATICUSD (1day)
+[Binance] Fetched UNIUSD (1day)
+[Binance] Fetched LINKUSD (1week)
+[Binance] Fetched SOLUSD (4h)
+✅ Firebase saved: miniChart/UNIUSD
+✅ Firebase saved: miniChart/SOLUSD
+✅ Firebase saved: miniChart/AVAXUSD
+✅ Firebase saved: miniChart/MATICUSD
+[Binance] Fetched VETUSD (1h)
+[Binance] Fetched FILUSD (1week)
+[Binance] Fetched AVAXUSD (1day)
+[Binance] Fetched FILUSD (1h)
+[Binance] Fetched ATOMUSD (1h)
+[Binance] Fetched FILUSD (1day)
+[Binance] Fetched VETUSD (4h)
+[Binance] Fetched VETUSD (1week)
+[Binance] Fetched ATOMUSD (4h)
+[Binance] Fetched ATOMUSD (1week)
+[Binance] Fetched VETUSD (1day)
+[Binance] Fetched ATOMUSD (1day)
+[Binance] Fetched FILUSD (4h)
+[Binance] Fetched AVAXUSD (1week)
+✅ Firebase saved: miniChart/VETUSD
+✅ Firebase saved: miniChart/FILUSD
+✅ Firebase saved: miniChart/ATOMUSD
+[Binance] Fetched AVAXUSD (4h)
+[Binance] Fetched XLMUSD (4h)
+[Binance] Fetched ETCUSD (4h)
+[Binance] Fetched ETCUSD (1day)
+[Binance] Fetched ICPUSD (1day)
+[Binance] Fetched ETCUSD (1h)
+[Binance] Fetched ETCUSD (1week)
+[Binance] Fetched TRXUSD (1week)
+[Binance] Fetched TRXUSD (1h)
+[Binance] Fetched XLMUSD (1h)
+[Binance] Fetched ICPUSD (1h)
+[Binance] Fetched TRXUSD (4h)
+[Binance] Fetched TRXUSD (1day)
+[Binance] Fetched ICPUSD (4h)
+[Binance] Fetched XLMUSD (1week)
+[Binance] Fetched XLMUSD (1day)
+✅ Firebase saved: miniChart/ETCUSD
+✅ Firebase saved: miniChart/TRXUSD
+✅ Firebase saved: miniChart/XLMUSD
+✅ Firebase saved: miniChart/ICPUSD
+[Binance] Fetched XTZUSD (1week)
+[Binance] Fetched SANDUSD (1h)
+[Binance] Fetched THETAUSD (1day)
+[Binance] Fetched SANDUSD (4h)
+[Binance] Fetched XTZUSD (1h)
+[Binance] Fetched XTZUSD (1day)
+[Binance] Fetched EOSUSD (1week)
+[Binance] Fetched THETAUSD (4h)
+[Binance] Fetched EOSUSD (1day)
+[Binance] Fetched EOSUSD (1h)
+[Binance] Fetched THETAUSD (1h)
+[Binance] Fetched XTZUSD (4h)
+[Binance] Fetched THETAUSD (1week)
+[Binance] Fetched EOSUSD (4h)
+✅ Firebase saved: miniChart/SANDUSD
+✅ Firebase saved: miniChart/XTZUSD
+✅ Firebase saved: miniChart/EOSUSD
+✅ Firebase saved: miniChart/THETAUSD
+[Binance] Fetched ICPUSD (1week)
+[Binance] Fetched SHIBUSD (4h)
+[Binance] Fetched SHIBUSD (1h)
+[Binance] Fetched PEPEUSD (1h)
+[Binance] Fetched MANAUSD (1week)
+[Binance] Fetched DOGEUSD (1h)
+[Binance] Fetched MANAUSD (4h)
+[Binance] Fetched DOGEUSD (1day)
+[Binance] Fetched SHIBUSD (1week)
+[Binance] Fetched DOGEUSD (1week)
+[Binance] Fetched SHIBUSD (1day)
+[Binance] Fetched SANDUSD (1week)
+[Binance] Fetched MANAUSD (1h)
+[Binance] Fetched SANDUSD (1day)
+[Binance] Fetched DOGEUSD (4h)
+[Binance] Fetched MANAUSD (1day)
+✅ Firebase saved: miniChart/SHIBUSD
+✅ Firebase saved: miniChart/PEPEUSD
+✅ Firebase saved: miniChart/DOGEUSD
+✅ Firebase saved: miniChart/MANAUSD
+[Binance] Fetched FLOKIUSD (1h)
+[Binance] Fetched WIFUSD (1h)
+[Binance] Fetched BONKUSD (4h)
+[Binance] Fetched PEPEUSD (1week)
+[Binance] Fetched FLOKIUSD (1week)
+[Binance] Fetched PEPEUSD (4h)
+[Binance] Fetched BONKUSD (1h)
+[Binance] Fetched FLOKIUSD (1day)
+[Binance] Fetched PEPEUSD (1day)
+[Binance] Fetched BONKUSD (1day)
+[Binance] Fetched WIFUSD (4h)
+[Binance] Fetched BONKUSD (1week)
+[Binance] Fetched WIFUSD (1day)
+[Binance] Fetched FLOKIUSD (4h)
+[Binance] Fetched WIFUSD (1week)
+✅ Firebase saved: miniChart/FLOKIUSD
+✅ Firebase saved: miniChart/WIFUSD
+✅ Firebase saved: miniChart/BONKUSD
+[Binance] Fetched ENJUSD (1week)
+[Binance] Fetched ENJUSD (1h)
+[Binance] Fetched CHZUSD (1day)
+[Binance] Fetched GRTUSD (4h)
+[Binance] Fetched BATUSD (1day)
+[Binance] Fetched CHZUSD (4h)
+[Binance] Fetched CHZUSD (1h)
+[Binance] Fetched CHZUSD (1week)
+[Binance] Fetched BATUSD (4h)
+[Binance] Fetched GRTUSD (1h)
+[Binance] Fetched GRTUSD (1week)
+[Binance] Fetched ENJUSD (1day)
+[Binance] Fetched GRTUSD (1day)
+[Binance] Fetched ENJUSD (4h)
+[Binance] Fetched BATUSD (1h)
+✅ Firebase saved: miniChart/ENJUSD
+✅ Firebase saved: miniChart/CHZUSD
+✅ Firebase saved: miniChart/GRTUSD
+✅ Firebase saved: miniChart/BATUSD
+[Binance] Fetched ZRXUSD (1h)
+[Binance] Fetched DASHUSD (4h)
+[Binance] Fetched OMGUSD (1week)
+[Binance] Fetched OMGUSD (1h)
+[Binance] Fetched ZECUSD (4h)
+[Binance] Fetched DASHUSD (1day)
+[Binance] Fetched ZRXUSD (1week)
+[Binance] Fetched DASHUSD (1h)
+[Binance] Fetched DASHUSD (1week)
+[Binance] Fetched ZRXUSD (4h)
+[Binance] Fetched ZRXUSD (1day)
+[Binance] Fetched OMGUSD (1day)
+[Binance] Fetched ZECUSD (1h)
+[Binance] Fetched BATUSD (1week)
+[Binance] Fetched OMGUSD (4h)
+✅ Firebase saved: miniChart/ZRXUSD
+✅ Firebase saved: miniChart/OMGUSD
+✅ Firebase saved: miniChart/DASHUSD
+✅ Firebase saved: miniChart/ZECUSD
+[Binance] Fetched DCRUSD (1h)
+[Binance] Fetched XVGUSD (4h)
+[Binance] Fetched DCRUSD (1day)
+[Binance] Fetched XVGUSD (1week)
+[Binance] Fetched ZECUSD (1day)
+[Binance] Fetched DCRUSD (1week)
+[Binance] Fetched XVGUSD (1h)
+[Binance] Fetched BTGUSD (4h)
+[Binance] Fetched SCUSD (1h)
+[Binance] Fetched BTGUSD (1day)
+[Binance] Fetched XVGUSD (1day)
+[Binance] Fetched BTGUSD (1h)
+[Binance] Fetched BTGUSD (1week)
+[Binance] Fetched DCRUSD (4h)
+✅ Firebase saved: miniChart/DCRUSD
+✅ Firebase saved: miniChart/XVGUSD
+✅ Firebase saved: miniChart/SCUSD
+✅ Firebase saved: miniChart/BTGUSD
+[Binance] Fetched ZECUSD (1week)
+[Binance] Fetched SNXUSD (1week)
+[Binance] Fetched COMPUSD (1week)
+[Binance] Fetched SNXUSD (4h)
+[Binance] Fetched MKRUSD (1week)
+[Binance] Fetched MKRUSD (1h)
+[Binance] Fetched COMPUSD (4h)
+[Binance] Fetched MKRUSD (1day)
+[Binance] Fetched SCUSD (1day)
+[Binance] Fetched SCUSD (1week)
+[Binance] Fetched SNXUSD (1day)
+[Binance] Fetched COMPUSD (1h)
+[Binance] Fetched SCUSD (4h)
+[Binance] Fetched SNXUSD (1h)
+[Binance] Fetched COMPUSD (1day)
+[Binance] Fetched MKRUSD (4h)
+✅ Firebase saved: miniChart/MKRUSD
+✅ Firebase saved: miniChart/COMPUSD
+✅ Firebase saved: miniChart/SNXUSD
+[Binance] Fetched AAVEUSD (1h)
+[Binance] Fetched AAVEUSD (1week)
+[Binance] Fetched YFIUSD (4h)
+[Binance] Fetched CRVUSD (4h)
+[Binance] Fetched YFIUSD (1day)
+[Binance] Fetched CRVUSD (1h)
+[Binance] Fetched SUSHIUSD (1day)
+[Binance] Fetched YFIUSD (1week)
+[Binance] Fetched YFIUSD (1h)
+[Binance] Fetched SUSHIUSD (1h)
+[Binance] Fetched SUSHIUSD (4h)
+[Binance] Fetched CRVUSD (1day)
+[Binance] Fetched AAVEUSD (1day)
+[Binance] Fetched SUSHIUSD (1week)
+✅ Firebase saved: miniChart/AAVEUSD
+✅ Firebase saved: miniChart/CRVUSD
+✅ Firebase saved: miniChart/YFIUSD
+[Binance] Fetched AAVEUSD (4h)
+✅ Firebase saved: miniChart/SUSHIUSD
+[Binance] Fetched RENUSD (4h)
+[Binance] Fetched KNCUSD (4h)
+[Binance] Fetched KNCUSD (1day)
+[Binance] Fetched KNCUSD (1h)
+[Binance] Fetched BANDUSD (1h)
+[Binance] Fetched KNCUSD (1week)
+[Binance] Fetched BANDUSD (1day)
+[Binance] Fetched RENUSD (1week)
+[Binance] Fetched BANDUSD (1week)
+[Binance] Fetched NMRUSD (1h)
+[Binance] Fetched CRVUSD (1week)
+[Binance] Fetched RENUSD (1day)
+[Binance] Fetched NMRUSD (4h)
+[Binance] Fetched BANDUSD (4h)
+[Binance] Fetched RENUSD (1h)
+✅ Firebase saved: miniChart/KNCUSD
+✅ Firebase saved: miniChart/BANDUSD
+✅ Firebase saved: miniChart/NMRUSD
+✅ Firebase saved: miniChart/RENUSD
+[Binance] Fetched NMRUSD (1day)
+[Binance] Fetched OCEANUSD (1h)
+[Binance] Fetched NMRUSD (1week)
+[Binance] Fetched OCEANUSD (1day)
+[Binance] Fetched FETUSD (1week)
+[Binance] Fetched FETUSD (4h)
+[Binance] Fetched OCEANUSD (4h)
+[Binance] Fetched AGIXUSD (1week)
+[Binance] Fetched AGIXUSD (4h)
+[Binance] Fetched FETUSD (1h)
+[Binance] Fetched AGIXUSD (1h)
+[Binance] Fetched BNBUSD (1h)
+[Binance] Fetched AGIXUSD (1day)
+[Binance] Fetched FETUSD (1day)
+[Binance] Fetched OCEANUSD (1week)
+✅ Firebase saved: miniChart/OCEANUSD
+✅ Firebase saved: miniChart/FETUSD
+✅ Firebase saved: miniChart/AGIXUSD
+✅ Firebase saved: miniChart/BNBUSD
+[Binance] Fetched BNBUSD (4h)
+[Binance] Fetched RUNEUSD (1h)
+[Binance] Fetched CAKEUSD (1week)
+[Binance] Fetched RUNEUSD (1day)
+[Binance] Fetched RUNEUSD (1week)
+[Binance] Fetched ALGOUSD (4h)
+[Binance] Fetched RUNEUSD (4h)
+[Binance] Fetched CAKEUSD (1day)
+[Binance] Fetched BNBUSD (1day)
+[Binance] Fetched ALGOUSD (1day)
+[Binance] Fetched CAKEUSD (4h)
+[Binance] Fetched ALGOUSD (1h)
+[Binance] Fetched BNBUSD (1week)
+[Binance] Fetched CAKEUSD (1h)
+✅ Firebase saved: miniChart/RUNEUSD
+[Binance] Fetched ALGOUSD (1week)
+✅ Firebase saved: miniChart/ALGOUSD
+✅ Firebase saved: miniChart/CAKEUSD
+[Binance] Fetched OPUSD (1day)
+[Binance] Fetched APTUSD (1h)
+[Binance] Fetched FLOWUSD (1h)
+[Binance] Fetched NEARUSD (1h)
+[Binance] Fetched FLOWUSD (1week)
+[Binance] Fetched APTUSD (4h)
+[Binance] Fetched APTUSD (1week)
+[Binance] Fetched APTUSD (1day)
+[Binance] Fetched FLOWUSD (1day)
+[Binance] Fetched NEARUSD (1week)
+[Binance] Fetched NEARUSD (1day)
+[Binance] Fetched NEARUSD (4h)
+[Binance] Fetched OPUSD (4h)
+[Binance] Fetched FLOWUSD (4h)
+[Binance] Fetched OPUSD (1h)
+✅ Firebase saved: miniChart/APTUSD
+✅ Firebase saved: miniChart/FLOWUSD
+✅ Firebase saved: miniChart/NEARUSD
+✅ Firebase saved: miniChart/OPUSD
+[Binance] Fetched TIAUSD (4h)
+[Binance] Fetched ARBUSD (1week)
+[Binance] Fetched SUIUSD (4h)
+[Binance] Fetched INJUSD (1h)
+[Binance] Fetched TIAUSD (1h)
+[Binance] Fetched INJUSD (4h)
+[Binance] Fetched INJUSD (1day)
+[Binance] Fetched SUIUSD (1h)
+[Binance] Fetched ARBUSD (1day)
+[Binance] Fetched ARBUSD (1h)
+[Binance] Fetched INJUSD (1week)
+[Binance] Fetched SUIUSD (1day)
+[Binance] Fetched ARBUSD (4h)
+[Binance] Fetched OPUSD (1week)
+[Binance] Fetched SUIUSD (1week)
+✅ Firebase saved: miniChart/INJUSD
+✅ Firebase saved: miniChart/TIAUSD
+✅ Firebase saved: miniChart/SUIUSD
+✅ Firebase saved: miniChart/ARBUSD
+[Binance] Fetched BLURUSD (1h)
+[Binance] Fetched TIAUSD (1week)
+[Binance] Fetched PYTHUSD (1week)
+[Binance] Fetched JTOUSD (1h)
+[Binance] Fetched SEIUSD (4h)
+[Binance] Fetched SEIUSD (1day)
+[Binance] Fetched BLURUSD (4h)
+[Binance] Fetched BLURUSD (1week)
+[Binance] Fetched PYTHUSD (1h)
+[Binance] Fetched PYTHUSD (1day)
+[Binance] Fetched SEIUSD (1h)
+[Binance] Fetched SEIUSD (1week)
+[Binance] Fetched BLURUSD (1day)
+[Binance] Fetched TIAUSD (1day)
+✅ Firebase saved: miniChart/BLURUSD
+✅ Firebase saved: miniChart/JTOUSD
+✅ Firebase saved: miniChart/PYTHUSD
+✅ Firebase saved: miniChart/SEIUSD
+[Binance] Fetched PYTHUSD (4h)
+[Binance] Fetched 1000SATSUSD (1week)
+[Binance] Fetched 1000SATSUSD (1h)
+[Binance] Fetched ORDIUSD (1week)
+[Binance] Fetched 1000SATSUSD (1day)
+[Binance] Fetched BEAMUSD (4h)
+[Binance] Fetched BEAMUSD (1week)
+[Binance] Fetched BEAMUSD (1day)
+[Binance] Fetched 1000SATSUSD (4h)
+[Binance] Fetched JTOUSD (1day)
+[Binance] Fetched ORDIUSD (1h)
+[Binance] Fetched ORDIUSD (4h)
+[Binance] Fetched ORDIUSD (1day)
+[Binance] Fetched JTOUSD (1week)
+[Binance] Fetched BEAMUSD (1h)
+[Binance] Fetched JTOUSD (4h)
+✅ Firebase saved: miniChart/1000SATSUSD
+✅ Firebase saved: miniChart/ORDIUSD
+✅ Firebase saved: miniChart/BEAMUSD
+[Binance] Fetched GALAUSD (1day)
+[Binance] Fetched RNDRUSD (1day)
+[Binance] Fetched IMXUSD (4h)
+[Binance] Fetched GALAUSD (1h)
+[Binance] Fetched MINAUSD (4h)
+[Binance] Fetched IMXUSD (1day)
+[Binance] Fetched MINAUSD (1day)
+[Binance] Fetched MINAUSD (1h)
+[Binance] Fetched IMXUSD (1h)
+[Binance] Fetched IMXUSD (1week)
+[Binance] Fetched MINAUSD (1week)
+[Binance] Fetched RNDRUSD (4h)
+[Binance] Fetched RNDRUSD (1week)
+[Binance] Fetched RNDRUSD (1h)
+[Binance] Fetched GALAUSD (4h)
+✅ Firebase saved: miniChart/GALAUSD
+✅ Firebase saved: miniChart/MINAUSD
+✅ Firebase saved: miniChart/IMXUSD
+✅ Firebase saved: miniChart/RNDRUSD
+[Binance] Fetched LDOUSD (1h)
+[Binance] Fetched ENSUSD (4h)
+[Binance] Fetched APEUSD (4h)
+[Binance] Fetched LDOUSD (4h)
+[Binance] Fetched ENSUSD (1h)
+[Binance] Fetched APEUSD (1day)
+[Binance] Fetched ENSUSD (1week)
+[Binance] Fetched AXSUSD (4h)
+[Binance] Fetched AXSUSD (1day)
+[Binance] Fetched ENSUSD (1day)
+[Binance] Fetched GALAUSD (1week)
+[Binance] Fetched AXSUSD (1week)
+[Binance] Fetched APEUSD (1h)
+[Binance] Fetched APEUSD (1week)
+[Binance] Fetched AXSUSD (1h)
+✅ Firebase saved: miniChart/LDOUSD
+✅ Firebase saved: miniChart/ENSUSD
+✅ Firebase saved: miniChart/APEUSD
+✅ Firebase saved: miniChart/AXSUSD
+[Binance] Fetched CFXUSD (1h)
+[Binance] Fetched STXUSD (1h)
+[Binance] Fetched FTMUSD (1h)
+[Binance] Fetched CFXUSD (1day)
+[Binance] Fetched STXUSD (1day)
+[Binance] Fetched KLAYUSD (1day)
+[Binance] Fetched KLAYUSD (1h)
+[Binance] Fetched STXUSD (1week)
+[Binance] Fetched KLAYUSD (4h)
+[Binance] Fetched STXUSD (4h)
+[Binance] Fetched CFXUSD (4h)
+[Binance] Fetched KLAYUSD (1week)
+[Binance] Fetched CFXUSD (1week)
+[Binance] Fetched LDOUSD (1week)
+✅ Firebase saved: miniChart/CFXUSD
+✅ Firebase saved: miniChart/STXUSD
+✅ Firebase saved: miniChart/FTMUSD
+✅ Firebase saved: miniChart/KLAYUSD
+[Binance] Fetched LDOUSD (1day)
+[Binance] Fetched QNTUSD (1h)
+[Binance] Fetched HBARUSD (1h)
+[Binance] Fetched QNTUSD (1week)
+[Binance] Fetched FTMUSD (1day)
+[Binance] Fetched EGLDUSD (1day)
+[Binance] Fetched HBARUSD (1week)
+[Binance] Fetched EGLDUSD (4h)
+[Binance] Fetched QNTUSD (4h)
+[Binance] Fetched FTMUSD (1week)
+[Binance] Fetched EGLDUSD (1week)
+[Binance] Fetched QNTUSD (1day)
+[Binance] Fetched HBARUSD (1day)
+[Binance] Fetched FTMUSD (4h)
+[Binance] Fetched EGLDUSD (1h)
+[Binance] Fetched HBARUSD (4h)
+✅ Firebase saved: miniChart/QNTUSD
+✅ Firebase saved: miniChart/HBARUSD
+✅ Firebase saved: miniChart/EGLDUSD
+[Binance] Fetched ARUSD (4h)
+[Binance] Fetched ZILUSD (1day)
+[Binance] Fetched ANTUSD (1h)
+[Binance] Fetched ARUSD (1day)
+[Binance] Fetched KSMUSD (1h)
+[Binance] Fetched ZILUSD (4h)
+[Binance] Fetched KSMUSD (4h)
+[Binance] Fetched ARUSD (1h)
+[Binance] Fetched KSMUSD (1day)
+[Binance] Fetched ZILUSD (1h)
+[Binance] Fetched ANTUSD (1day)
+[Binance] Fetched ANTUSD (4h)
+[Binance] Fetched ARUSD (1week)
+[Binance] Fetched KSMUSD (1week)
+[Binance] Fetched ZILUSD (1week)
+✅ Firebase saved: miniChart/ANTUSD
+✅ Firebase saved: miniChart/KSMUSD
+✅ Firebase saved: miniChart/ARUSD
+✅ Firebase saved: miniChart/ZILUSD
+[Binance] Fetched IOTXUSD (4h)
+[Binance] Fetched SKLUSD (1h)
+[Binance] Fetched CELOUSD (4h)
+[Binance] Fetched CELOUSD (1day)
+[Binance] Fetched ANKRUSD (1week)
+[Binance] Fetched ANTUSD (1week)
+[Binance] Fetched IOTXUSD (1day)
+[Binance] Fetched CELOUSD (1week)
+[Binance] Fetched SKLUSD (4h)
+[Binance] Fetched IOTXUSD (1h)
+[Binance] Fetched ANKRUSD (1h)
+[Binance] Fetched ANKRUSD (4h)
+[Binance] Fetched IOTXUSD (1week)
+[Binance] Fetched CELOUSD (1h)
+[Binance] Fetched ANKRUSD (1day)
+✅ Firebase saved: miniChart/SKLUSD
+✅ Firebase saved: miniChart/IOTXUSD
+✅ Firebase saved: miniChart/ANKRUSD
+✅ Firebase saved: miniChart/CELOUSD
+[Binance] Fetched SPELLUSD (4h)
+[Binance] Fetched GMXUSD (1h)
+[Binance] Fetched SPELLUSD (1h)
+[Binance] Fetched GMXUSD (4h)
+[Binance] Fetched SKLUSD (1day)
+[Binance] Fetched JOEUSD (1week)
+[Binance] Fetched SPELLUSD (1day)
+[Binance] Fetched PENDLEUSD (1h)
+[Binance] Fetched GMXUSD (1week)
+[Binance] Fetched JOEUSD (1day)
+[Binance] Fetched SPELLUSD (1week)
+[Binance] Fetched JOEUSD (4h)
+[Binance] Fetched JOEUSD (1h)
+[Binance] Fetched SKLUSD (1week)
+✅ Firebase saved: miniChart/GMXUSD
+✅ Firebase saved: miniChart/SPELLUSD
+✅ Firebase saved: miniChart/PENDLEUSD
+✅ Firebase saved: miniChart/JOEUSD
+[Binance] Fetched GMXUSD (1day)
+[Binance] Fetched LQTYUSD (1h)
+[Binance] Fetched LQTYUSD (1week)
+[Binance] Fetched SSVUSD (1h)
+[Binance] Fetched SSVUSD (4h)
+[Binance] Fetched PENDLEUSD (1week)
+[Binance] Fetched SSVUSD (1day)
+[Binance] Fetched FXSUSD (4h)
+[Binance] Fetched SSVUSD (1week)
+[Binance] Fetched FXSUSD (1day)
+[Binance] Fetched LQTYUSD (4h)
+[Binance] Fetched FXSUSD (1h)
+[Binance] Fetched PENDLEUSD (4h)
+[Binance] Fetched PENDLEUSD (1day)
+[Binance] Fetched FXSUSD (1week)
+[Binance] Fetched LQTYUSD (1day)
+✅ Firebase saved: miniChart/LQTYUSD
+✅ Firebase saved: miniChart/SSVUSD
+✅ Firebase saved: miniChart/FXSUSD
+[Binance] Fetched MASKUSD (4h)
+[Binance] Fetched MASKUSD (1week)
+[Binance] Fetched MASKUSD (1day)
+[Binance] Fetched MASKUSD (1h)
+✅ Firebase saved: miniChart/MASKUSD
+[Yahoo] Fetched USOIL (1week) using CL=F
+[Yahoo] Fetched USOIL (1week)
+[Yahoo] Fetched USOIL (1day) using CL=F
+[Yahoo] Fetched USOIL (1day)
+[Yahoo] Fetched USOIL (1h) using CL=F
+[Yahoo] Fetched USOIL (1h)
+[Yahoo] Fetched USOIL (4h) using CL=F
+[Yahoo] Fetched USOIL (4h)
+✅ Firebase saved: miniChart/USOIL
+[Yahoo] Fetched USOIL (15m) using CL=F
+[Yahoo] Fetched USOIL (15m)
+[Yahoo] Fetched US500 (1week) using ^GSPC
+[Yahoo] Fetched US500 (1week)
+[Yahoo] Fetched US500 (1day) using ^GSPC
+[Yahoo] Fetched US500 (1day)
+[Yahoo] Fetched US500 (1h) using ^GSPC
+[Yahoo] Fetched US500 (1h)
+✅ Firebase saved: miniChart/US500
+[Yahoo] Fetched US500 (4h) using ^GSPC
+[Yahoo] Fetched US500 (4h)
+[Yahoo] Fetched US500 (15m) using ^GSPC
+[Yahoo] Fetched US500 (15m)
+[Yahoo] Fetched US100 (1week) using ^NDX
+[Yahoo] Fetched US100 (1week)
+[Yahoo] Fetched US100 (1h) using ^NDX
+[Yahoo] Fetched US100 (1h)
+✅ Firebase saved: miniChart/US100
+[Yahoo] Fetched US100 (1day) using ^NDX
+[Yahoo] Fetched US100 (1day)
+[Yahoo] Fetched US100 (4h) using ^NDX
+[Yahoo] Fetched US100 (4h)
+[Yahoo] Fetched US100 (15m) using ^NDX
+[Yahoo] Fetched US100 (15m)
+[Yahoo] Fetched US30 (1week) using ^DJI
+[Yahoo] Fetched US30 (1week)
+[Yahoo] Fetched US30 (1h) using ^DJI
+[Yahoo] Fetched US30 (1h)
+✅ Firebase saved: miniChart/US30
+[Yahoo] Fetched US30 (1day) using ^DJI
+[Yahoo] Fetched US30 (1day)
+[Yahoo] Fetched US30 (4h) using ^DJI
+[Yahoo] Fetched US30 (4h)
+[Yahoo] Fetched US30 (15m) using ^DJI
+[Yahoo] Fetched US30 (15m)
+[Yahoo] Fetched GER40 (1week) using ^GDAXI
+[Yahoo] Fetched GER40 (1week)
+[Yahoo] Fetched GER40 (1h) using ^GDAXI
+[Yahoo] Fetched GER40 (1h)
+✅ Firebase saved: miniChart/GER40
+[Yahoo] Fetched GER40 (1day) using ^GDAXI
+[Yahoo] Fetched GER40 (1day)
+[Yahoo] Fetched GER40 (4h) using ^GDAXI
+[Yahoo] Fetched GER40 (4h)
+[Yahoo] Fetched GER40 (15m) using ^GDAXI
+[Yahoo] Fetched GER40 (15m)
+[Yahoo] Fetched UK100 (1week) using ^FTSE
+[Yahoo] Fetched UK100 (1week)
+[Yahoo] Fetched UK100 (1h) using ^FTSE
+[Yahoo] Fetched UK100 (1h)
+✅ Firebase saved: miniChart/UK100
+[Yahoo] Fetched UK100 (1day) using ^FTSE
+[Yahoo] Fetched UK100 (1day)
+[Yahoo] Fetched UK100 (4h) using ^FTSE
+[Yahoo] Fetched UK100 (4h)
+[Yahoo] Fetched UK100 (15m) using ^FTSE
+[Yahoo] Fetched UK100 (15m)
+[Yahoo] Fetched JPN225 (1week) using ^N225
+[Yahoo] Fetched JPN225 (1week)
+[Yahoo] Fetched JPN225 (1h) using ^N225
+[Yahoo] Fetched JPN225 (1h)
+✅ Firebase saved: miniChart/JPN225
+[Yahoo] Fetched JPN225 (1day) using ^N225
+[Yahoo] Fetched JPN225 (1day)
+[Yahoo] Fetched JPN225 (4h) using ^N225
+[Yahoo] Fetched JPN225 (4h)
+[Yahoo] Fetched JPN225 (15m) using ^N225
+[Yahoo] Fetched JPN225 (15m)
+[Yahoo] Fetched EURUSD (1week) using EURUSD=X
+[Yahoo] Fetched EURUSD (1week)
+[Yahoo] Fetched EURUSD (1day) using EURUSD=X
+[Yahoo] Fetched EURUSD (1day)
+[Yahoo] Fetched EURUSD (1h) using EURUSD=X
+[Yahoo] Fetched EURUSD (1h)
+✅ Firebase saved: miniChart/EURUSD
+[Yahoo] Fetched EURUSD (4h) using EURUSD=X
+[Yahoo] Fetched EURUSD (4h)
+[Yahoo] Fetched EURUSD (15m) using EURUSD=X
+[Yahoo] Fetched EURUSD (15m)
+[Yahoo] Fetched GBPUSD (1week) using GBPUSD=X
+[Yahoo] Fetched GBPUSD (1week)
+[Yahoo] Fetched GBPUSD (1h) using GBPUSD=X
+[Yahoo] Fetched GBPUSD (1h)
+✅ Firebase saved: miniChart/GBPUSD
+[Yahoo] Fetched GBPUSD (1day) using GBPUSD=X
+[Yahoo] Fetched GBPUSD (1day)
+[Yahoo] Fetched GBPUSD (4h) using GBPUSD=X
+[Yahoo] Fetched GBPUSD (4h)
+[Yahoo] Fetched GBPUSD (15m) using GBPUSD=X
+[Yahoo] Fetched GBPUSD (15m)
+[Yahoo] Fetched USDJPY (1week) using USDJPY=X
+[Yahoo] Fetched USDJPY (1week)
+[Yahoo] Fetched USDJPY (1h) using USDJPY=X
+[Yahoo] Fetched USDJPY (1h)
+✅ Firebase saved: miniChart/USDJPY
+[Yahoo] Fetched USDJPY (1day) using USDJPY=X
+[Yahoo] Fetched USDJPY (1day)
+[Yahoo] Fetched USDJPY (4h) using USDJPY=X
+[Yahoo] Fetched USDJPY (4h)
+[Yahoo] Fetched USDJPY (15m) using USDJPY=X
+[Yahoo] Fetched USDJPY (15m)
+[Yahoo] Fetched USDCHF (1week) using USDCHF=X
+[Yahoo] Fetched USDCHF (1week)
+[Yahoo] Fetched USDCHF (1h) using USDCHF=X
+[Yahoo] Fetched USDCHF (1h)
+✅ Firebase saved: miniChart/USDCHF
+[Yahoo] Fetched USDCHF (1day) using USDCHF=X
+[Yahoo] Fetched USDCHF (1day)
+[Yahoo] Fetched USDCHF (4h) using USDCHF=X
+[Yahoo] Fetched USDCHF (4h)
+[Yahoo] Fetched USDCHF (15m) using USDCHF=X
+[Yahoo] Fetched USDCHF (15m)
+[Yahoo] Fetched USDCAD (1week) using USDCAD=X
+[Yahoo] Fetched USDCAD (1week)
+[Yahoo] Fetched USDCAD (1h) using USDCAD=X
+[Yahoo] Fetched USDCAD (1h)
+✅ Firebase saved: miniChart/USDCAD
+[Yahoo] Fetched USDCAD (1day) using USDCAD=X
+[Yahoo] Fetched USDCAD (1day)
+[Yahoo] Fetched USDCAD (4h) using USDCAD=X
+[Yahoo] Fetched USDCAD (4h)
+[Yahoo] Fetched USDCAD (15m) using USDCAD=X
+[Yahoo] Fetched USDCAD (15m)
+[Yahoo] Fetched AUDUSD (1week) using AUDUSD=X
+[Yahoo] Fetched AUDUSD (1week)
+[Yahoo] Fetched AUDUSD (1h) using AUDUSD=X
+[Yahoo] Fetched AUDUSD (1h)
+✅ Firebase saved: miniChart/AUDUSD
+[Yahoo] Fetched AUDUSD (1day) using AUDUSD=X
+[Yahoo] Fetched AUDUSD (1day)
+[Yahoo] Fetched AUDUSD (4h) using AUDUSD=X
+[Yahoo] Fetched AUDUSD (4h)
+[Yahoo] Fetched AUDUSD (15m) using AUDUSD=X
+[Yahoo] Fetched AUDUSD (15m)
+[Yahoo] Fetched NZDUSD (1week) using NZDUSD=X
+[Yahoo] Fetched NZDUSD (1week)
+[Yahoo] Fetched NZDUSD (1h) using NZDUSD=X
+[Yahoo] Fetched NZDUSD (1h)
+✅ Firebase saved: miniChart/NZDUSD
+[Yahoo] Fetched NZDUSD (1day) using NZDUSD=X
+[Yahoo] Fetched NZDUSD (1day)
+[Yahoo] Fetched NZDUSD (4h) using NZDUSD=X
+[Yahoo] Fetched NZDUSD (4h)
+[Yahoo] Fetched NZDUSD (15m) using NZDUSD=X
+[Yahoo] Fetched NZDUSD (15m)
+[Yahoo] Fetched EURJPY (1week) using EURJPY=X
+[Yahoo] Fetched EURJPY (1week)
+[Yahoo] Fetched EURJPY (1h) using EURJPY=X
+[Yahoo] Fetched EURJPY (1h)
+✅ Firebase saved: miniChart/EURJPY
+[Yahoo] Fetched EURJPY (1day) using EURJPY=X
+[Yahoo] Fetched EURJPY (1day)
+[Yahoo] Fetched EURJPY (4h) using EURJPY=X
+[Yahoo] Fetched EURJPY (4h)
+[Yahoo] Fetched EURJPY (15m) using EURJPY=X
+[Yahoo] Fetched EURJPY (15m)
+[Yahoo] Fetched GBPJPY (1week) using GBPJPY=X
+[Yahoo] Fetched GBPJPY (1week)
+[Yahoo] Fetched GBPJPY (1h) using GBPJPY=X
+[Yahoo] Fetched GBPJPY (1h)
+✅ Firebase saved: miniChart/GBPJPY
+[Yahoo] Fetched GBPJPY (1day) using GBPJPY=X
+[Yahoo] Fetched GBPJPY (1day)
+[Yahoo] Fetched GBPJPY (4h) using GBPJPY=X
+[Yahoo] Fetched GBPJPY (4h)
+[Yahoo] Fetched GBPJPY (15m) using GBPJPY=X
+[Yahoo] Fetched GBPJPY (15m)
+[Yahoo] Fetched AUDJPY (1week) using AUDJPY=X
+[Yahoo] Fetched AUDJPY (1week)
+[Yahoo] Fetched AUDJPY (1h) using AUDJPY=X
+[Yahoo] Fetched AUDJPY (1h)
+✅ Firebase saved: miniChart/AUDJPY
+[Yahoo] Fetched AUDJPY (1day) using AUDJPY=X
+[Yahoo] Fetched AUDJPY (1day)
+[Yahoo] Fetched AUDJPY (4h) using AUDJPY=X
+[Yahoo] Fetched AUDJPY (4h)
+[Yahoo] Fetched AUDJPY (15m) using AUDJPY=X
+[Yahoo] Fetched AUDJPY (15m)
+[Yahoo] Fetched NZDJPY (1week) using NZDJPY=X
+[Yahoo] Fetched NZDJPY (1week)
+[Yahoo] Fetched NZDJPY (1h) using NZDJPY=X
+[Yahoo] Fetched NZDJPY (1h)
+✅ Firebase saved: miniChart/NZDJPY
+[Yahoo] Fetched NZDJPY (1day) using NZDJPY=X
+[Yahoo] Fetched NZDJPY (1day)
+[Yahoo] Fetched NZDJPY (4h) using NZDJPY=X
+[Yahoo] Fetched NZDJPY (4h)
+[Yahoo] Fetched NZDJPY (15m) using NZDJPY=X
+[Yahoo] Fetched NZDJPY (15m)
+[Yahoo] Fetched CADJPY (1week) using CADJPY=X
+[Yahoo] Fetched CADJPY (1week)
+[Yahoo] Fetched CADJPY (1h) using CADJPY=X
+[Yahoo] Fetched CADJPY (1h)
+✅ Firebase saved: miniChart/CADJPY
+[Yahoo] Fetched CADJPY (1day) using CADJPY=X
+[Yahoo] Fetched CADJPY (1day)
+[Yahoo] Fetched CADJPY (4h) using CADJPY=X
+[Yahoo] Fetched CADJPY (4h)
+[Yahoo] Fetched CADJPY (15m) using CADJPY=X
+[Yahoo] Fetched CADJPY (15m)
+[Yahoo] Fetched CHFJPY (1week) using CHFJPY=X
+[Yahoo] Fetched CHFJPY (1week)
+[Yahoo] Fetched CHFJPY (1h) using CHFJPY=X
+[Yahoo] Fetched CHFJPY (1h)
+✅ Firebase saved: miniChart/CHFJPY
+[Yahoo] Fetched CHFJPY (1day) using CHFJPY=X
+[Yahoo] Fetched CHFJPY (1day)
+[Yahoo] Fetched CHFJPY (4h) using CHFJPY=X
+[Yahoo] Fetched CHFJPY (4h)
+[Yahoo] Fetched CHFJPY (15m) using CHFJPY=X
+[Yahoo] Fetched CHFJPY (15m)
+[Yahoo] Fetched EURGBP (1week) using EURGBP=X
+[Yahoo] Fetched EURGBP (1week)
+[Yahoo] Fetched EURGBP (1h) using EURGBP=X
+[Yahoo] Fetched EURGBP (1h)
+✅ Firebase saved: miniChart/EURGBP
+[Yahoo] Fetched EURGBP (1day) using EURGBP=X
+[Yahoo] Fetched EURGBP (1day)
+[Yahoo] Fetched EURGBP (4h) using EURGBP=X
+[Yahoo] Fetched EURGBP (4h)
+[Yahoo] Fetched EURGBP (15m) using EURGBP=X
+[Yahoo] Fetched EURGBP (15m)
+[Yahoo] Fetched EURAUD (1week) using EURAUD=X
+[Yahoo] Fetched EURAUD (1week)
+[Yahoo] Fetched EURAUD (1h) using EURAUD=X
+[Yahoo] Fetched EURAUD (1h)
+✅ Firebase saved: miniChart/EURAUD
+[Yahoo] Fetched EURAUD (1day) using EURAUD=X
+[Yahoo] Fetched EURAUD (1day)
+[Yahoo] Fetched EURAUD (4h) using EURAUD=X
+[Yahoo] Fetched EURAUD (4h)
+[Yahoo] Fetched EURAUD (15m) using EURAUD=X
+[Yahoo] Fetched EURAUD (15m)
+[Yahoo] Fetched EURCAD (1week) using EURCAD=X
+[Yahoo] Fetched EURCAD (1week)
+[Yahoo] Fetched EURCAD (1h) using EURCAD=X
+[Yahoo] Fetched EURCAD (1h)
+✅ Firebase saved: miniChart/EURCAD
+[Yahoo] Fetched EURCAD (1day) using EURCAD=X
+[Yahoo] Fetched EURCAD (1day)
+[Yahoo] Fetched EURCAD (4h) using EURCAD=X
+[Yahoo] Fetched EURCAD (4h)
+[Yahoo] Fetched EURCAD (15m) using EURCAD=X
+[Yahoo] Fetched EURCAD (15m)
+[Yahoo] Fetched EURCHF (1week) using EURCHF=X
+[Yahoo] Fetched EURCHF (1week)
+[Yahoo] Fetched EURCHF (1h) using EURCHF=X
+[Yahoo] Fetched EURCHF (1h)
+✅ Firebase saved: miniChart/EURCHF
+[Yahoo] Fetched EURCHF (1day) using EURCHF=X
+[Yahoo] Fetched EURCHF (1day)
+[Yahoo] Fetched EURCHF (4h) using EURCHF=X
+[Yahoo] Fetched EURCHF (4h)
+[Yahoo] Fetched EURCHF (15m) using EURCHF=X
+[Yahoo] Fetched EURCHF (15m)
+[Yahoo] Fetched GBPAUD (1week) using GBPAUD=X
+[Yahoo] Fetched GBPAUD (1week)
+[Yahoo] Fetched GBPAUD (1h) using GBPAUD=X
+[Yahoo] Fetched GBPAUD (1h)
+✅ Firebase saved: miniChart/GBPAUD
+[Yahoo] Fetched GBPAUD (1day) using GBPAUD=X
+[Yahoo] Fetched GBPAUD (1day)
+[Yahoo] Fetched GBPAUD (4h) using GBPAUD=X
+[Yahoo] Fetched GBPAUD (4h)
+[Yahoo] Fetched GBPAUD (15m) using GBPAUD=X
+[Yahoo] Fetched GBPAUD (15m)
+[Yahoo] Fetched GBPCAD (1h) using GBPCAD=X
+[Yahoo] Fetched GBPCAD (1h)
+[Yahoo] Fetched GBPCAD (1week) using GBPCAD=X
+[Yahoo] Fetched GBPCAD (1week)
+✅ Firebase saved: miniChart/GBPCAD
+[Yahoo] Fetched GBPCAD (1day) using GBPCAD=X
+[Yahoo] Fetched GBPCAD (1day)
+[Yahoo] Fetched GBPCAD (4h) using GBPCAD=X
+[Yahoo] Fetched GBPCAD (4h)
+[Yahoo] Fetched GBPCAD (15m) using GBPCAD=X
+[Yahoo] Fetched GBPCAD (15m)
+[Yahoo] Fetched GBPCHF (1week) using GBPCHF=X
+[Yahoo] Fetched GBPCHF (1week)
+[Yahoo] Fetched GBPCHF (1h) using GBPCHF=X
+[Yahoo] Fetched GBPCHF (1h)
+✅ Firebase saved: miniChart/GBPCHF
+[Yahoo] Fetched GBPCHF (1day) using GBPCHF=X
+[Yahoo] Fetched GBPCHF (1day)
+[Yahoo] Fetched GBPCHF (4h) using GBPCHF=X
+[Yahoo] Fetched GBPCHF (4h)
+[Yahoo] Fetched GBPCHF (15m) using GBPCHF=X
+[Yahoo] Fetched GBPCHF (15m)
+[Yahoo] Fetched AUDCAD (1week) using AUDCAD=X
+[Yahoo] Fetched AUDCAD (1week)
+[Yahoo] Fetched AUDCAD (1h) using AUDCAD=X
+[Yahoo] Fetched AUDCAD (1h)
+✅ Firebase saved: miniChart/AUDCAD
+[Yahoo] Fetched AUDCAD (1day) using AUDCAD=X
+[Yahoo] Fetched AUDCAD (1day)
+[Yahoo] Fetched AUDCAD (4h) using AUDCAD=X
+[Yahoo] Fetched AUDCAD (4h)
+[Yahoo] Fetched AUDCAD (15m) using AUDCAD=X
+[Yahoo] Fetched AUDCAD (15m)
+[Yahoo] Fetched AUDCHF (1week) using AUDCHF=X
+[Yahoo] Fetched AUDCHF (1week)
+[Yahoo] Fetched AUDCHF (1h) using AUDCHF=X
+[Yahoo] Fetched AUDCHF (1h)
+✅ Firebase saved: miniChart/AUDCHF
+[Yahoo] Fetched AUDCHF (1day) using AUDCHF=X
+[Yahoo] Fetched AUDCHF (1day)
+[Yahoo] Fetched AUDCHF (4h) using AUDCHF=X
+[Yahoo] Fetched AUDCHF (4h)
+[Yahoo] Fetched AUDCHF (15m) using AUDCHF=X
+[Yahoo] Fetched AUDCHF (15m)
+[Yahoo] Fetched AUDNZD (1week) using AUDNZD=X
+[Yahoo] Fetched AUDNZD (1week)
+[Yahoo] Fetched AUDNZD (1h) using AUDNZD=X
+[Yahoo] Fetched AUDNZD (1h)
+✅ Firebase saved: miniChart/AUDNZD
+[Yahoo] Fetched AUDNZD (1day) using AUDNZD=X
+[Yahoo] Fetched AUDNZD (1day)
+[Yahoo] Fetched AUDNZD (4h) using AUDNZD=X
+[Yahoo] Fetched AUDNZD (4h)
+[Yahoo] Fetched AUDNZD (15m) using AUDNZD=X
+[Yahoo] Fetched AUDNZD (15m)
+[Yahoo] Fetched NZDCAD (1week) using NZDCAD=X
+[Yahoo] Fetched NZDCAD (1week)
+[Yahoo] Fetched NZDCAD (1h) using NZDCAD=X
+[Yahoo] Fetched NZDCAD (1h)
+✅ Firebase saved: miniChart/NZDCAD
+[Yahoo] Fetched NZDCAD (1day) using NZDCAD=X
+[Yahoo] Fetched NZDCAD (1day)
+[Yahoo] Fetched NZDCAD (4h) using NZDCAD=X
+[Yahoo] Fetched NZDCAD (4h)
+[Yahoo] Fetched NZDCAD (15m) using NZDCAD=X
+[Yahoo] Fetched NZDCAD (15m)
+[Yahoo] Fetched NZDCHF (1week) using NZDCHF=X
+[Yahoo] Fetched NZDCHF (1week)
+[Yahoo] Fetched NZDCHF (1h) using NZDCHF=X
+[Yahoo] Fetched NZDCHF (1h)
+✅ Firebase saved: miniChart/NZDCHF
+[Yahoo] Fetched NZDCHF (1day) using NZDCHF=X
+[Yahoo] Fetched NZDCHF (1day)
+[Yahoo] Fetched NZDCHF (4h) using NZDCHF=X
+[Yahoo] Fetched NZDCHF (4h)
+[Yahoo] Fetched NZDCHF (15m) using NZDCHF=X
+[Yahoo] Fetched NZDCHF (15m)
+[Yahoo] Fetched CADCHF (1week) using CADCHF=X
+[Yahoo] Fetched CADCHF (1week)
+[Yahoo] Fetched CADCHF (1h) using CADCHF=X
+[Yahoo] Fetched CADCHF (1h)
+✅ Firebase saved: miniChart/CADCHF
+[Yahoo] Fetched CADCHF (1day) using CADCHF=X
+[Yahoo] Fetched CADCHF (1day)
+[Yahoo] Fetched CADCHF (4h) using CADCHF=X
+[Yahoo] Fetched CADCHF (4h)
+[Yahoo] Fetched CADCHF (15m) using CADCHF=X
+[Yahoo] Fetched CADCHF (15m)
+[Yahoo] Failed for XAUUSD, trying Twelve Data...
+[Yahoo] Failed for XAUUSD, trying Twelve Data...
+[Yahoo] Failed for XAUUSD, trying Twelve Data...
+[Yahoo] Failed for XAUUSD, trying Twelve Data...
+[Yahoo] Failed for XAUUSD, trying Twelve Data...
+✅ Firebase saved: miniChart/XAUUSD
+[Metrics Pipeline] Processing Market Data Sync...
+[Yahoo Futures] Trying futures volume for USOIL -> USOIL=X
+[MentFX] 35 pairs sentiment saved to Firebase.
+✅ Firebase saved: sentiment/AUDCAD
+✅ Firebase saved: sentiment/AUDCHF
+✅ Firebase saved: sentiment/AUDJPY
+✅ Firebase saved: sentiment/AUDNZD
+✅ Firebase saved: sentiment/AUDUSD
+✅ Firebase saved: sentiment/BTCUSD
+✅ Firebase saved: sentiment/CADCHF
+✅ Firebase saved: sentiment/CADJPY
+✅ Firebase saved: sentiment/CHFJPY
+✅ Firebase saved: sentiment/ETHUSD
+✅ Firebase saved: sentiment/EURAUD
+✅ Firebase saved: sentiment/EURCAD
+✅ Firebase saved: sentiment/EURCHF
+✅ Firebase saved: sentiment/EURGBP
+✅ Firebase saved: sentiment/EURJPY
+✅ Firebase saved: sentiment/EURUSD
+✅ Firebase saved: sentiment/GBPAUD
+✅ Firebase saved: sentiment/GBPCAD
+✅ Firebase saved: sentiment/GBPCHF
+✅ Firebase saved: sentiment/GBPJPY
+✅ Firebase saved: sentiment/GBPUSD
+✅ Firebase saved: sentiment/NZDCAD
+✅ Firebase saved: sentiment/NZDCHF
+✅ Firebase saved: sentiment/NZDJPY
+✅ Firebase saved: sentiment/NZDUSD
+✅ Firebase saved: sentiment/US100
+✅ Firebase saved: sentiment/US500
+✅ Firebase saved: sentiment/US100
+✅ Firebase saved: sentiment/US30
+✅ Firebase saved: sentiment/US500
+✅ Firebase saved: sentiment/USDCAD
+✅ Firebase saved: sentiment/USDCHF
+✅ Firebase saved: sentiment/USDJPY
+✅ Firebase saved: sentiment/USOIL
+✅ Firebase saved: sentiment/XAUUSD
+[TwelveData] Fetching USOIL via Key Index [0]...

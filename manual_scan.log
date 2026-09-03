@@ -1,0 +1,718 @@
+nohup: ignoring input
+[MarketScanner] Firebase initialized successfully.
+[config] ✅ 16 API keys loaded.
+[Setup] Total Twelve Data Keys Loaded: 16
+[2026-08-19T15:44:44.101Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[masterScan] Failed to set scan start status: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:44:44.102Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[masterScan] Could not read alertSettings: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:44:45.103Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BTCUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BTCUSD (1h)
+[Binance] Fetched ETHUSD (1week)
+[Binance] Fetched ETHUSD (1day)
+[Binance] Fetched BTCUSD (4h)
+[Binance] Fetched LTCUSD (4h)
+[Binance] Fetched LTCUSD (1week)
+[Binance] Fetched BTCUSD (1week)
+[2026-08-19T15:44:45.117Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BCHUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BCHUSD (1h)
+[Binance] Fetched ETHUSD (4h)
+[Binance] Fetched BTCUSD (1day)
+[Binance] Fetched BCHUSD (4h)
+[2026-08-19T15:44:45.125Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ETHUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ETHUSD (1h)
+[2026-08-19T15:44:45.128Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/LTCUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched LTCUSD (1h)
+[Binance] Fetched LTCUSD (1day)
+[Binance] Fetched BCHUSD (1day)
+[Binance] Fetched XRPUSD (1day)
+[Binance] Fetched DOTUSD (1week)
+[Binance] Fetched DOTUSD (4h)
+[Binance] Fetched BCHUSD (1week)
+[2026-08-19T15:44:45.417Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ADAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ADAUSD (1h)
+[Binance] Fetched XRPUSD (1week)
+[Binance] Fetched ADAUSD (4h)
+[Binance] Fetched ADAUSD (1day)
+[Binance] Fetched XRPUSD (4h)
+[Binance] Fetched LINKUSD (4h)
+[Binance] Fetched ADAUSD (1week)
+[Binance] Fetched DOTUSD (1day)
+[2026-08-19T15:44:45.430Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/LINKUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched LINKUSD (1h)
+[2026-08-19T15:44:45.432Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/XRPUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched XRPUSD (1h)
+[2026-08-19T15:44:45.434Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/DOTUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched DOTUSD (1h)
+[Binance] Fetched UNIUSD (1day)
+[Binance] Fetched UNIUSD (4h)
+[Binance] Fetched LINKUSD (1day)
+[2026-08-19T15:44:45.714Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/UNIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched UNIUSD (1h)
+[Binance] Fetched MATICUSD (1week)
+[Binance] Fetched UNIUSD (1week)
+[Binance] Fetched LINKUSD (1week)
+[2026-08-19T15:44:45.720Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SOLUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SOLUSD (1h)
+[Binance] Fetched SOLUSD (4h)
+[Binance] Fetched MATICUSD (1day)
+[2026-08-19T15:44:45.723Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AVAXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched AVAXUSD (1h)
+[2026-08-19T15:44:45.725Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/MATICUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched MATICUSD (1h)
+[Binance] Fetched MATICUSD (4h)
+[Binance] Fetched SOLUSD (1day)
+[Binance] Fetched SOLUSD (1week)
+[Binance] Fetched ATOMUSD (1day)
+[2026-08-19T15:44:46.184Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ATOMUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ATOMUSD (1h)
+[2026-08-19T15:44:46.186Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/VETUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched VETUSD (1h)
+[Binance] Fetched AVAXUSD (4h)
+[Binance] Fetched ATOMUSD (4h)
+[Binance] Fetched FILUSD (1day)
+[Binance] Fetched VETUSD (1week)
+[Binance] Fetched ATOMUSD (1week)
+[Binance] Fetched VETUSD (4h)
+[Binance] Fetched FILUSD (4h)
+[2026-08-19T15:44:46.195Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FILUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FILUSD (1h)
+[Binance] Fetched AVAXUSD (1day)
+[Binance] Fetched AVAXUSD (1week)
+[Binance] Fetched VETUSD (1day)
+[Binance] Fetched FILUSD (1week)
+[Binance] Fetched ETCUSD (4h)
+[2026-08-19T15:44:46.667Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ICPUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ICPUSD (1h)
+[Binance] Fetched TRXUSD (1day)
+[Binance] Fetched TRXUSD (1week)
+[2026-08-19T15:44:46.670Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/XLMUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched XLMUSD (1h)
+[Binance] Fetched ICPUSD (4h)
+[2026-08-19T15:44:46.672Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ETCUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ETCUSD (1h)
+[Binance] Fetched ETCUSD (1week)
+[2026-08-19T15:44:46.674Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/TRXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched TRXUSD (1h)
+[Binance] Fetched ETCUSD (1day)
+[Binance] Fetched XLMUSD (4h)
+[Binance] Fetched XLMUSD (1week)
+[Binance] Fetched ICPUSD (1day)
+[Binance] Fetched XLMUSD (1day)
+[Binance] Fetched TRXUSD (4h)
+[Binance] Fetched XTZUSD (1day)
+[Binance] Fetched THETAUSD (1day)
+[Binance] Fetched SANDUSD (4h)
+[Binance] Fetched THETAUSD (4h)
+[Binance] Fetched THETAUSD (1week)
+[Binance] Fetched XTZUSD (1week)
+[Binance] Fetched EOSUSD (1week)
+[Binance] Fetched EOSUSD (1day)
+[2026-08-19T15:44:47.147Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SANDUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SANDUSD (1h)
+[2026-08-19T15:44:47.149Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/EOSUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched EOSUSD (1h)
+[2026-08-19T15:44:47.150Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/XTZUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched XTZUSD (1h)
+[Binance] Fetched XTZUSD (4h)
+[Binance] Fetched EOSUSD (4h)
+[2026-08-19T15:44:47.153Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/THETAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched THETAUSD (1h)
+[Binance] Fetched ICPUSD (1week)
+[Binance] Fetched SHIBUSD (4h)
+[Binance] Fetched SHIBUSD (1week)
+[2026-08-19T15:44:47.611Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/PEPEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched PEPEUSD (1h)
+[Binance] Fetched MANAUSD (4h)
+[Binance] Fetched MANAUSD (1week)
+[Binance] Fetched DOGEUSD (1day)
+[Binance] Fetched DOGEUSD (4h)
+[Binance] Fetched SANDUSD (1week)
+[2026-08-19T15:44:47.617Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/DOGEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched DOGEUSD (1h)
+[2026-08-19T15:44:47.618Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SHIBUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SHIBUSD (1h)
+[Binance] Fetched DOGEUSD (1week)
+[Binance] Fetched SHIBUSD (1day)
+[Binance] Fetched MANAUSD (1day)
+[2026-08-19T15:44:47.622Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/MANAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched MANAUSD (1h)
+[Binance] Fetched SANDUSD (1day)
+[Binance] Fetched FLOKIUSD (1day)
+[2026-08-19T15:44:48.092Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BONKUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BONKUSD (1h)
+[Binance] Fetched PEPEUSD (4h)
+[Binance] Fetched BONKUSD (4h)
+[Binance] Fetched PEPEUSD (1week)
+[Binance] Fetched WIFUSD (1day)
+[Binance] Fetched FLOKIUSD (1week)
+[Binance] Fetched BONKUSD (1day)
+[2026-08-19T15:44:48.099Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/WIFUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched WIFUSD (1h)
+[2026-08-19T15:44:48.101Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FLOKIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FLOKIUSD (1h)
+[Binance] Fetched WIFUSD (4h)
+[Binance] Fetched FLOKIUSD (4h)
+[Binance] Fetched BONKUSD (1week)
+[Binance] Fetched WIFUSD (1week)
+[Binance] Fetched PEPEUSD (1day)
+[Binance] Fetched GRTUSD (4h)
+[Binance] Fetched GRTUSD (1day)
+[Binance] Fetched GRTUSD (1week)
+[Binance] Fetched ENJUSD (4h)
+[Binance] Fetched CHZUSD (1day)
+[2026-08-19T15:44:48.568Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CHZUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched CHZUSD (1h)
+[Binance] Fetched ENJUSD (1day)
+[Binance] Fetched ENJUSD (1week)
+[2026-08-19T15:44:48.571Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/GRTUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched GRTUSD (1h)
+[2026-08-19T15:44:48.572Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BATUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BATUSD (1h)
+[Binance] Fetched BATUSD (4h)
+[Binance] Fetched BATUSD (1day)
+[Binance] Fetched CHZUSD (4h)
+[Binance] Fetched CHZUSD (1week)
+[2026-08-19T15:44:48.577Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ENJUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ENJUSD (1h)
+[2026-08-19T15:44:48.849Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ZRXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ZRXUSD (1h)
+[Binance] Fetched BATUSD (1week)
+[Binance] Fetched DASHUSD (4h)
+[Binance] Fetched ZRXUSD (4h)
+[Binance] Fetched ZRXUSD (1day)
+[2026-08-19T15:44:48.855Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/OMGUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched OMGUSD (1h)
+[Binance] Fetched ZECUSD (4h)
+[Binance] Fetched OMGUSD (1day)
+[Binance] Fetched ZRXUSD (1week)
+[Binance] Fetched OMGUSD (4h)
+[Binance] Fetched DASHUSD (1week)
+[2026-08-19T15:44:48.861Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/DASHUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched DASHUSD (1h)
+[Binance] Fetched DASHUSD (1day)
+[Binance] Fetched OMGUSD (1week)
+[2026-08-19T15:44:48.864Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ZECUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ZECUSD (1h)
+[Binance] Fetched XVGUSD (4h)
+[Binance] Fetched DCRUSD (4h)
+[Binance] Fetched BTGUSD (1week)
+[2026-08-19T15:44:49.142Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/DCRUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched DCRUSD (1h)
+[Binance] Fetched DCRUSD (1day)
+[Binance] Fetched BTGUSD (4h)
+[Binance] Fetched XVGUSD (1day)
+[Binance] Fetched XVGUSD (1week)
+[2026-08-19T15:44:49.147Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SCUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SCUSD (1h)
+[Binance] Fetched ZECUSD (1week)
+[Binance] Fetched BTGUSD (1day)
+[Binance] Fetched ZECUSD (1day)
+[Binance] Fetched DCRUSD (1week)
+[2026-08-19T15:44:49.202Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BTGUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BTGUSD (1h)
+[2026-08-19T15:44:49.337Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/XVGUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched XVGUSD (1h)
+[Binance] Fetched SCUSD (4h)
+[2026-08-19T15:44:49.611Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/COMPUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched COMPUSD (1h)
+[2026-08-19T15:44:49.613Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/MKRUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched MKRUSD (1h)
+[Binance] Fetched COMPUSD (1week)
+[Binance] Fetched SCUSD (1day)
+[Binance] Fetched COMPUSD (1day)
+[Binance] Fetched SNXUSD (1day)
+[2026-08-19T15:44:49.617Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SNXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SNXUSD (1h)
+[Binance] Fetched SNXUSD (4h)
+[Binance] Fetched SCUSD (1week)
+[Binance] Fetched SNXUSD (1week)
+[Binance] Fetched MKRUSD (1day)
+[Binance] Fetched MKRUSD (4h)
+[Binance] Fetched COMPUSD (4h)
+[Binance] Fetched MKRUSD (1week)
+[2026-08-19T15:44:50.081Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AAVEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched AAVEUSD (1h)
+[Binance] Fetched SUSHIUSD (1week)
+[2026-08-19T15:44:50.084Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SUSHIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SUSHIUSD (1h)
+[Binance] Fetched AAVEUSD (4h)
+[Binance] Fetched AAVEUSD (1week)
+[Binance] Fetched SUSHIUSD (1day)
+[2026-08-19T15:44:50.088Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/YFIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched YFIUSD (1h)
+[Binance] Fetched YFIUSD (1day)
+[Binance] Fetched CRVUSD (1day)
+[Binance] Fetched CRVUSD (4h)
+[2026-08-19T15:44:50.092Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CRVUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched CRVUSD (1h)
+[Binance] Fetched YFIUSD (1week)
+[Binance] Fetched SUSHIUSD (4h)
+[Binance] Fetched YFIUSD (4h)
+[Binance] Fetched AAVEUSD (1day)
+[Binance] Fetched RENUSD (4h)
+[Binance] Fetched NMRUSD (4h)
+[Binance] Fetched KNCUSD (1day)
+[2026-08-19T15:44:50.565Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/NMRUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched NMRUSD (1h)
+[Binance] Fetched CRVUSD (1week)
+[Binance] Fetched BANDUSD (4h)
+[2026-08-19T15:44:50.568Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/KNCUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched KNCUSD (1h)
+[2026-08-19T15:44:50.569Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/RENUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched RENUSD (1h)
+[Binance] Fetched KNCUSD (4h)
+[Binance] Fetched KNCUSD (1week)
+[Binance] Fetched BANDUSD (1week)
+[Binance] Fetched RENUSD (1day)
+[Binance] Fetched BANDUSD (1day)
+[2026-08-19T15:44:50.575Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BANDUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BANDUSD (1h)
+[Binance] Fetched RENUSD (1week)
+[Binance] Fetched OCEANUSD (4h)
+[Binance] Fetched AGIXUSD (1week)
+[Binance] Fetched AGIXUSD (1day)
+[2026-08-19T15:44:50.854Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BNBUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BNBUSD (1h)
+[2026-08-19T15:44:50.855Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/OCEANUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched OCEANUSD (1h)
+[Binance] Fetched AGIXUSD (4h)
+[Binance] Fetched OCEANUSD (1week)
+[Binance] Fetched NMRUSD (1week)
+[Binance] Fetched OCEANUSD (1day)
+[2026-08-19T15:44:50.860Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FETUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FETUSD (1h)
+[2026-08-19T15:44:50.861Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AGIXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched AGIXUSD (1h)
+[Binance] Fetched FETUSD (1week)
+[Binance] Fetched FETUSD (1day)
+[Binance] Fetched NMRUSD (1day)
+[Binance] Fetched FETUSD (4h)
+[2026-08-19T15:44:51.945Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CAKEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched CAKEUSD (1h)
+[Binance] Fetched RUNEUSD (4h)
+[Binance] Fetched BNBUSD (1day)
+[Binance] Fetched CAKEUSD (1day)
+[Binance] Fetched BNBUSD (4h)
+[Binance] Fetched ALGOUSD (4h)
+[Binance] Fetched CAKEUSD (4h)
+[Binance] Fetched ALGOUSD (1week)
+[2026-08-19T15:44:51.954Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/RUNEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched RUNEUSD (1h)
+[Binance] Fetched RUNEUSD (1day)
+[Binance] Fetched ALGOUSD (1day)
+[Binance] Fetched BNBUSD (1week)
+[Binance] Fetched CAKEUSD (1week)
+[2026-08-19T15:44:51.958Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ALGOUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ALGOUSD (1h)
+[Binance] Fetched RUNEUSD (1week)
+[Binance] Fetched APTUSD (4h)
+[2026-08-19T15:44:52.237Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/NEARUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched NEARUSD (1h)
+[Binance] Fetched FLOWUSD (1week)
+[Binance] Fetched OPUSD (1day)
+[Binance] Fetched FLOWUSD (1day)
+[Binance] Fetched NEARUSD (4h)
+[2026-08-19T15:44:52.244Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FLOWUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FLOWUSD (1h)
+[Binance] Fetched APTUSD (1week)
+[2026-08-19T15:44:52.246Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/APTUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched APTUSD (1h)
+[2026-08-19T15:44:52.247Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/OPUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched OPUSD (1h)
+[Binance] Fetched NEARUSD (1day)
+[Binance] Fetched OPUSD (4h)
+[Binance] Fetched NEARUSD (1week)
+[Binance] Fetched FLOWUSD (4h)
+[Binance] Fetched APTUSD (1day)
+[2026-08-19T15:44:52.526Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ARBUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ARBUSD (1h)
+[2026-08-19T15:44:52.528Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SUIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SUIUSD (1h)
+[2026-08-19T15:44:52.529Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/TIAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched TIAUSD (1h)
+[Binance] Fetched ARBUSD (4h)
+[Binance] Fetched INJUSD (1day)
+[Binance] Fetched ARBUSD (1week)
+[Binance] Fetched SUIUSD (1week)
+[Binance] Fetched SUIUSD (1day)
+[Binance] Fetched INJUSD (1week)
+[Binance] Fetched ARBUSD (1day)
+[Binance] Fetched SUIUSD (4h)
+[2026-08-19T15:44:52.538Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/INJUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched INJUSD (1h)
+[Binance] Fetched TIAUSD (4h)
+[Binance] Fetched INJUSD (4h)
+[Binance] Fetched OPUSD (1week)
+[2026-08-19T15:44:52.991Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BLURUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BLURUSD (1h)
+[Binance] Fetched BLURUSD (1day)
+[2026-08-19T15:44:52.995Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/PYTHUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched PYTHUSD (1h)
+[Binance] Fetched BLURUSD (1week)
+[Binance] Fetched SEIUSD (4h)
+[Binance] Fetched PYTHUSD (4h)
+[Binance] Fetched SEIUSD (1week)
+[2026-08-19T15:44:53.000Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SEIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SEIUSD (1h)
+[Binance] Fetched TIAUSD (1week)
+[Binance] Fetched PYTHUSD (1week)
+[Binance] Fetched TIAUSD (1day)
+[Binance] Fetched PYTHUSD (1day)
+[Binance] Fetched BLURUSD (4h)
+[Binance] Fetched SEIUSD (1day)
+[2026-08-19T15:44:53.186Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/JTOUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched JTOUSD (1h)
+[2026-08-19T15:44:53.457Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/1000SATSUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched 1000SATSUSD (1h)
+[Binance] Fetched BEAMUSD (1day)
+[2026-08-19T15:44:53.462Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/BEAMUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched BEAMUSD (1h)
+[Binance] Fetched 1000SATSUSD (1day)
+[Binance] Fetched BEAMUSD (4h)
+[Binance] Fetched 1000SATSUSD (4h)
+[Binance] Fetched JTOUSD (1week)
+[Binance] Fetched ORDIUSD (1day)
+[Binance] Fetched BEAMUSD (1week)
+[Binance] Fetched 1000SATSUSD (1week)
+[Binance] Fetched ORDIUSD (4h)
+[Binance] Fetched JTOUSD (1day)
+[2026-08-19T15:44:53.472Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ORDIUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ORDIUSD (1h)
+[Binance] Fetched ORDIUSD (1week)
+[Binance] Fetched JTOUSD (4h)
+[2026-08-19T15:44:53.935Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/RNDRUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched RNDRUSD (1h)
+[Binance] Fetched MINAUSD (4h)
+[Binance] Fetched MINAUSD (1day)
+[Binance] Fetched GALAUSD (4h)
+[Binance] Fetched IMXUSD (1week)
+[2026-08-19T15:44:53.940Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/GALAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched GALAUSD (1h)
+[Binance] Fetched IMXUSD (1day)
+[Binance] Fetched RNDRUSD (1week)
+[Binance] Fetched MINAUSD (1week)
+[Binance] Fetched IMXUSD (4h)
+[Binance] Fetched GALAUSD (1day)
+[Binance] Fetched RNDRUSD (4h)
+[Binance] Fetched RNDRUSD (1day)
+[2026-08-19T15:44:54.135Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/MINAUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched MINAUSD (1h)
+[2026-08-19T15:44:54.552Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/IMXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched IMXUSD (1h)
+[2026-08-19T15:44:54.826Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AXSUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched AXSUSD (1h)
+[Binance] Fetched AXSUSD (1week)
+[Binance] Fetched ENSUSD (4h)
+[Binance] Fetched APEUSD (1week)
+[2026-08-19T15:44:54.833Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ENSUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ENSUSD (1h)
+[2026-08-19T15:44:54.834Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/LDOUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched LDOUSD (1h)
+[Binance] Fetched AXSUSD (4h)
+[2026-08-19T15:44:54.837Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/APEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched APEUSD (1h)
+[Binance] Fetched AXSUSD (1day)
+[Binance] Fetched APEUSD (1day)
+[Binance] Fetched ENSUSD (1day)
+[Binance] Fetched ENSUSD (1week)
+[Binance] Fetched LDOUSD (4h)
+[Binance] Fetched APEUSD (4h)
+[Binance] Fetched GALAUSD (1week)
+[Binance] Fetched CFXUSD (1day)
+[Binance] Fetched KLAYUSD (1day)
+[Binance] Fetched CFXUSD (1week)
+[Binance] Fetched STXUSD (4h)
+[2026-08-19T15:44:55.408Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/KLAYUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched KLAYUSD (1h)
+[2026-08-19T15:44:55.409Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FTMUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FTMUSD (1h)
+[Binance] Fetched LDOUSD (1week)
+[Binance] Fetched KLAYUSD (1week)
+[2026-08-19T15:44:55.421Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/STXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched STXUSD (1h)
+[Binance] Fetched STXUSD (1week)
+[Binance] Fetched KLAYUSD (4h)
+[Binance] Fetched CFXUSD (4h)
+[Binance] Fetched STXUSD (1day)
+[2026-08-19T15:44:55.597Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CFXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched CFXUSD (1h)
+[Binance] Fetched LDOUSD (1day)
+[Binance] Fetched EGLDUSD (1day)
+[2026-08-19T15:44:56.522Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/EGLDUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched EGLDUSD (1h)
+[2026-08-19T15:44:56.524Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/HBARUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched HBARUSD (1h)
+[Binance] Fetched QNTUSD (4h)
+[Binance] Fetched FTMUSD (1week)
+[2026-08-19T15:44:56.527Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/QNTUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched QNTUSD (1h)
+[Binance] Fetched QNTUSD (1day)
+[Binance] Fetched FTMUSD (4h)
+[Binance] Fetched EGLDUSD (1week)
+[Binance] Fetched HBARUSD (1week)
+[Binance] Fetched QNTUSD (1week)
+[Binance] Fetched EGLDUSD (4h)
+[Binance] Fetched HBARUSD (1day)
+[Binance] Fetched FTMUSD (1day)
+[Binance] Fetched HBARUSD (4h)
+[Binance] Fetched KSMUSD (1day)
+[Binance] Fetched ANTUSD (1day)
+[2026-08-19T15:44:56.875Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/KSMUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched KSMUSD (1h)
+[Binance] Fetched ARUSD (4h)
+[Binance] Fetched ANTUSD (4h)
+[Binance] Fetched KSMUSD (1week)
+[2026-08-19T15:44:56.879Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ARUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ARUSD (1h)
+[Binance] Fetched ARUSD (1week)
+[2026-08-19T15:44:56.881Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ZILUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ZILUSD (1h)
+[Binance] Fetched ZILUSD (4h)
+[2026-08-19T15:44:56.883Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ANTUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ANTUSD (1h)
+[Binance] Fetched ARUSD (1day)
+[Binance] Fetched KSMUSD (4h)
+[Binance] Fetched ZILUSD (1day)
+[Binance] Fetched ZILUSD (1week)
+[Binance] Fetched ANKRUSD (4h)
+[Binance] Fetched SKLUSD (4h)
+[2026-08-19T15:44:57.984Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SKLUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SKLUSD (1h)
+[Binance] Fetched IOTXUSD (4h)
+[Binance] Fetched ANKRUSD (1week)
+[Binance] Fetched CELOUSD (1week)
+[Binance] Fetched CELOUSD (4h)
+[Binance] Fetched ANTUSD (1week)
+[Binance] Fetched IOTXUSD (1week)
+[2026-08-19T15:44:57.990Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/ANKRUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched ANKRUSD (1h)
+[Binance] Fetched IOTXUSD (1day)
+[2026-08-19T15:44:57.992Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/IOTXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched IOTXUSD (1h)
+[2026-08-19T15:44:57.993Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CELOUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched CELOUSD (1h)
+[Binance] Fetched CELOUSD (1day)
+[Binance] Fetched ANKRUSD (1day)
+[Binance] Fetched JOEUSD (1day)
+[2026-08-19T15:44:58.284Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SPELLUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SPELLUSD (1h)
+[2026-08-19T15:44:58.285Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/PENDLEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched PENDLEUSD (1h)
+[Binance] Fetched SKLUSD (1day)
+[Binance] Fetched SPELLUSD (1week)
+[Binance] Fetched JOEUSD (1week)
+[Binance] Fetched GMXUSD (1day)
+[Binance] Fetched SPELLUSD (4h)
+[Binance] Fetched GMXUSD (4h)
+[Binance] Fetched SKLUSD (1week)
+[Binance] Fetched GMXUSD (1week)
+[2026-08-19T15:44:58.293Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/GMXUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched GMXUSD (1h)
+[2026-08-19T15:44:58.334Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/JOEUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched JOEUSD (1h)
+[Binance] Fetched JOEUSD (4h)
+[Binance] Fetched SPELLUSD (1day)
+[Binance] Fetched FXSUSD (4h)
+[Binance] Fetched FXSUSD (1day)
+[Binance] Fetched SSVUSD (1week)
+[Binance] Fetched PENDLEUSD (1day)
+[Binance] Fetched FXSUSD (1week)
+[Binance] Fetched SSVUSD (1day)
+[Binance] Fetched PENDLEUSD (1week)
+[2026-08-19T15:44:58.769Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/FXSUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched FXSUSD (1h)
+[Binance] Fetched PENDLEUSD (4h)
+[2026-08-19T15:44:58.770Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/LQTYUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched LQTYUSD (1h)
+[2026-08-19T15:44:58.773Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/SSVUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched SSVUSD (1h)
+[Binance] Fetched LQTYUSD (1day)
+[Binance] Fetched LQTYUSD (1week)
+[Binance] Fetched SSVUSD (4h)
+[Binance] Fetched LQTYUSD (4h)
+[2026-08-19T15:44:59.072Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/MASKUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Binance] Fetched MASKUSD (1h)
+[Binance] Fetched MASKUSD (1day)
+[Binance] Fetched MASKUSD (4h)
+[Binance] Fetched MASKUSD (1week)
+[Yahoo] Failed for USOIL, trying Twelve Data...
+[Yahoo] Failed for USOIL, trying Twelve Data...
+[2026-08-19T15:45:05.070Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/USOIL]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Failed for USOIL, trying Twelve Data...
+[Yahoo] Failed for USOIL, trying Twelve Data...
+[Yahoo] Fetched US500 (4h)
+[Yahoo] Fetched US500 (1h)
+[2026-08-19T15:45:20.817Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/US500]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched US500 (1week)
+[Yahoo] Fetched US500 (1day)
+[Yahoo] Fetched US100 (4h)
+[Yahoo] Fetched US100 (1h)
+[2026-08-19T15:45:30.238Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/US100]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched US100 (1week)
+[Yahoo] Fetched US100 (1day)
+[Yahoo] Fetched US30 (4h)
+[Yahoo] Fetched US30 (1h)
+[2026-08-19T15:45:39.337Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/US30]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched US30 (1week)
+[Yahoo] Fetched US30 (1day)
+[Yahoo] Fetched GER40 (4h)
+[Yahoo] Fetched GER40 (1h)
+[2026-08-19T15:45:48.673Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/GER40]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched GER40 (1week)
+[Yahoo] Fetched GER40 (1day)
+[Yahoo] Fetched UK100 (4h)
+[Yahoo] Fetched UK100 (1h)
+[2026-08-19T15:45:57.994Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/UK100]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched UK100 (1week)
+[Yahoo] Fetched UK100 (1day)
+[Yahoo] Fetched JPN225 (4h)
+[Yahoo] Fetched JPN225 (1h)
+[2026-08-19T15:46:07.060Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/JPN225]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched JPN225 (1week)
+[Yahoo] Fetched JPN225 (1day)
+[Yahoo] Fetched EURUSD (1h)
+[2026-08-19T15:46:16.639Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/EURUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched EURUSD (4h)
+[Yahoo] Fetched EURUSD (1week)
+[Yahoo] Fetched EURUSD (1day)
+[Yahoo] Fetched GBPUSD (4h)
+[Yahoo] Fetched GBPUSD (1h)
+[2026-08-19T15:46:26.627Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/GBPUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched GBPUSD (1week)
+[Yahoo] Fetched GBPUSD (1day)
+[Yahoo] Fetched USDJPY (4h)
+[Yahoo] Fetched USDJPY (1h)
+[2026-08-19T15:46:36.424Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/USDJPY]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[Yahoo] Fetched USDJPY (1week)
+[Yahoo] Fetched USDJPY (1day)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    [2026-08-19T15:44:56.826Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AUDCAD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:45:14.422Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AUDCHF]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:45:31.601Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/AUDNZD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:45:48.708Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/NZDCAD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:46:07.686Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/NZDCHF]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:46:26.785Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/CADCHF]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+[2026-08-19T15:46:43.458Z]  @firebase/database: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
+❌ Firebase Admin save failed [miniChart/XAUUSD]: FIREBASE FATAL ERROR: Cannot parse Firebase url. Please use https://<YOUR FIREBASE>.firebaseio.com 
