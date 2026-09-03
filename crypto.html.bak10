@@ -409,13 +409,17 @@ function initCustomChart() {
 }
 
 async function fetchBaseCandlesCryptoCompare(symbol, limit = 0) {
-    let tfStr = '';
+    let tfStr = '1h';
     const mins = typeof currentTfMinutes !== 'undefined' ? currentTfMinutes : 60;
-    // Exact timeframe string generate karo (custom minutes support)
-    if (mins % 10080 === 0) tfStr = (mins/10080) + 'w';
-    else if (mins % 1440 === 0) tfStr = (mins/1440) + 'd';
-    else if (mins % 60 === 0) tfStr = (mins/60) + 'h';
-    else tfStr = mins + 'm';
+    if (mins >= 10080) tfStr = '1w';
+    else if (mins >= 1440) tfStr = '1d';
+    else if (mins >= 240) tfStr = '4h';
+    else if (mins >= 120) tfStr = '2h';
+    else if (mins >= 60) tfStr = '1h';
+    else if (mins >= 30) tfStr = '30m';
+    else if (mins >= 15) tfStr = '15m';
+    else if (mins >= 5) tfStr = '5m';
+    else tfStr = '1m';
 
     try {
         let url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol || 'BTC') + '&tf=' + tfStr + '&_t=' + Date.now();
@@ -436,12 +440,16 @@ async function fetchBaseCandlesCryptoCompare(symbol, limit = 0) {
 
 // Helper: fetch candles for a specific timeframe (in minutes) with high limit
 async function fetchCandlesByMinutes(symbol, minutes, limit = 5000) {
-    let tfStr = '';
-    // Exact timeframe string generate karo
-    if (minutes % 10080 === 0) tfStr = (minutes/10080) + 'w';
-    else if (minutes % 1440 === 0) tfStr = (minutes/1440) + 'd';
-    else if (minutes % 60 === 0) tfStr = (minutes/60) + 'h';
-    else tfStr = minutes + 'm';
+    let tfStr = '1h';
+    if (minutes >= 10080) tfStr = '1w';
+    else if (minutes >= 1440) tfStr = '1d';
+    else if (minutes >= 240) tfStr = '4h';
+    else if (minutes >= 120) tfStr = '2h';
+    else if (minutes >= 60) tfStr = '1h';
+    else if (minutes >= 30) tfStr = '30m';
+    else if (minutes >= 15) tfStr = '15m';
+    else if (minutes >= 5) tfStr = '5m';
+    else tfStr = '1m';
 
     try {
         let url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol) + '&tf=' + tfStr + '&_t=' + Date.now();
@@ -511,11 +519,11 @@ function calcATR(data, period=14) {
 
 async function loadChartData() {
     try {
-        const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 2000);
+        const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 1000);
         const customCandles = baseCandles;
         candleSeries.setData(customCandles);
         // Read saved periods from localStorage or input fields
-        let fastPeriod = 10, slowPeriod = 20, htfPeriod = 200, htfMultiplier = 3;
+        let fastPeriod = 10, slowPeriod = 20, htfPeriod = 200, htfMinutes = 60;
         try {
             const saved = localStorage.getItem('tvIndSettings');
             if (saved) {
@@ -523,7 +531,7 @@ async function loadChartData() {
                 fastPeriod = s.fast || 10;
                 slowPeriod = s.slow || 20;
                 htfPeriod = s.htf || 200;
-                htfMultiplier = s.htfMultiplier || 3;
+                htfMinutes = s.htfMinutes || 60;
             } else {
                 const fastInput = document.getElementById('ema-fast-period');
                 if (fastInput) fastPeriod = parseInt(fastInput.value) || 10;
@@ -532,18 +540,31 @@ async function loadChartData() {
                 const htfInput = document.getElementById('ema-htf-period');
                 if (htfInput) htfPeriod = parseInt(htfInput.value) || 200;
                 const htfMinutesInput = document.getElementById('ema-htf-minutes');
-                if (htfMinutesInput) htfMultiplier = parseFloat(htfMinutesInput.value) || 3;
+                if (htfMinutesInput) htfMinutes = parseInt(htfMinutesInput.value) || 60;
             }
         } catch(e) { console.error(e); }
 
         ema10Series.setData(calcEMA(customCandles, fastPeriod));
         ema20Series.setData(calcEMA(customCandles, slowPeriod));
 
-        // HTF EMA: fetch HTF candles directly using exact timeframe (multiplier * current TF)
+        // HTF EMA: aggregate current candles to higher timeframe (multiplier * current TF)
         if (htfEmaSeries && customCandles.length >= 20) {
+            // htfMinutes ko multiplier se compute karo (currentTfMinutes * htfMultiplier)
+            let htfMultiplier = 3;
+            try {
+                const saved = localStorage.getItem('tvIndSettings');
+                if (saved) {
+                    const s = JSON.parse(saved);
+                    htfMultiplier = s.htfMultiplier || 3;
+                } else {
+                    const multInput = document.getElementById('ema-htf-minutes');
+                    if (multInput) htfMultiplier = parseFloat(multInput.value) || 3;
+                }
+            } catch(e) { console.error(e); }
+
             const htfMinutes = Math.max(1, Math.round(currentTfMinutes * htfMultiplier));
-            const htfCandles = await fetchCandlesByMinutes(currentSymbol, htfMinutes, 2000);
-            if (htfCandles.length >= 2) {
+            const htfCandles = aggregateCandles(customCandles, htfMinutes);
+            if (htfCandles.length > 0) {
                 const htfEmaData = calcEMA(htfCandles, Math.min(htfPeriod, htfCandles.length));
                 // Map HTF EMA values to current chart candles (step line)
                 const mappedHtfEma = [];

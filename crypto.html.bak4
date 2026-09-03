@@ -408,18 +408,21 @@ function initCustomChart() {
     loadChartData();
 }
 
-async function fetchBaseCandlesCryptoCompare(symbol, limit = 0) {
-    let tfStr = '';
+async function fetchBaseCandlesCryptoCompare(symbol) {
+    let tfStr = '1h';
     const mins = typeof currentTfMinutes !== 'undefined' ? currentTfMinutes : 60;
-    // Exact timeframe string generate karo (custom minutes support)
-    if (mins % 10080 === 0) tfStr = (mins/10080) + 'w';
-    else if (mins % 1440 === 0) tfStr = (mins/1440) + 'd';
-    else if (mins % 60 === 0) tfStr = (mins/60) + 'h';
-    else tfStr = mins + 'm';
+    if (mins >= 10080) tfStr = '1w';
+    else if (mins >= 1440) tfStr = '1d';
+    else if (mins >= 240) tfStr = '4h';
+    else if (mins >= 120) tfStr = '2h';
+    else if (mins >= 60) tfStr = '1h';
+    else if (mins >= 30) tfStr = '30m';
+    else if (mins >= 15) tfStr = '15m';
+    else if (mins >= 5) tfStr = '5m';
+    else tfStr = '1m';
 
     try {
-        let url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol || 'BTC') + '&tf=' + tfStr + '&_t=' + Date.now();
-        if (limit > 0) url += '&limit=' + limit;
+        const url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol || 'BTC') + '&tf=' + tfStr + '&_t=' + Date.now();
         const res = await fetch(url);
         const json = await res.json();
         if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -430,32 +433,6 @@ async function fetchBaseCandlesCryptoCompare(symbol, limit = 0) {
         return [];
     } catch (e) {
         console.error('Data Fetch Error:', e);
-        return [];
-    }
-}
-
-// Helper: fetch candles for a specific timeframe (in minutes) with high limit
-async function fetchCandlesByMinutes(symbol, minutes, limit = 5000) {
-    let tfStr = '';
-    // Exact timeframe string generate karo
-    if (minutes % 10080 === 0) tfStr = (minutes/10080) + 'w';
-    else if (minutes % 1440 === 0) tfStr = (minutes/1440) + 'd';
-    else if (minutes % 60 === 0) tfStr = (minutes/60) + 'h';
-    else tfStr = minutes + 'm';
-
-    try {
-        let url = '/api/crypto-chart?symbol=' + encodeURIComponent(symbol) + '&tf=' + tfStr + '&_t=' + Date.now();
-        if (limit > 0) url += '&limit=' + limit;
-        const res = await fetch(url);
-        const json = await res.json();
-        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-            const map = new Map();
-            json.data.forEach(c => { if (c && c.time) map.set(c.time, c); });
-            return Array.from(map.values()).sort((a, b) => a.time - b.time);
-        }
-        return [];
-    } catch (e) {
-        console.error('HTF Data Fetch Error:', e);
         return [];
     }
 }
@@ -511,11 +488,11 @@ function calcATR(data, period=14) {
 
 async function loadChartData() {
     try {
-        const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 2000);
+        const baseCandles = await fetchBaseCandlesCryptoCompare(currentSymbol, 1000);
         const customCandles = baseCandles;
         candleSeries.setData(customCandles);
         // Read saved periods from localStorage or input fields
-        let fastPeriod = 10, slowPeriod = 20, htfPeriod = 200, htfMultiplier = 3;
+        let fastPeriod = 10, slowPeriod = 20, htfPeriod = 200;
         try {
             const saved = localStorage.getItem('tvIndSettings');
             if (saved) {
@@ -523,7 +500,6 @@ async function loadChartData() {
                 fastPeriod = s.fast || 10;
                 slowPeriod = s.slow || 20;
                 htfPeriod = s.htf || 200;
-                htfMultiplier = s.htfMultiplier || 3;
             } else {
                 const fastInput = document.getElementById('ema-fast-period');
                 if (fastInput) fastPeriod = parseInt(fastInput.value) || 10;
@@ -531,36 +507,12 @@ async function loadChartData() {
                 if (slowInput) slowPeriod = parseInt(slowInput.value) || 20;
                 const htfInput = document.getElementById('ema-htf-period');
                 if (htfInput) htfPeriod = parseInt(htfInput.value) || 200;
-                const htfMinutesInput = document.getElementById('ema-htf-minutes');
-                if (htfMinutesInput) htfMultiplier = parseFloat(htfMinutesInput.value) || 3;
             }
         } catch(e) { console.error(e); }
 
         ema10Series.setData(calcEMA(customCandles, fastPeriod));
+        if (htfEmaSeries && customCandles.length >= 20) htfEmaSeries.setData(calcEMA(customCandles, Math.min(htfPeriod, customCandles.length)));
         ema20Series.setData(calcEMA(customCandles, slowPeriod));
-
-        // HTF EMA: fetch HTF candles directly using exact timeframe (multiplier * current TF)
-        if (htfEmaSeries && customCandles.length >= 20) {
-            const htfMinutes = Math.max(1, Math.round(currentTfMinutes * htfMultiplier));
-            const htfCandles = await fetchCandlesByMinutes(currentSymbol, htfMinutes, 2000);
-            if (htfCandles.length >= 2) {
-                const htfEmaData = calcEMA(htfCandles, Math.min(htfPeriod, htfCandles.length));
-                // Map HTF EMA values to current chart candles (step line)
-                const mappedHtfEma = [];
-                let htfIdx = 0;
-                for (const c of customCandles) {
-                    while (htfIdx < htfEmaData.length && htfEmaData[htfIdx].time <= c.time) {
-                        htfIdx++;
-                    }
-                    if (htfIdx > 0) {
-                        mappedHtfEma.push({ time: c.time, value: htfEmaData[htfIdx - 1].value });
-                    }
-                }
-                htfEmaSeries.setData(mappedHtfEma);
-            } else {
-                htfEmaSeries.setData([]);
-            }
-        }
         sma50Series.setData(calcSMA(customCandles, 50));
         atrSeries.setData(calcATR(customCandles, 14));
         customChart.timeScale().fitContent();
@@ -1424,10 +1376,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
             <label style="display: block; margin-bottom: 4px; color: #787b86;">HTF EMA Period</label>
             <input type="number" id="ema-htf-period" value="200" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 8px; border-radius: 4px; box-sizing: border-box;">
         </div>
-        <div>
-            <label style="display: block; margin-bottom: 4px; color: #787b86;">HTF Timeframe Multiplier (x current TF)</label>
-            <input type="number" id="ema-htf-minutes" value="3" min="1" step="1" style="width: 100%; background: #131722; border: 1px solid #2a2e39; color: #d1d4dc; padding: 8px; border-radius: 4px; box-sizing: border-box;">
-        </div>
     </div>
     <div style="margin-top: 20px;">
         <button onclick="saveTvIndSettings(event)" type="button" style="background: #2962ff; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; width: 100%; text-align: center;">Save & Apply</button>
@@ -1463,11 +1411,9 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
             var fast = parseInt(document.getElementById('ema-fast-period').value) || 10;
             var slow = parseInt(document.getElementById('ema-slow-period').value) || 20;
             var htf = parseInt(document.getElementById('ema-htf-period').value) || 200;
-            var htfMultiplier = parseFloat(document.getElementById('ema-htf-minutes').value) || 3;
-            if (htfMultiplier < 1) htfMultiplier = 1;
 
             // Settings localStorage mein save karo
-            var settings = { fast: fast, slow: slow, htf: htf, htfMultiplier: htfMultiplier };
+            var settings = { fast: fast, slow: slow, htf: htf };
             localStorage.setItem('tvIndSettings', JSON.stringify(settings));
 
             // Chart refresh karo taaki naye periods apply ho jayein
@@ -1492,7 +1438,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
                 if(document.getElementById('ema-fast-period')) document.getElementById('ema-fast-period').value = s.fast || 10;
                 if(document.getElementById('ema-slow-period')) document.getElementById('ema-slow-period').value = s.slow || 20;
                 if(document.getElementById('ema-htf-period')) document.getElementById('ema-htf-period').value = s.htf || 200;
-                if(document.getElementById('ema-htf-minutes')) document.getElementById('ema-htf-minutes').value = s.htfMultiplier || 3;
             }
         } catch(e) {
             console.error('Load settings error:', e);

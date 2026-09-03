@@ -56,12 +56,12 @@ function initCustomChart() {
         wickDownColor: '#333333'
     });
 
-    ema10Series = customChart.addLineSeries({ color: '#0062ff', lineWidth: 1 }); // blue
-    ema20Series = customChart.addLineSeries({ color: '#ef4444', lineWidth: 1 }); // red
-    sma50Series = customChart.addLineSeries({ color: '#cbd5e1', lineWidth: 1 }); // light grey
+    ema10Series = customChart.addLineSeries({ color: '#0062ff', lineWidth: 1, lastValueVisible: false, priceLineVisible: false}); // blue
+    ema20Series = customChart.addLineSeries({ color: '#ef4444', lineWidth: 1, lastValueVisible: false, priceLineVisible: false}); // red
+    sma50Series = customChart.addLineSeries({ color: '#cbd5e1', lineWidth: 1, lastValueVisible: false, priceLineVisible: false}); // light grey
 
     // ATR subchart (simple overlay for now; separate pane later if needed)
-    atrSeries = customChart.addLineSeries({ color: '#8b5cf6', lineWidth: 1 });
+    atrSeries = customChart.addLineSeries({ color: '#8b5cf6', lineWidth: 1 , lastValueVisible: false, priceLineVisible: false});
 
     loadChartData();
 }
