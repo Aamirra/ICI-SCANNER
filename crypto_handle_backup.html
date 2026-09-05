@@ -128,189 +128,7 @@
         .watchlist-item .wl-chg.down { color:var(--red); }
         .watchlist-item .wl-remove { color:var(--red); font-size:14px; cursor:pointer; padding:2px 6px; }
         .drag-ghost { position:fixed; z-index:3000; background:var(--acc); color:#fff; font-size:12px; font-weight:700; padding:6px 12px; border-radius:8px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.3); transform:translate(-50%,-50%); opacity:0.95; }
-    .watchlist-resize-handle { height: 8px; cursor: row-resize; background: #22242a; border-top: 1px solid #2a2d34; border-bottom: 1px solid #2a2d34; } .watchlist-section { overflow: hidden; } 
-.watchlist-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 6px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.watchlist-item .wl-sym { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.watchlist-item .wl-price { font-size: 12px; color: var(--txt); margin-right: 8px; white-space: nowrap; }
-.watchlist-item .wl-chg { font-size: 12px; font-weight: 600; margin-right: 8px; white-space: nowrap; }
-.watchlist-dropzone { width: 100%; padding: 6px; }
-
-/* Bulletproof Watchlist Layout */
-.watchlist-item {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-    padding: 8px 6px !important;
-    border-bottom: 1px solid var(--border) !important;
-    box-sizing: border-box !important;
-}
-.watchlist-item .wl-sym {
-    font-weight: 700 !important;
-    flex: 1 !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    font-size: 14px !important;
-}
-.watchlist-item .wl-price {
-    font-size: 12px !important;
-    margin-right: 10px !important;
-    white-space: nowrap !important;
-    text-align: right !important;
-    min-width: 60px !important;
-}
-.watchlist-item .wl-chg {
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    margin-right: 10px !important;
-    white-space: nowrap !important;
-    text-align: right !important;
-    min-width: 60px !important;
-}
-
-/* Market Dropdown */
-.market-dropdown { position: relative; display: inline-block; }
-.market-dropdown .market-menu { display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.market-dropdown .market-menu.show { display: block; }
-.market-dropdown .market-menu div { padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--txt); border-bottom: 1px solid var(--border); }
-.market-dropdown .market-menu div:hover { background: var(--pill-bg); }
-.market-dropdown .market-menu div:last-child { border-bottom: none; }
-
-/* Hide Counters Box (Bullish, Bearish, All, Target, Trades) */
-.counters-grid, .count-card {
-    display: none !important;
-}
-
-/* Hide Bell Icon Column (Header + Rows) */
-.col-bell-fixed { display: none !important; }
-/* Force Sentiment Bars to Display */
-.sentiment-progress, .sent-cell, .sentiment-bar { display: block !important; }
-
-/* Market Dropdown & Screener Header */
-.screener-head { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid var(--border); background: var(--surface); font-weight: 700; font-size: 12px; color: var(--muted); }
-.screener-head .market-dropdown { position: relative; }
-.screener-head .market-dropdown .market-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.screener-head .market-dropdown .market-menu.show { display: block; }
-.screener-head .market-dropdown .market-menu div { padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--txt); border-bottom: 1px solid var(--border); }
-.screener-head .market-dropdown .market-menu div:hover { background: var(--pill-bg); }
-.screener-head .market-dropdown .market-menu div:last-child { border-bottom: none; }
-.screener-head .market-dropdown button { background: transparent; border: none; cursor: pointer; font-weight: bold; font-size: 12px; color: var(--txt); }
-.signal-tabs { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: #1d1f25; font-size: 12px; }
-.signal-tabs strong { color: var(--profit); }
-.signal-tabs button, .signal-tabs span { border: 0; padding: 4px 8px; background: transparent; color: #7c8088; font-size: 11px; }
-.signal-tabs button.signal-selected { background: #d3e84e; color: #111; }
-
-/* Hide Settings/Indicators Button */
-#tv-indicators-container, #tv-ind-btn, .tv-ind-btn {
-    display: none !important;
-}
-
-/* Hide Eruda Debug Console & Green Text */
-#_dbgBox, #eruda, .eruda, .eruda-tooltip, .eruda-box, .eruda-content {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Settings Alert Dropdown */
-.settings-dropdown { position: relative; display: inline-block; margin-left: 8px; }
-.settings-dropdown .settings-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.settings-dropdown .settings-menu.show { display: block; }
-.settings-dropdown .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--txt); }
-.settings-dropdown .setting-item:last-child { border-bottom: none; }
-.settings-dropdown .setting-item button { border: none; background: #d3e84e; color: #111; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-.settings-dropdown .setting-item button.inactive { background: #ef4444; color: #fff; }
-/* Hide original header toggles */
-.header-actions .alert-toggle, #tgToggle, #waToggle, #ltfAlertBtn { display: none !important; }
-
-/* ALERTS Dropdown - Force Dark Theme to match Market Dropdown */
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Fix ALERTS dropdown to match CRYPTO exactly */
-.settings-dropdown {
-    position: relative;
-    display: inline-block;
-    margin-left: 8px;
-}
-.settings-dropdown > span {
-    background: #1b1d22 !important;
-    color: #aaa !important;
-    border: 1px solid #25272c !important;
-    padding: 6px 12px !important;
-    border-radius: 20px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-    border-radius: 8px !important;
-    min-width: 160px !important;
-    padding: 6px !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-    padding: 10px !important;
-    font-size: 13px !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-    border-radius: 4px !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Force Show ALERTS Buttons */
-.setting-item { display: flex !important; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px !important; }
-#tgToggle, #waToggle, #ltfAlertBtn { 
-    display: inline-block !important; 
-    visibility: visible !important; 
-    opacity: 1 !important; 
-    padding: 4px 10px !important; 
-    border-radius: 4px !important; 
-    font-size: 11px !important; 
-    font-weight: bold !important; 
-    cursor: pointer !important; 
-    margin-left: 5px !important;
-}
-
-/* Force Toggle Colors */
-#tgToggle.active, #waToggle.active, #ltfAlertBtn.active { background: #d3e84e !important; color: #111 !important; }
-#tgToggle.inactive, #waToggle.inactive, #ltfAlertBtn.inactive { background: #ef4444 !important; color: #fff !important; }
-
-/* Shrink ALERTS Buttons by 50% */
-#tgToggle, #waToggle, #ltfAlertBtn {
-    padding: 2px 5px !important;
-    font-size: 6px !important;
-    line-height: 1 !important;
-    border-radius: 2px !important;
-}
-</style>
+    </style>
 
 <style>
     /* Active timeframe button highlight */
@@ -335,188 +153,6 @@
         font-weight: bold;
         box-shadow: 0 0 8px rgba(41,98,255,0.5);
     }
-.watchlist-resize-handle { height: 8px; cursor: row-resize; background: #22242a; border-top: 1px solid #2a2d34; border-bottom: 1px solid #2a2d34; } .watchlist-section { overflow: hidden; } 
-.watchlist-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 6px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.watchlist-item .wl-sym { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.watchlist-item .wl-price { font-size: 12px; color: var(--txt); margin-right: 8px; white-space: nowrap; }
-.watchlist-item .wl-chg { font-size: 12px; font-weight: 600; margin-right: 8px; white-space: nowrap; }
-.watchlist-dropzone { width: 100%; padding: 6px; }
-
-/* Bulletproof Watchlist Layout */
-.watchlist-item {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-    padding: 8px 6px !important;
-    border-bottom: 1px solid var(--border) !important;
-    box-sizing: border-box !important;
-}
-.watchlist-item .wl-sym {
-    font-weight: 700 !important;
-    flex: 1 !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    font-size: 14px !important;
-}
-.watchlist-item .wl-price {
-    font-size: 12px !important;
-    margin-right: 10px !important;
-    white-space: nowrap !important;
-    text-align: right !important;
-    min-width: 60px !important;
-}
-.watchlist-item .wl-chg {
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    margin-right: 10px !important;
-    white-space: nowrap !important;
-    text-align: right !important;
-    min-width: 60px !important;
-}
-
-/* Market Dropdown */
-.market-dropdown { position: relative; display: inline-block; }
-.market-dropdown .market-menu { display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.market-dropdown .market-menu.show { display: block; }
-.market-dropdown .market-menu div { padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--txt); border-bottom: 1px solid var(--border); }
-.market-dropdown .market-menu div:hover { background: var(--pill-bg); }
-.market-dropdown .market-menu div:last-child { border-bottom: none; }
-
-/* Hide Counters Box (Bullish, Bearish, All, Target, Trades) */
-.counters-grid, .count-card {
-    display: none !important;
-}
-
-/* Hide Bell Icon Column (Header + Rows) */
-.col-bell-fixed { display: none !important; }
-/* Force Sentiment Bars to Display */
-.sentiment-progress, .sent-cell, .sentiment-bar { display: block !important; }
-
-/* Market Dropdown & Screener Header */
-.screener-head { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid var(--border); background: var(--surface); font-weight: 700; font-size: 12px; color: var(--muted); }
-.screener-head .market-dropdown { position: relative; }
-.screener-head .market-dropdown .market-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.screener-head .market-dropdown .market-menu.show { display: block; }
-.screener-head .market-dropdown .market-menu div { padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--txt); border-bottom: 1px solid var(--border); }
-.screener-head .market-dropdown .market-menu div:hover { background: var(--pill-bg); }
-.screener-head .market-dropdown .market-menu div:last-child { border-bottom: none; }
-.screener-head .market-dropdown button { background: transparent; border: none; cursor: pointer; font-weight: bold; font-size: 12px; color: var(--txt); }
-.signal-tabs { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: #1d1f25; font-size: 12px; }
-.signal-tabs strong { color: var(--profit); }
-.signal-tabs button, .signal-tabs span { border: 0; padding: 4px 8px; background: transparent; color: #7c8088; font-size: 11px; }
-.signal-tabs button.signal-selected { background: #d3e84e; color: #111; }
-
-/* Hide Settings/Indicators Button */
-#tv-indicators-container, #tv-ind-btn, .tv-ind-btn {
-    display: none !important;
-}
-
-/* Hide Eruda Debug Console & Green Text */
-#_dbgBox, #eruda, .eruda, .eruda-tooltip, .eruda-box, .eruda-content {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Settings Alert Dropdown */
-.settings-dropdown { position: relative; display: inline-block; margin-left: 8px; }
-.settings-dropdown .settings-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.settings-dropdown .settings-menu.show { display: block; }
-.settings-dropdown .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--txt); }
-.settings-dropdown .setting-item:last-child { border-bottom: none; }
-.settings-dropdown .setting-item button { border: none; background: #d3e84e; color: #111; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-.settings-dropdown .setting-item button.inactive { background: #ef4444; color: #fff; }
-/* Hide original header toggles */
-.header-actions .alert-toggle, #tgToggle, #waToggle, #ltfAlertBtn { display: none !important; }
-
-/* ALERTS Dropdown - Force Dark Theme to match Market Dropdown */
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Fix ALERTS dropdown to match CRYPTO exactly */
-.settings-dropdown {
-    position: relative;
-    display: inline-block;
-    margin-left: 8px;
-}
-.settings-dropdown > span {
-    background: #1b1d22 !important;
-    color: #aaa !important;
-    border: 1px solid #25272c !important;
-    padding: 6px 12px !important;
-    border-radius: 20px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-    border-radius: 8px !important;
-    min-width: 160px !important;
-    padding: 6px !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-    padding: 10px !important;
-    font-size: 13px !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-    border-radius: 4px !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Force Show ALERTS Buttons */
-.setting-item { display: flex !important; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px !important; }
-#tgToggle, #waToggle, #ltfAlertBtn { 
-    display: inline-block !important; 
-    visibility: visible !important; 
-    opacity: 1 !important; 
-    padding: 4px 10px !important; 
-    border-radius: 4px !important; 
-    font-size: 11px !important; 
-    font-weight: bold !important; 
-    cursor: pointer !important; 
-    margin-left: 5px !important;
-}
-
-/* Force Toggle Colors */
-#tgToggle.active, #waToggle.active, #ltfAlertBtn.active { background: #d3e84e !important; color: #111 !important; }
-#tgToggle.inactive, #waToggle.inactive, #ltfAlertBtn.inactive { background: #ef4444 !important; color: #fff !important; }
-
-/* Shrink ALERTS Buttons by 50% */
-#tgToggle, #waToggle, #ltfAlertBtn {
-    padding: 2px 5px !important;
-    font-size: 6px !important;
-    line-height: 1 !important;
-    border-radius: 2px !important;
-}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
@@ -537,13 +173,30 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
-            
-            
-            
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
+            <button class="alert-toggle" id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button>
         </div>
     </div>
     <div class="pills-row">
-        
+        <button class="pill active-blue" onclick="setFilter('all')">Crypto</button>
+        <a href="/" class="pill" style="text-decoration:none">Forex</a>
+        <a href="/stocks" class="pill" style="text-decoration:none">Stocks</a>
+        <a href="/journal" class="pill" style="text-decoration:none">📒 Journal</a>
+        <button class="pill scan-btn" onclick="actualScan()">Scan</button>
+        <button class="pill" onclick="openAlertsList()" style="background:var(--gold); color:#fff; border-color:var(--gold);">Alerts</button>
+        <div class="cloud-status" id="statusDot">Cloud active</div>
+    </div>
+    <div style="display:flex; align-items:center; margin-bottom:8px;">
+        <span id="scanStatusText" class="scan-status-line"></span>
+        <span id="lastScanTime" class="last-scan-line">🕒 Last scan: never</span>
+    </div>
+    <div class="sync-info" onclick="openTargetModal()">
+        Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ></span>
+        <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
+    </div>
+    <div class="counters-grid">
+        <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
         <div class="count-card" onclick="setFilter('bear')"><div class="num" style="color:var(--red)" id="rc">0</div><div class="label">Bearish</div></div>
         <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
         <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount2">0</div><div class="label">Target</div></div>
@@ -557,29 +210,7 @@
         </div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
-    <div class="watchlist-resize-handle" id="wlResizeHandle"></div><div class="screener-head">
-            SCREENER
-            <div class="settings-dropdown">
-            <span onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="cursor:pointer; font-size:11px; font-weight:bold; color:var(--muted);">ALERTS &#9660;</span>
-            <div class="settings-menu">
-                <div class="setting-item"><span>Telegram</span><button id="tgToggle" onclick="toggleAlert('telegram')">TG ON</button></div>
-                <div class="setting-item"><span>WhatsApp</span><button id="waToggle" onclick="toggleAlert('whatsapp')">WA ON</button></div>
-                <div class="setting-item"><span>LTF Alert</span><button id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button></div>
-            </div>
-        </div><div class="market-dropdown">
-                <button class="pill market-btn" onclick="toggleMarketDropdown(event)">CRYPTO <i class="fas fa-chevron-down"></i></button>
-                <div class="market-menu">
-                    <div onclick="changeMarket('/')">Forex</div>
-                    <div onclick="changeMarket('/stocks')">Stocks</div>
-                    <div onclick="changeMarket('/stocks?m=psx')">PSX</div>
-                    <div onclick="changeMarket('/crypto')">Crypto</div>
-                </div>
-            </div>
-        </div>
-        <div class="signal-tabs">
-            <strong>LONG</strong> <button class="signal-selected">S01</button><button>S02</button><span>S03</span><span>S04</span><span>S05</span>
-        </div>
-        <div class="screener-wrap">
+    <div class="screener-wrap">
         <div class="header-row-table" id="tableHeaderRow"></div>
         <div id="pairsContainer"></div>
     </div>
@@ -1661,7 +1292,7 @@ function endPairDrag() {
     const dz = document.getElementById('watchlistDropzone');
     if (dz) dz.classList.remove('drag-over');
 }
-document.getElementById('pairsContainer').addEventListener('touchstart', onScreenerTouchStart, { passive: false });
+document.getElementById('pairsContainer').addEventListener('touchstart', onScreenerTouchStart, { passive: true });
 renderWatchlist();
 const _origRenderForWatchlist = render;
 render = function() { _origRenderForWatchlist(); renderWatchlist(); };
@@ -2209,85 +1840,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   };
   if (document.readyState !== 'loading') ensureBox(); else document.addEventListener('DOMContentLoaded', ensureBox);
 })();
-</script>
-<script>
-(function() {
-    var h = document.getElementById("wlResizeHandle");
-    var s = document.querySelector(".watchlist-section");
-    if(!h || !s) return;
-    var sy, sh;
-    h.addEventListener("mousedown", function(e) { 
-        sy = e.clientY; sh = s.offsetHeight; 
-        document.body.style.userSelect = "none";
-        function m(e) { s.style.height = (sh + (e.clientY - sy)) + "px"; }
-        function u() { document.removeEventListener("mousemove", m); document.removeEventListener("mouseup", u); document.body.style.userSelect = ""; }
-        document.addEventListener("mousemove", m); document.addEventListener("mouseup", u);
-    });
-    h.addEventListener("touchstart", function(e) { 
-        sy = e.touches[0].clientY; sh = s.offsetHeight;
-        function m(e) { s.style.height = (sh + (e.touches[0].clientY - sy)) + "px"; }
-        function u() { document.removeEventListener("touchmove", m); document.removeEventListener("touchend", u); }
-        document.addEventListener("touchmove", m); document.addEventListener("touchend", u);
-    });
-})();
-</script>
-<script>
-// Native long-press menu (Back, Reload, etc.) ko block karein
-document.addEventListener('contextmenu', function(e) {
-    if (e.target.closest('.item-row') || e.target.closest('.watchlist-item') || e.target.closest('.watchlist-dropzone')) {
-        e.preventDefault();
-    }
-});
-</script>
-
-<script>
-function toggleMarketDropdown(e) {
-    e.stopPropagation();
-    var menu = e.currentTarget.nextElementSibling;
-    document.querySelectorAll('.market-menu').forEach(function(m) { if (m !== menu) m.classList.remove('show'); });
-    menu.classList.toggle('show');
-}
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.market-dropdown')) {
-        document.querySelectorAll('.market-menu').forEach(function(m) { m.classList.remove('show'); });
-    }
-});
-function changeMarket(page, market) {
-    if (market === 'psx') {
-        window.location.href = '/stocks?m=psx';
-    } else if (market === 'exness') {
-        window.location.href = '/stocks';
-    } else {
-        window.location.href = page;
-    }
-}
-document.addEventListener('DOMContentLoaded', function() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('m') === 'psx' && typeof setMarket === 'function') {
-        setMarket('psx');
-    }
-});
-</script>
-
-<script>
-(function() {
-    // Agar reset pehle nahi hua, to columns ko default karo
-    if (!sessionStorage.getItem('sentReset')) {
-        localStorage.removeItem('ici_columns');
-        localStorage.removeItem('ici_stocks_columns');
-        localStorage.removeItem('ici_crypto_columns');
-        sessionStorage.setItem('sentReset', '1');
-        // Page ko reload karo taake default settings apply ho jayein
-        setTimeout(function() { location.reload(); }, 300);
-    }
-})();
-</script>
-
-<script>
-// Disable Debug function aur Eruda completely
-window.dbg = function() {};
-try { if (window.eruda) eruda.destroy(); } catch(e) {}
-try { if (window.eruda) eruda.hide(); } catch(e) {}
 </script>
 </body>
 </html>

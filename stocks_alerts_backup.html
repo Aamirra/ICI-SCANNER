@@ -310,32 +310,6 @@
     background: #ef4444 !important;
     color: #fff !important;
 }
-
-/* Force Show ALERTS Buttons */
-.setting-item { display: flex !important; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px !important; }
-#tgToggle, #waToggle, #ltfAlertBtn { 
-    display: inline-block !important; 
-    visibility: visible !important; 
-    opacity: 1 !important; 
-    padding: 4px 10px !important; 
-    border-radius: 4px !important; 
-    font-size: 11px !important; 
-    font-weight: bold !important; 
-    cursor: pointer !important; 
-    margin-left: 5px !important;
-}
-
-/* Force Toggle Colors */
-#tgToggle.active, #waToggle.active, #ltfAlertBtn.active { background: #d3e84e !important; color: #111 !important; }
-#tgToggle.inactive, #waToggle.inactive, #ltfAlertBtn.inactive { background: #ef4444 !important; color: #fff !important; }
-
-/* Shrink ALERTS Buttons by 50% */
-#tgToggle, #waToggle, #ltfAlertBtn {
-    padding: 2px 5px !important;
-    font-size: 6px !important;
-    line-height: 1 !important;
-    border-radius: 2px !important;
-}
 </style>
 <link rel="stylesheet" href="/new-design.css"></head>
 <body>
@@ -345,10 +319,10 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
-            
-            
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
             <!-- ✅ LTF Alert Button -->
-            
+            <button class="alert-toggle" id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button>
         </div>
     </div>
     <div class="pills-row">

@@ -201,115 +201,6 @@
 .signal-tabs strong { color: var(--profit); }
 .signal-tabs button, .signal-tabs span { border: 0; padding: 4px 8px; background: transparent; color: #7c8088; font-size: 11px; }
 .signal-tabs button.signal-selected { background: #d3e84e; color: #111; }
-
-/* Hide Settings/Indicators Button */
-#tv-indicators-container, #tv-ind-btn, .tv-ind-btn {
-    display: none !important;
-}
-
-/* Hide Eruda Debug Console & Green Text */
-#_dbgBox, #eruda, .eruda, .eruda-tooltip, .eruda-box, .eruda-content {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Settings Alert Dropdown */
-.settings-dropdown { position: relative; display: inline-block; margin-left: 8px; }
-.settings-dropdown .settings-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.settings-dropdown .settings-menu.show { display: block; }
-.settings-dropdown .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--txt); }
-.settings-dropdown .setting-item:last-child { border-bottom: none; }
-.settings-dropdown .setting-item button { border: none; background: #d3e84e; color: #111; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-.settings-dropdown .setting-item button.inactive { background: #ef4444; color: #fff; }
-/* Hide original header toggles */
-.header-actions .alert-toggle, #tgToggle, #waToggle, #ltfAlertBtn { display: none !important; }
-
-/* ALERTS Dropdown - Force Dark Theme to match Market Dropdown */
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Fix ALERTS dropdown to match CRYPTO exactly */
-.settings-dropdown {
-    position: relative;
-    display: inline-block;
-    margin-left: 8px;
-}
-.settings-dropdown > span {
-    background: #1b1d22 !important;
-    color: #aaa !important;
-    border: 1px solid #25272c !important;
-    padding: 6px 12px !important;
-    border-radius: 20px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-    border-radius: 8px !important;
-    min-width: 160px !important;
-    padding: 6px !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-    padding: 10px !important;
-    font-size: 13px !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-    border-radius: 4px !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Force Show ALERTS Buttons */
-.setting-item { display: flex !important; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px !important; }
-#tgToggle, #waToggle, #ltfAlertBtn { 
-    display: inline-block !important; 
-    visibility: visible !important; 
-    opacity: 1 !important; 
-    padding: 4px 10px !important; 
-    border-radius: 4px !important; 
-    font-size: 11px !important; 
-    font-weight: bold !important; 
-    cursor: pointer !important; 
-    margin-left: 5px !important;
-}
-
-/* Force Toggle Colors */
-#tgToggle.active, #waToggle.active, #ltfAlertBtn.active { background: #d3e84e !important; color: #111 !important; }
-#tgToggle.inactive, #waToggle.inactive, #ltfAlertBtn.inactive { background: #ef4444 !important; color: #fff !important; }
-
-/* Shrink ALERTS Buttons by 50% */
-#tgToggle, #waToggle, #ltfAlertBtn {
-    padding: 2px 5px !important;
-    font-size: 6px !important;
-    line-height: 1 !important;
-    border-radius: 2px !important;
-}
 </style>
 
 <style>
@@ -408,115 +299,6 @@
 .signal-tabs strong { color: var(--profit); }
 .signal-tabs button, .signal-tabs span { border: 0; padding: 4px 8px; background: transparent; color: #7c8088; font-size: 11px; }
 .signal-tabs button.signal-selected { background: #d3e84e; color: #111; }
-
-/* Hide Settings/Indicators Button */
-#tv-indicators-container, #tv-ind-btn, .tv-ind-btn {
-    display: none !important;
-}
-
-/* Hide Eruda Debug Console & Green Text */
-#_dbgBox, #eruda, .eruda, .eruda-tooltip, .eruda-box, .eruda-content {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Settings Alert Dropdown */
-.settings-dropdown { position: relative; display: inline-block; margin-left: 8px; }
-.settings-dropdown .settings-menu { display: none; position: absolute; top: 100%; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 5000; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.settings-dropdown .settings-menu.show { display: block; }
-.settings-dropdown .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--txt); }
-.settings-dropdown .setting-item:last-child { border-bottom: none; }
-.settings-dropdown .setting-item button { border: none; background: #d3e84e; color: #111; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
-.settings-dropdown .setting-item button.inactive { background: #ef4444; color: #fff; }
-/* Hide original header toggles */
-.header-actions .alert-toggle, #tgToggle, #waToggle, #ltfAlertBtn { display: none !important; }
-
-/* ALERTS Dropdown - Force Dark Theme to match Market Dropdown */
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Fix ALERTS dropdown to match CRYPTO exactly */
-.settings-dropdown {
-    position: relative;
-    display: inline-block;
-    margin-left: 8px;
-}
-.settings-dropdown > span {
-    background: #1b1d22 !important;
-    color: #aaa !important;
-    border: 1px solid #25272c !important;
-    padding: 6px 12px !important;
-    border-radius: 20px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
-.settings-dropdown .settings-menu {
-    background: #090a0c !important;
-    border: 1px solid #25272c !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
-    border-radius: 8px !important;
-    min-width: 160px !important;
-    padding: 6px !important;
-}
-.settings-dropdown .setting-item {
-    color: #e7e7e7 !important;
-    border-bottom: 1px solid #25272c !important;
-    padding: 10px !important;
-    font-size: 13px !important;
-}
-.settings-dropdown .setting-item button {
-    background-color: #1e222d !important;
-    color: #d1d4dc !important;
-    border: 1px solid #25272c !important;
-    border-radius: 4px !important;
-}
-.settings-dropdown .setting-item button.inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* Force Show ALERTS Buttons */
-.setting-item { display: flex !important; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px !important; }
-#tgToggle, #waToggle, #ltfAlertBtn { 
-    display: inline-block !important; 
-    visibility: visible !important; 
-    opacity: 1 !important; 
-    padding: 4px 10px !important; 
-    border-radius: 4px !important; 
-    font-size: 11px !important; 
-    font-weight: bold !important; 
-    cursor: pointer !important; 
-    margin-left: 5px !important;
-}
-
-/* Force Toggle Colors */
-#tgToggle.active, #waToggle.active, #ltfAlertBtn.active { background: #d3e84e !important; color: #111 !important; }
-#tgToggle.inactive, #waToggle.inactive, #ltfAlertBtn.inactive { background: #ef4444 !important; color: #fff !important; }
-
-/* Shrink ALERTS Buttons by 50% */
-#tgToggle, #waToggle, #ltfAlertBtn {
-    padding: 2px 5px !important;
-    font-size: 6px !important;
-    line-height: 1 !important;
-    border-radius: 2px !important;
-}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
@@ -537,9 +319,9 @@
         <div class="header-actions">
             <button class="icon-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
             <button class="icon-btn" onclick="toggleDesktopMode()" id="desktopBtn"><i class="fas fa-desktop"></i></button>
-            
-            
-            
+            <button class="alert-toggle" id="tgToggle" onclick="toggleAlert('telegram')">TG</button>
+            <button class="alert-toggle" id="waToggle" onclick="toggleAlert('whatsapp')">WA</button>
+            <button class="alert-toggle" id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button>
         </div>
     </div>
     <div class="pills-row">
@@ -559,14 +341,7 @@
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
     <div class="watchlist-resize-handle" id="wlResizeHandle"></div><div class="screener-head">
             SCREENER
-            <div class="settings-dropdown">
-            <span onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'" style="cursor:pointer; font-size:11px; font-weight:bold; color:var(--muted);">ALERTS &#9660;</span>
-            <div class="settings-menu">
-                <div class="setting-item"><span>Telegram</span><button id="tgToggle" onclick="toggleAlert('telegram')">TG ON</button></div>
-                <div class="setting-item"><span>WhatsApp</span><button id="waToggle" onclick="toggleAlert('whatsapp')">WA ON</button></div>
-                <div class="setting-item"><span>LTF Alert</span><button id="ltfAlertBtn" onclick="toggleLtfAlert()">LTF OFF</button></div>
-            </div>
-        </div><div class="market-dropdown">
+            <div class="market-dropdown">
                 <button class="pill market-btn" onclick="toggleMarketDropdown(event)">CRYPTO <i class="fas fa-chevron-down"></i></button>
                 <div class="market-menu">
                     <div onclick="changeMarket('/')">Forex</div>
@@ -2281,13 +2056,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { location.reload(); }, 300);
     }
 })();
-</script>
-
-<script>
-// Disable Debug function aur Eruda completely
-window.dbg = function() {};
-try { if (window.eruda) eruda.destroy(); } catch(e) {}
-try { if (window.eruda) eruda.hide(); } catch(e) {}
 </script>
 </body>
 </html>
