@@ -78,8 +78,6 @@
         body.desktop-mode .chart-box:empty { display:flex !important; align-items:center; justify-content:center; gap:12px; }
         body.desktop-mode .chart-box:empty::before { content:'\f080'; font-size:44px; opacity:0.2; font-family:"Font Awesome 6 Free"; font-weight:900; }
         body.desktop-mode .chart-box:empty::after { content:'Select a pair to view chart'; font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); opacity:0.5; }
-        .toggle-4h { cursor:pointer; padding:2px 8px; border-radius:12px; background:var(--pill-bg); font-weight:600; margin-left:8px; font-size:11px; color:var(--muted); user-select:none; }
-        .toggle-4h.active { background:var(--acc); color:#fff; }
         .chart-interval-selector { display:flex; gap:6px; align-items:center; }
         .chart-interval-btn { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--pill-bg); color:var(--txt); cursor:pointer; }
         .chart-interval-btn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
@@ -111,24 +109,21 @@
         .btn-primary { background:var(--acc); color:#fff; }
         .btn-secondary { background:var(--pill-bg); color:var(--txt); border:1px solid var(--border); }
         .filter-row { display:flex; gap:8px; }
-
-        /* Watchlist drag-drop */
-        .watchlist-section { margin-bottom:16px; position:sticky; top:0; z-index:20; background:var(--bg); padding-top:2px; }
-        .watchlist-header { display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding:0 2px; }
-        .watchlist-header .wl-count { color:var(--acc); font-weight:700; }
-        .watchlist-dropzone { border:1.5px dashed var(--border); border-radius:12px; min-height:44px; padding:6px; transition:background .15s,border-color .15s; }
-        .watchlist-dropzone.drag-over { border-color:var(--acc); background:rgba(0,98,255,0.08); }
-        .watchlist-empty { font-size:12px; color:var(--muted); text-align:center; padding:10px 4px; }
-        .watchlist-item { display:flex; align-items:center; padding:8px 6px; border-bottom:1px solid var(--border); font-size:13px; }
-        .watchlist-item:last-child { border-bottom:none; }
-        .watchlist-item .wl-sym { font-weight:700; flex:1; }
-        .watchlist-item .wl-price { font-size:12px; color:var(--txt); margin-right:8px; white-space:nowrap; }
-        .watchlist-item .wl-chg { font-size:12px; font-weight:600; margin-right:8px; white-space:nowrap; }
-        .watchlist-item .wl-chg.up { color:var(--green); }
-        .watchlist-item .wl-chg.down { color:var(--red); }
-        .watchlist-item .wl-remove { color:var(--red); font-size:14px; cursor:pointer; padding:2px 6px; }
-        .drag-ghost { position:fixed; z-index:3000; background:var(--acc); color:#fff; font-size:12px; font-weight:700; padding:6px 12px; border-radius:8px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.3); transform:translate(-50%,-50%); opacity:0.95; }
-    </style>
+    
+<style>
+/* Hide Star Button (Display Only - Logic Safe) */
+span[class*="star"],
+td[class*="star"],
+.far
+.fas
+    display: none !important;
+}
+button:has(>
+button:has(> span[class*="star"]) {
+    display: none !important;
+}
+</style>
+</style>
 
 <style>
     /* Active timeframe button highlight */
@@ -153,11 +148,23 @@
         font-weight: bold;
         box-shadow: 0 0 8px rgba(41,98,255,0.5);
     }
+
+<style>
+/* Hide Star Button (Display Only - Logic Safe) */
+span[class*="star"],
+td[class*="star"],
+.far
+.fas
+    display: none !important;
+}
+button:has(>
+button:has(> span[class*="star"]) {
+    display: none !important;
+}
+</style>
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
-<link rel="stylesheet" href="/new-design.css"></head>
+</head>
 <body>
 
 <div id="tv-indicators-container" style="position: absolute; top: 12px; right: 60px; z-index: 99999;">
@@ -193,7 +200,6 @@
     </div>
     <div class="sync-info" onclick="openTargetModal()">
         Cloud synced <span style="color:var(--acc);margin-left:6px;">Target list: <span id="targetCount">0</span> ></span>
-        <span class="toggle-4h active" id="toggle4hBtn" onclick="event.stopPropagation(); toggle4H()">4H ON</span>
     </div>
     <div class="counters-grid">
         <div class="count-card" onclick="setFilter('bull')"><div class="num" style="color:var(--green)" id="bc">0</div><div class="label">Bullish</div></div>
@@ -201,13 +207,6 @@
         <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
         <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount2">0</div><div class="label">Target</div></div>
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
-    </div>
-    <div class="watchlist-section">
-        <div class="watchlist-header"><span>Watchlist</span><span class="wl-count" id="wlCountLabel">0</span></div>
-        <div class="watchlist-dropzone" id="watchlistDropzone">
-            <div class="watchlist-empty" id="watchlistEmpty">Pairs ko yahan drag karke chhodain (long-press karke drag karo)</div>
-            <div id="watchlistItems"></div>
-        </div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search crypto..." oninput="filterPairs(this.value)"></div>
     <div class="screener-wrap">
@@ -240,7 +239,6 @@
         <span id="chartPairName" style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--txt)"></span>
         <button onclick="movePair(1)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--txt)"><i class="fas fa-chevron-right"></i></button>
         <button onclick="openAlertDialog(document.getElementById('chartPairName').textContent)" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Set Alert"><i class="fas fa-bell"></i></button>
-        <button id="chartStarBtn" onclick="toggleStarFromChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--gold);cursor:pointer;" title="Star/Unstar"><i class="far fa-star"></i></button>
         <button id="chartCloseBtn" onclick="closeChart()" style="background:none;border:none;font-size:20px;padding:8px;color:var(--red)"><i class="fas fa-times"></i></button>
     </div>
     <div id="tfSlots" style="display:flex;gap:8px;padding:8px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;">
@@ -367,7 +365,7 @@ let liveMarketData = {};
 let alertSettings = { telegram: true, whatsapp: true };
 let activeChartSlot = 1;
 let chartIndices = [0,0,0,0];
-let starredPairs = JSON.parse(localStorage.getItem('ici_crypto_starred') || '[]');
+let starredPairs = [];
 let activeChartPair = null;
 
 window.alertSettings = alertSettings;
@@ -686,24 +684,9 @@ document.addEventListener('keydown', function(e) {
     else if (key === 'W') setSlotTF(activeChartSlot, '1W');
 });
 
-function toggleStar(pair) {
-    const idx = starredPairs.indexOf(pair);
-    if (idx > -1) starredPairs.splice(idx, 1);
-    else starredPairs.push(pair);
-    localStorage.setItem('ici_crypto_starred', JSON.stringify(starredPairs));
-    render();
-    if (pair === activeChartPair) updateChartStarButton();
-}
+function toggleStar(pair) { return; }
 
-function toggleStarFromChart() { if (activeChartPair) toggleStar(activeChartPair); }
-
-function updateChartStarButton() {
-    const btn = document.getElementById('chartStarBtn');
-    if (btn) {
-        const isStarred = starredPairs.includes(activeChartPair);
-        btn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star"></i>`;
-    }
-}
+function toggleStarFromChart() { return; }
 
 let renderTimer = null;
 function renderDebounced() {
@@ -1138,12 +1121,12 @@ function render() {
     renderHeader();
     document.getElementById('pairsContainer').innerHTML = filtered.map(p => {
         const isStarred = starredPairs.includes(p.n);
-        const starIcon = `<i class="${isStarred ? 'fas' : 'far'} fa-star" style="color:var(--gold); cursor:pointer; margin-right:4px; font-size:14px;" onclick="event.stopPropagation(); toggleStar('${p.n}')"></i>`;
+        const starIcon = '';
         let cells = `<div class="col-pair-fixed">${starIcon}<span style="font-weight:700;font-size:14px;">${p.n}</span></div>`;
         cells += columnDefs.map(col => renderColumnCell(p.n, col)).join('');
         cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${p.n}')"></i></div>`;
-        let row = `<div class="item-row ${p.n === activeChartPair ? 'highlighted-row' : ''}" data-pair="${p.n}"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
+        let row = `<div class="item-row ${p.n === activeChartPair ? 'highlighted-row' : ''}"><div class="item-main" onclick="openChartForPair('${p.n}')">${cells}</div>`;
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(p.n);
             if (info) {
@@ -1157,13 +1140,7 @@ function render() {
     updateCounts();
 }
 
-function toggle4H() {
-    show4H = !show4H;
-    localStorage.setItem('crypto_show4H', show4H);
-    document.getElementById('toggle4hBtn').textContent = show4H ? '4H ON' : '4H OFF';
-    document.getElementById('toggle4hBtn').classList.toggle('active', show4H);
-    render();
-}
+function toggle4H() { return; }
 
 (function(){
     show4H = localStorage.getItem('crypto_show4H') !== 'false';
@@ -1195,107 +1172,6 @@ db.ref('marketData').on('value', snap => {
     setTimeout(() => render(), 200);
 })();
 updateToggleButtons();
-</script>
-
-<script>
-let watchlistPairs = [];
-try { watchlistPairs = JSON.parse(localStorage.getItem('ici_watchlist_crypto') || '[]'); } catch(e) { watchlistPairs = []; }
-function saveWatchlist() { localStorage.setItem('ici_watchlist_crypto', JSON.stringify(watchlistPairs)); }
-function addToWatchlist(pair) {
-    if (!pair || watchlistPairs.includes(pair)) return;
-    watchlistPairs.push(pair);
-    saveWatchlist();
-    renderWatchlist();
-}
-function removeFromWatchlist(pair) {
-    watchlistPairs = watchlistPairs.filter(p => p !== pair);
-    saveWatchlist();
-    renderWatchlist();
-}
-function renderWatchlist() {
-    const empty = document.getElementById('watchlistEmpty');
-    const itemsEl = document.getElementById('watchlistItems');
-    const countEl = document.getElementById('wlCountLabel');
-    if (!itemsEl) return;
-    countEl.textContent = watchlistPairs.length;
-    if (!watchlistPairs.length) { empty.style.display = 'block'; itemsEl.innerHTML = ''; return; }
-    empty.style.display = 'none';
-    itemsEl.innerHTML = watchlistPairs.map(sym => {
-        const lm = liveMarketData[sym] || {};
-        const t = techMetrics[sym] || {};
-        const price = lm.price || lm.currentPrice;
-        const chg = t.microMomentum;
-        const priceTxt = price != null ? Number(price).toFixed(4) : '--';
-        const chgTxt = chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(2) + '%' : '--';
-        const chgCls = chg == null ? '' : (chg >= 0 ? 'up' : 'down');
-        return `<div class="watchlist-item" onclick="openChartForPair('${sym}')">
-            <span class="wl-sym">${sym}</span>
-            <span class="wl-price">${priceTxt}</span>
-            <span class="wl-chg ${chgCls}">${chgTxt}</span>
-            <span class="wl-remove" onclick="event.stopPropagation(); removeFromWatchlist('${sym}')"><i class="fas fa-times"></i></span>
-        </div>`;
-    }).join('');
-}
-let dragGhostEl = null, dragPairName = null, dragLongPressTimer = null, dragStartX = 0, dragStartY = 0, isDraggingPair = false;
-const DRAG_MOVE_THRESHOLD = 10, DRAG_LONGPRESS_MS = 350;
-function onScreenerTouchStart(e) {
-    const row = e.target.closest('.item-row[data-pair]');
-    if (!row) return;
-    const touch = e.touches[0];
-    dragStartX = touch.clientX; dragStartY = touch.clientY;
-    dragPairName = row.dataset.pair;
-    isDraggingPair = false;
-    clearTimeout(dragLongPressTimer);
-    dragLongPressTimer = setTimeout(() => { startPairDrag(touch.clientX, touch.clientY); }, DRAG_LONGPRESS_MS);
-    document.addEventListener('touchmove', onScreenerTouchMove, { passive: false });
-    document.addEventListener('touchend', onScreenerTouchEnd, { passive: true });
-}
-function onScreenerTouchMove(e) {
-    const touch = e.touches[0];
-    if (!isDraggingPair) {
-        const dx = Math.abs(touch.clientX - dragStartX), dy = Math.abs(touch.clientY - dragStartY);
-        if (dx > DRAG_MOVE_THRESHOLD || dy > DRAG_MOVE_THRESHOLD) clearTimeout(dragLongPressTimer);
-        return;
-    }
-    e.preventDefault();
-    if (dragGhostEl) { dragGhostEl.style.left = touch.clientX + 'px'; dragGhostEl.style.top = touch.clientY + 'px'; }
-    const dz = document.getElementById('watchlistDropzone');
-    const r = dz.getBoundingClientRect();
-    const over = touch.clientX >= r.left && touch.clientX <= r.right && touch.clientY >= r.top && touch.clientY <= r.bottom;
-    dz.classList.toggle('drag-over', over);
-}
-function onScreenerTouchEnd(e) {
-    clearTimeout(dragLongPressTimer);
-    document.removeEventListener('touchmove', onScreenerTouchMove);
-    document.removeEventListener('touchend', onScreenerTouchEnd);
-    if (isDraggingPair) {
-        const touch = e.changedTouches[0];
-        const dz = document.getElementById('watchlistDropzone');
-        const r = dz.getBoundingClientRect();
-        const over = touch.clientX >= r.left && touch.clientX <= r.right && touch.clientY >= r.top && touch.clientY <= r.bottom;
-        if (over) addToWatchlist(dragPairName);
-        endPairDrag();
-    }
-    isDraggingPair = false; dragPairName = null;
-}
-function startPairDrag(x, y) {
-    isDraggingPair = true;
-    dragGhostEl = document.createElement('div');
-    dragGhostEl.className = 'drag-ghost';
-    dragGhostEl.textContent = dragPairName;
-    document.body.appendChild(dragGhostEl);
-    dragGhostEl.style.left = x + 'px'; dragGhostEl.style.top = y + 'px';
-    if (navigator.vibrate) navigator.vibrate(20);
-}
-function endPairDrag() {
-    if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
-    const dz = document.getElementById('watchlistDropzone');
-    if (dz) dz.classList.remove('drag-over');
-}
-document.getElementById('pairsContainer').addEventListener('touchstart', onScreenerTouchStart, { passive: true });
-renderWatchlist();
-const _origRenderForWatchlist = render;
-render = function() { _origRenderForWatchlist(); renderWatchlist(); };
 </script>
 
 
@@ -1369,7 +1245,72 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
 }
 </script>
 
+<style>
+  #safe-floating-toolbar {
+      position: absolute;
+      top: 100px;
+      left: 20px;
+      z-index: 99999;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      user-select: none;
+  }
+  .safe-tb-handle {
+      width: 100%;
+      height: 16px;
+      background: #334155;
+      border-radius: 3px;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2px;
+      touch-action: none;
+  }
+  .safe-tb-handle::after {
+      content: '';
+      width: 16px;
+      height: 2px;
+      background: #94a3b8;
+      border-radius: 1px;
+  }
+  .safe-tb-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .safe-tb-btn:hover, .safe-tb-btn.active { background: #0062ff; color: #fff; }
+  .safe-tb-btn.danger { color: #f87171; }
+  .safe-tb-btn.danger:hover { background: #7f1d1d; color: #fff; }
 
+<style>
+/* Hide Star Button (Display Only - Logic Safe) */
+span[class*="star"],
+td[class*="star"],
+.far
+.fas
+    display: none !important;
+}
+button:has(>
+button:has(> span[class*="star"]) {
+    display: none !important;
+}
+</style>
+</style>
 
 <div id="safe-floating-toolbar">
     <div id="safe-tb-handle" class="safe-tb-handle" title="Drag toolbar"></div>
@@ -1390,14 +1331,14 @@ window.activeSafeTool = 'select';
 
 function getSafeDrawings() {
     var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol : 'default';
-    var all = JSON.parse(localStorage.getItem('safe_chart_drawings_v2') || '{}');
+    var all = JSON.parse(localStorage.getItem('safe_chart_drawings_v3') || '{}');
     return all[sym] || [];
 }
 function saveSafeDrawings(arr) {
     var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol : 'default';
-    var all = JSON.parse(localStorage.getItem('safe_chart_drawings_v2') || '{}');
+    var all = JSON.parse(localStorage.getItem('safe_chart_drawings_v3') || '{}');
     all[sym] = arr;
-    localStorage.setItem('safe_chart_drawings_v2', JSON.stringify(all));
+    localStorage.setItem('safe_chart_drawings_v3', JSON.stringify(all));
 }
 
 var safeDrawCanvas = null, safeDrawCtx = null;
@@ -1415,6 +1356,97 @@ function setSafeTool(tool) {
         var isSelect = (tool === 'select');
         safeDrawCanvas.style.pointerEvents = isSelect ? 'none' : 'all';
         safeDrawCanvas.style.cursor = isSelect ? 'default' : 'crosshair';
+    }
+}
+
+var safeDragState = null;
+
+function dist(x1,y1,x2,y2){ var dx=x1-x2, dy=y1-y2; return Math.sqrt(dx*dx+dy*dy); }
+
+function distToSegment(px,py,x1,y1,x2,y2){
+    var dx=x2-x1, dy=y2-y1;
+    var lenSq = dx*dx+dy*dy;
+    var t = lenSq ? ((px-x1)*dx+(py-y1)*dy)/lenSq : 0;
+    t = Math.max(0, Math.min(1, t));
+    var cx = x1+t*dx, cy = y1+t*dy;
+    return dist(px,py,cx,cy);
+}
+
+function priceAtDelta(origPrice, dy) {
+    var origY = candleSeries.priceToCoordinate(origPrice);
+    if (origY == null) return origPrice;
+    var newPrice = candleSeries.coordinateToPrice(origY + dy);
+    return newPrice != null ? newPrice : origPrice;
+}
+
+function logicalAtDelta(origLogical, dx) {
+    var origX = customChart.timeScale().logicalToCoordinate(origLogical);
+    if (origX == null) return origLogical;
+    var newLogical = customChart.timeScale().coordinateToLogical(origX + dx);
+    return newLogical != null ? newLogical : origLogical;
+}
+
+function hitTestDrawings(px, py) {
+    var drawings = getSafeDrawings();
+    var TOL = 16;
+    for (var i = drawings.length - 1; i >= 0; i--) {
+        var d = drawings[i];
+        if (d.type === 'hline') {
+            var y1 = candleSeries.priceToCoordinate(d.price1);
+            if (y1 != null && Math.abs(py - y1) <= TOL) return { index:i, mode:'move' };
+        } else if (d.type === 'trend') {
+            var y1 = candleSeries.priceToCoordinate(d.price1);
+            var y2 = candleSeries.priceToCoordinate(d.price2);
+            var x1 = customChart.timeScale().logicalToCoordinate(d.logical1);
+            var x2 = customChart.timeScale().logicalToCoordinate(d.logical2);
+            if (y1==null||y2==null||x1==null||x2==null) continue;
+            if (dist(px,py,x1,y1) <= TOL) return { index:i, mode:'resize-p1' };
+            if (dist(px,py,x2,y2) <= TOL) return { index:i, mode:'resize-p2' };
+            if (distToSegment(px,py,x1,y1,x2,y2) <= TOL) return { index:i, mode:'move' };
+        } else if (d.type === 'rect') {
+            var y1 = candleSeries.priceToCoordinate(d.price1);
+            var y2 = candleSeries.priceToCoordinate(d.price2);
+            var x1 = customChart.timeScale().logicalToCoordinate(d.logical1);
+            var x2 = customChart.timeScale().logicalToCoordinate(d.logical2);
+            if (y1==null||y2==null||x1==null||x2==null) continue;
+            if (dist(px,py,x1,y1) <= TOL) return { index:i, mode:'resize-p1' };
+            if (dist(px,py,x2,y2) <= TOL) return { index:i, mode:'resize-p2' };
+            var minX=Math.min(x1,x2), maxX=Math.max(x1,x2), minY=Math.min(y1,y2), maxY=Math.max(y1,y2);
+            if (px>=minX-TOL && px<=maxX+TOL && py>=minY-TOL && py<=maxY+TOL) return { index:i, mode:'move' };
+        } else if (d.type === 'pnl') {
+            var entryY = candleSeries.priceToCoordinate(d.entry);
+            var tpY = candleSeries.priceToCoordinate(d.tp);
+            var slY = candleSeries.priceToCoordinate(d.sl);
+            if (entryY==null||tpY==null||slY==null) continue;
+            var minY = Math.min(entryY,tpY,slY) - TOL, maxY = Math.max(entryY,tpY,slY) + TOL;
+            if (py>=minY && py<=maxY) return { index:i, mode:'move' };
+        }
+    }
+    return null;
+}
+
+function applyDragUpdate(dx, dy) {
+    var d = safeDragState.drawing, o = safeDragState.orig, mode = safeDragState.mode;
+    if (d.type === 'hline') {
+        d.price1 = priceAtDelta(o.price1, dy);
+        d.price2 = d.price1;
+    } else if (d.type === 'trend' || d.type === 'rect') {
+        if (mode === 'move') {
+            d.price1 = priceAtDelta(o.price1, dy);
+            d.price2 = priceAtDelta(o.price2, dy);
+            d.logical1 = logicalAtDelta(o.logical1, dx);
+            d.logical2 = logicalAtDelta(o.logical2, dx);
+        } else if (mode === 'resize-p1') {
+            d.price1 = priceAtDelta(o.price1, dy);
+            d.logical1 = logicalAtDelta(o.logical1, dx);
+        } else if (mode === 'resize-p2') {
+            d.price2 = priceAtDelta(o.price2, dy);
+            d.logical2 = logicalAtDelta(o.logical2, dx);
+        }
+    } else if (d.type === 'pnl') {
+        d.entry = priceAtDelta(o.entry, dy);
+        d.tp = priceAtDelta(o.tp, dy);
+        d.sl = priceAtDelta(o.sl, dy);
     }
 }
 
@@ -1458,18 +1490,62 @@ function initSafeDrawCanvas() {
         finishSafeDraw();
     });
 
+    if (!chartEl._selectDragBound) {
+        chartEl._selectDragBound = true;
+
+        chartEl.addEventListener('pointerdown', function(e){
+            if (window.activeSafeTool !== 'select') return;
+            var r = chartEl.getBoundingClientRect();
+            var px = e.clientX - r.left, py = e.clientY - r.top;
+            var hit = hitTestDrawings(px, py);
+            if (!hit) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var drawings = getSafeDrawings();
+            safeDragState = {
+                index: hit.index,
+                mode: hit.mode,
+                drawings: drawings,
+                drawing: drawings[hit.index],
+                orig: JSON.parse(JSON.stringify(drawings[hit.index])),
+                startX: px,
+                startY: py,
+                pointerId: e.pointerId
+            };
+            chartEl.style.cursor = 'grabbing';
+            try { chartEl.setPointerCapture(e.pointerId); } catch(err){}
+        }, true);
+
+        chartEl.addEventListener('pointermove', function(e){
+            if (!safeDragState || e.pointerId !== safeDragState.pointerId) return;
+            e.preventDefault();
+            var r = chartEl.getBoundingClientRect();
+            var px = e.clientX - r.left, py = e.clientY - r.top;
+            applyDragUpdate(px - safeDragState.startX, py - safeDragState.startY);
+            saveSafeDrawings(safeDragState.drawings);
+            renderSafeDrawings();
+        });
+
+        function endSafeDrag(e){
+            if (!safeDragState || (e && e.pointerId !== safeDragState.pointerId)) return;
+            try { if (e) chartEl.releasePointerCapture(e.pointerId); } catch(err){}
+            chartEl.style.cursor = '';
+            safeDragState = null;
+        }
+        chartEl.addEventListener('pointerup', endSafeDrag);
+        chartEl.addEventListener('pointercancel', endSafeDrag);
+    }
+
     window.addEventListener('resize', resizeSafeDrawCanvas);
     resizeSafeDrawCanvas();
     if(window.dbg) dbg('Canvas ready. size=' + safeDrawCanvas.width + 'x' + safeDrawCanvas.height + ', pointerEvents=' + safeDrawCanvas.style.pointerEvents);
 }
 
-// ✅ Chart khulne par ek hi baar hook lagao — koi polling nahi, koi delay nahi
 (function hookChartOpen(){
     if (typeof window.openChartForPair !== 'function') { setTimeout(hookChartOpen, 200); return; }
     var _origOpen = window.openChartForPair;
     window.openChartForPair = function(pairName) {
         _origOpen(pairName);
-        // ✅ FIX: chart khulte hi canvas ko dobara size do — pehle 0x0 tha
         resizeSafeDrawCanvas();
         if(window.dbg) dbg('Resized after open. size=' + safeDrawCanvas.width + 'x' + safeDrawCanvas.height);
         if (typeof customChart !== 'undefined' && customChart && !window._safeDrawHooked) {
@@ -1488,14 +1564,11 @@ function resizeSafeDrawCanvas() {
     renderSafeDrawings();
 }
 
-
 function finishSafeDraw() {
     if (typeof candleSeries === 'undefined' || !candleSeries || typeof customChart === 'undefined' || !customChart) return;
     var tool = window.activeSafeTool;
     var price1 = candleSeries.coordinateToPrice(safeDrawStart.y);
-    var time1  = customChart.timeScale().coordinateToTime(safeDrawStart.x);
     var price2 = candleSeries.coordinateToPrice(safeDrawCurrent.y);
-    var time2  = customChart.timeScale().coordinateToTime(safeDrawCurrent.x);
     if (price1 == null) return;
     var drawings = getSafeDrawings();
     if (tool === 'pnl-long' || tool === 'pnl-short') {
@@ -1504,10 +1577,14 @@ function finishSafeDraw() {
         var sl = entry - diff;
         drawings.push({ type:'pnl', direction: tool==='pnl-long'?'long':'short', entry:entry, tp:tp, sl:sl });
     } else {
-        drawings.push({ type:tool, price1:price1, time1:time1||0, price2: price2!=null?price2:price1, time2:time2||0 });
+        var logical1 = customChart.timeScale().coordinateToLogical(safeDrawStart.x);
+        var logical2 = customChart.timeScale().coordinateToLogical(safeDrawCurrent.x);
+        if (logical1 == null || logical2 == null) return;
+        drawings.push({ type:tool, price1:price1, price2: price2!=null?price2:price1, logical1:logical1, logical2:logical2 });
     }
     saveSafeDrawings(drawings);
     renderSafeDrawings();
+    setSafeTool('select');
 }
 
 function renderSafeDrawings() {
@@ -1522,8 +1599,8 @@ function renderSafeDrawings() {
         if (d.type === 'pnl') { renderSafePnL(ctx, d, W); return; }
         var y1 = candleSeries.priceToCoordinate(d.price1);
         var y2 = candleSeries.priceToCoordinate(d.price2 != null ? d.price2 : d.price1);
-        var x1 = d.time1 ? customChart.timeScale().timeToCoordinate(d.time1) : null;
-        var x2 = d.time2 ? customChart.timeScale().timeToCoordinate(d.time2) : null;
+        var x1 = d.logical1 != null ? customChart.timeScale().logicalToCoordinate(d.logical1) : null;
+        var x2 = d.logical2 != null ? customChart.timeScale().logicalToCoordinate(d.logical2) : null;
         if (y1 == null) return;
         ctx.strokeStyle = SAFE_COLORS[d.type] || '#f59e0b';
         ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.beginPath();
@@ -1588,7 +1665,6 @@ function initSafeToolbarDrag() {
     if (handle._safeDragBound) return;
     handle._safeDragBound = true;
 
-
     var isDragging = false;
     var startX = 0, startY = 0, initialLeft = 20, initialTop = 100;
     var activePointerId = null;
@@ -1601,21 +1677,17 @@ function initSafeToolbarDrag() {
 
     function startDrag(e) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-
         isDragging = true;
         activePointerId = e.pointerId;
         startX = e.clientX;
         startY = e.clientY;
-
         var rect = toolbar.getBoundingClientRect();
         initialLeft = rect.left;
         initialTop = rect.top;
-
         toolbar.style.left = initialLeft + 'px';
         toolbar.style.top = initialTop + 'px';
         toolbar.style.right = 'auto';
         toolbar.style.bottom = 'auto';
-
         handle.style.cursor = 'grabbing';
         try { handle.setPointerCapture(e.pointerId); } catch (err) {}
         e.preventDefault();
@@ -1624,7 +1696,6 @@ function initSafeToolbarDrag() {
     function onDrag(e) {
         var dx = e.clientX - startX;
         var dy = e.clientY - startY;
-
         toolbar.style.left = (initialLeft + dx) + 'px';
         toolbar.style.top = (initialTop + dy) + 'px';
         e.preventDefault();
@@ -1637,13 +1708,11 @@ function initSafeToolbarDrag() {
     }
 
     handle.style.touchAction = 'none';
-
     handle.addEventListener('pointerdown', startDrag);
     handle.addEventListener('pointermove', onDrag);
     handle.addEventListener('pointerup', endDrag);
     handle.addEventListener('pointercancel', endDrag);
 
-    // safety nets — force reset if focus/visibility changes mid-drag
     window.addEventListener('blur', resetDrag);
     document.addEventListener('visibilitychange', function() { if (document.hidden) resetDrag(); });
 }
@@ -1839,6 +1908,25 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     while (b.children.length > 20) b.removeChild(b.firstChild);
   };
   if (document.readyState !== 'loading') ensureBox(); else document.addEventListener('DOMContentLoaded', ensureBox);
+})();
+</script>
+
+<script>
+(function() {
+    function hideStars() {
+        // Saare elements dhoondo jisme 'star' ho ya fa-star icon ho
+        var elements = document.querySelectorAll('[class*="star"], [id*="star"],
+        elements.forEach(function(el) {
+            // Agar wo icon, button, ya cell hai to chhupa do
+            if (el.tagName === 'I' || el.tagName === 'BUTTON' || el.tagName === 'SPAN' || el.tagName === 'TD') {
+                el.style.display = 'none !important';
+                el.style.visibility = 'hidden !important';
+            }
+        });
+    }
+    // Load hote hi aur har 1 second baad check karo (Dynamic elements ke liye)
+    hideStars();
+    setInterval(hideStars, 1000);
 })();
 </script>
 </body>

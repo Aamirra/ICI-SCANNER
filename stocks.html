@@ -148,8 +148,25 @@
         .btn-primary { background:var(--acc); color:#fff; }
         .btn-secondary { background:var(--pill-bg); color:var(--txt); border:1px solid var(--border); }
         .filter-row { display:flex; gap:8px; }
+    
+        /* Watchlist drag-drop */
+        .watchlist-section { margin-bottom:16px; position:sticky; top:0; z-index:20; background:var(--bg); padding-top:2px; }
+        .watchlist-header { display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding:0 2px; }
+        .watchlist-header .wl-count { color:var(--acc); font-weight:700; }
+        .watchlist-dropzone { border:1.5px dashed var(--border); border-radius:12px; min-height:44px; padding:6px; transition:background .15s,border-color .15s; }
+        .watchlist-dropzone.drag-over { border-color:var(--acc); background:rgba(0,98,255,0.08); }
+        .watchlist-empty { font-size:12px; color:var(--muted); text-align:center; padding:10px 4px; }
+        .watchlist-item { display:flex; align-items:center; padding:8px 6px; border-bottom:1px solid var(--border); font-size:13px; }
+        .watchlist-item:last-child { border-bottom:none; }
+        .watchlist-item .wl-sym { font-weight:700; flex:1; }
+        .watchlist-item .wl-price { font-size:12px; color:var(--txt); margin-right:8px; white-space:nowrap; }
+        .watchlist-item .wl-chg { font-size:12px; font-weight:600; margin-right:8px; white-space:nowrap; }
+        .watchlist-item .wl-chg.up { color:var(--green); }
+        .watchlist-item .wl-chg.down { color:var(--red); }
+        .watchlist-item .wl-remove { color:var(--red); font-size:14px; cursor:pointer; padding:2px 6px; }
+        .drag-ghost { position:fixed; z-index:3000; background:var(--acc); color:#fff; font-size:12px; font-weight:700; padding:6px 12px; border-radius:8px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.3); transform:translate(-50%,-50%); opacity:0.95; }
     </style>
-</head>
+<link rel="stylesheet" href="/new-design.css"></head>
 <body>
 <div class="phone-container" id="app">
     <div class="header-row">
@@ -187,6 +204,13 @@
         <div class="count-card" onclick="setFilter('all')"><div class="num" style="color:var(--txt)" id="allCount">0</div><div class="label">All</div></div>
         <div class="count-card" onclick="setFilter('target')"><div class="num" style="color:var(--gold)" id="targetCount2">0</div><div class="label">Target</div></div>
         <div class="count-card" onclick="setFilter('trades')"><div class="num" style="color:var(--gold)" id="tradesCount">0</div><div class="label">Trades</div></div>
+    </div>
+    <div class="watchlist-section">
+        <div class="watchlist-header"><span>Watchlist</span><span class="wl-count" id="wlCountLabel">0</span></div>
+        <div class="watchlist-dropzone" id="watchlistDropzone">
+            <div class="watchlist-empty" id="watchlistEmpty">Pairs ko yahan drag karke chhodain (long-press karke drag karo)</div>
+            <div id="watchlistItems"></div>
+        </div>
     </div>
     <div class="search-container"><input type="text" class="search-bar" placeholder="Search stocks..." oninput="filterPairs(this.value)"></div>
     <div class="screener-wrap">
@@ -945,7 +969,7 @@ function render() {
         cells += '<div class="col-add-btn" style="visibility:hidden;"></div>';
         cells += `<div class="col-bell-fixed"><i class="fas fa-bell" style="color:var(--gold); cursor:pointer;" onclick="event.stopPropagation(); openAlertDialog('${sym}')"></i></div>`;
 
-        let row = `<div class="item-row ${sym === activeChartPair ? 'highlighted-row' : ''}"><div class="item-main" onclick="openChartForPair('${sym}')">${cells}</div>`;
+        let row = `<div class="item-row ${sym === activeChartPair ? 'highlighted-row' : ''}" data-pair="${sym}"><div class="item-main" onclick="openChartForPair('${sym}')">${cells}</div>`;
         if (curF === 'target' || curF === 'trades') {
             const info = getUniqueAutoSetups().get(sym);
             if (info) {
@@ -1106,6 +1130,107 @@ function toggleDesktopMode() {
     updateToggleButtons();
     setTimeout(() => render(), 200);
 })();
+</script>
+
+<script>
+let watchlistPairs = [];
+try { watchlistPairs = JSON.parse(localStorage.getItem('ici_watchlist_stocks') || '[]'); } catch(e) { watchlistPairs = []; }
+function saveWatchlist() { localStorage.setItem('ici_watchlist_stocks', JSON.stringify(watchlistPairs)); }
+function addToWatchlist(pair) {
+    if (!pair || watchlistPairs.includes(pair)) return;
+    watchlistPairs.push(pair);
+    saveWatchlist();
+    renderWatchlist();
+}
+function removeFromWatchlist(pair) {
+    watchlistPairs = watchlistPairs.filter(p => p !== pair);
+    saveWatchlist();
+    renderWatchlist();
+}
+function renderWatchlist() {
+    const empty = document.getElementById('watchlistEmpty');
+    const itemsEl = document.getElementById('watchlistItems');
+    const countEl = document.getElementById('wlCountLabel');
+    if (!itemsEl) return;
+    countEl.textContent = watchlistPairs.length;
+    if (!watchlistPairs.length) { empty.style.display = 'block'; itemsEl.innerHTML = ''; return; }
+    empty.style.display = 'none';
+    itemsEl.innerHTML = watchlistPairs.map(sym => {
+        const lm = liveMarketData[sym] || {};
+        const t = techMetrics[sym] || {};
+        const price = lm.price || lm.currentPrice;
+        const chg = t.microMomentum;
+        const priceTxt = price != null ? Number(price).toFixed(4) : '--';
+        const chgTxt = chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(2) + '%' : '--';
+        const chgCls = chg == null ? '' : (chg >= 0 ? 'up' : 'down');
+        return `<div class="watchlist-item" onclick="openChartForPair('${sym}')">
+            <span class="wl-sym">${sym}</span>
+            <span class="wl-price">${priceTxt}</span>
+            <span class="wl-chg ${chgCls}">${chgTxt}</span>
+            <span class="wl-remove" onclick="event.stopPropagation(); removeFromWatchlist('${sym}')"><i class="fas fa-times"></i></span>
+        </div>`;
+    }).join('');
+}
+let dragGhostEl = null, dragPairName = null, dragLongPressTimer = null, dragStartX = 0, dragStartY = 0, isDraggingPair = false;
+const DRAG_MOVE_THRESHOLD = 10, DRAG_LONGPRESS_MS = 350;
+function onScreenerTouchStart(e) {
+    const row = e.target.closest('.item-row[data-pair]');
+    if (!row) return;
+    const touch = e.touches[0];
+    dragStartX = touch.clientX; dragStartY = touch.clientY;
+    dragPairName = row.dataset.pair;
+    isDraggingPair = false;
+    clearTimeout(dragLongPressTimer);
+    dragLongPressTimer = setTimeout(() => { startPairDrag(touch.clientX, touch.clientY); }, DRAG_LONGPRESS_MS);
+    document.addEventListener('touchmove', onScreenerTouchMove, { passive: false });
+    document.addEventListener('touchend', onScreenerTouchEnd, { passive: true });
+}
+function onScreenerTouchMove(e) {
+    const touch = e.touches[0];
+    if (!isDraggingPair) {
+        const dx = Math.abs(touch.clientX - dragStartX), dy = Math.abs(touch.clientY - dragStartY);
+        if (dx > DRAG_MOVE_THRESHOLD || dy > DRAG_MOVE_THRESHOLD) clearTimeout(dragLongPressTimer);
+        return;
+    }
+    e.preventDefault();
+    if (dragGhostEl) { dragGhostEl.style.left = touch.clientX + 'px'; dragGhostEl.style.top = touch.clientY + 'px'; }
+    const dz = document.getElementById('watchlistDropzone');
+    const r = dz.getBoundingClientRect();
+    const over = touch.clientX >= r.left && touch.clientX <= r.right && touch.clientY >= r.top && touch.clientY <= r.bottom;
+    dz.classList.toggle('drag-over', over);
+}
+function onScreenerTouchEnd(e) {
+    clearTimeout(dragLongPressTimer);
+    document.removeEventListener('touchmove', onScreenerTouchMove);
+    document.removeEventListener('touchend', onScreenerTouchEnd);
+    if (isDraggingPair) {
+        const touch = e.changedTouches[0];
+        const dz = document.getElementById('watchlistDropzone');
+        const r = dz.getBoundingClientRect();
+        const over = touch.clientX >= r.left && touch.clientX <= r.right && touch.clientY >= r.top && touch.clientY <= r.bottom;
+        if (over) addToWatchlist(dragPairName);
+        endPairDrag();
+    }
+    isDraggingPair = false; dragPairName = null;
+}
+function startPairDrag(x, y) {
+    isDraggingPair = true;
+    dragGhostEl = document.createElement('div');
+    dragGhostEl.className = 'drag-ghost';
+    dragGhostEl.textContent = dragPairName;
+    document.body.appendChild(dragGhostEl);
+    dragGhostEl.style.left = x + 'px'; dragGhostEl.style.top = y + 'px';
+    if (navigator.vibrate) navigator.vibrate(20);
+}
+function endPairDrag() {
+    if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
+    const dz = document.getElementById('watchlistDropzone');
+    if (dz) dz.classList.remove('drag-over');
+}
+document.getElementById('pairsContainer').addEventListener('touchstart', onScreenerTouchStart, { passive: true });
+renderWatchlist();
+const _origRenderForWatchlist = render;
+render = function() { _origRenderForWatchlist(); renderWatchlist(); };
 </script>
 </body>
 </html>

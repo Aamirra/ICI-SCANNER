@@ -1,0 +1,7 @@
+body { margin: 0 !important; padding: 0 !important; background: #08090b !important; color: #e7e7e7 !important; display: flex !important; overflow: hidden !important; height: 100vh !important; }
+.phone-container { width: 350px !important; min-width: 350px !important; max-width: 350px !important; height: 100vh !important; border-radius: 0 !important; border-right: 1px solid #25272c !important; background: #090a0c !important; overflow-y: auto !important; flex-shrink: 0 !important; }
+#chartOverlay { flex: 1 !important; display: flex !important; height: 100vh !important; background: #060708 !important; position: relative !important; }
+.pills-row { display: flex !important; gap: 8px !important; padding: 10px !important; border-bottom: 1px solid #25272c !important; background: #090a0c !important; overflow-x: auto !important; }
+.pill { background: #1b1d22 !important; color: #aaa !important; border: 1px solid #25272c !important; padding: 8px 12px !important; border-radius: 6px !important; font-size: 12px !important; font-weight: bold !important; cursor: pointer !important; white-space: nowrap !important; }
+.pill:hover, .pill.active { background: #d3e84e !important; color: #111 !important; border-color: #d3e84e !important; }
+.header-row, .search-container, .counters-grid, .cloud-status, .sync-info, .brand, .brand-text { display: none !important; }
